@@ -15,6 +15,7 @@ class Produto extends Model
         'codfab',
         'nome',
         'descricao',
+        'imagem',
         'categoria_id',
         'subcategoria_id',
         'fornecedor_id',

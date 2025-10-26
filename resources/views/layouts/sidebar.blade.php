@@ -14,6 +14,11 @@
             🧴 <span>Produtos</span>
         </a>
 
+        <a href="{{ route('fornecedores.index') }}" 
+        class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('fornecedores.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
+            🏭 <span>Fornecedores</span>
+        </a>
+
         <a href="{{ route('categorias.index') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('categorias.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
             🧩 <span>Categorias</span>
         </a>
@@ -23,7 +28,7 @@
         </a>
 
         <a href="{{ route('equiperevenda.index') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('equiperevenda.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
-            👥 <span>Equipes</span>
+            👥 <span>Equipes de Revenda</span>
         </a>
 
         <a href="{{ route('supervisores.index') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('supervisores.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">

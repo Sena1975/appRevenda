@@ -4,26 +4,38 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class LocalizacaoController extends Controller
 {
-    // Retorna cidades com base no UF selecionado
     public function getCidades($uf_id)
     {
-        $cidades = DB::table('appcidade')
+        return DB::table('appcidade')
             ->where('uf_id', $uf_id)
             ->orderBy('nome')
-            ->get(['id', 'nome']);
-        return response()->json($cidades);
+            ->get();
     }
 
-    // Retorna bairros com base na cidade selecionada
     public function getBairros($cidade_id)
     {
-        $bairros = DB::table('appbairro')
+        return DB::table('appbairro')
             ->where('cidade_id', $cidade_id)
             ->orderBy('nome')
-            ->get(['id', 'nome']);
-        return response()->json($bairros);
+            ->get();
+    }
+
+    // Busca cidade/UF pelo nome (usada no CEP automático)
+    public function getLocalizacao(Request $request)
+    {
+        $uf = DB::table('appuf')->where('sigla', $request->uf)->first();
+        $cidade = DB::table('appcidade')
+            ->where('nome', 'like', $request->cidade)
+            ->where('uf_id', $uf->id ?? null)
+            ->first();
+
+        return response()->json([
+            'uf_id' => $uf->id ?? null,
+            'cidade_id' => $cidade->id ?? null,
+        ]);
     }
 }

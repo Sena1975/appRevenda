@@ -2,63 +2,59 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Revendedora;
 use Illuminate\Http\Request;
 
 class RevendedoraController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $revendedoras = Revendedora::orderBy('nome')->paginate(10);
+        return view('revendedoras.index', compact('revendedoras'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('revendedoras.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nome' => 'required|string|max:255',
+            'cpf' => 'required|string|max:14|unique:apprevendedora,cpf',
+        ]);
+
+        Revendedora::create($request->all());
+
+        return redirect()->route('revendedoras.index')->with('success', 'Revendedora cadastrada com sucesso!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit($id)
     {
-        //
+        $revendedora = Revendedora::findOrFail($id);
+        return view('revendedoras.edit', compact('revendedora'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $revendedora = Revendedora::findOrFail($id);
+
+        $request->validate([
+            'nome' => 'required|string|max:255',
+            'cpf' => 'required|string|max:14|unique:apprevendedora,cpf,' . $revendedora->id,
+        ]);
+
+        $revendedora->update($request->all());
+
+        return redirect()->route('revendedoras.index')->with('success', 'Dados atualizados com sucesso!');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy($id)
     {
-        //
-    }
+        $revendedora = Revendedora::findOrFail($id);
+        $revendedora->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return redirect()->route('revendedoras.index')->with('success', 'Revendedora excluída com sucesso!');
     }
 }

@@ -17,6 +17,11 @@
             🧴 {{ __('Produtos') }}
         </x-nav-link>
 
+        <!-- Fornecedores -->
+        <x-nav-link :href="route('fornecedores.index')" :active="request()->routeIs('fornecedores.*')">
+            {{ __('Fornecedores') }}
+        </x-nav-link>
+
         <x-nav-link :href="route('categorias.index')" :active="request()->routeIs('categorias.*')" class="block">
             🧩 {{ __('Categorias') }}
         </x-nav-link>

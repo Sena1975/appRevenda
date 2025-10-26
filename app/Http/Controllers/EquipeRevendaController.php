@@ -2,63 +2,61 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EquipeRevenda;
+use App\Models\Revendedora;
 use Illuminate\Http\Request;
 
 class EquipeRevendaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $equipes = EquipeRevenda::with('revendedora')->orderBy('nome')->paginate(10);
+        return view('equipes.index', compact('equipes'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        $revendedoras = Revendedora::orderBy('nome')->get();
+        return view('equipes.create', compact('revendedoras'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nome' => 'required|string|max:255',
+            'revendedora_id' => 'nullable|exists:apprevendedora,id',
+        ]);
+
+        EquipeRevenda::create($request->all());
+
+        return redirect()->route('equipes.index')->with('success', 'Equipe cadastrada com sucesso!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+public function edit($id)
+{
+    $equipe = \App\Models\EquipeRevenda::findOrFail($id);
+    $revendedoras = \App\Models\Revendedora::orderBy('nome')->get();
+    return view('equiperevenda.edit', compact('equipe', 'revendedoras'));
+}
+public function update(Request $request, $id)
+{
+    $equipe = \App\Models\EquipeRevenda::findOrFail($id);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+    $request->validate([
+        'nome' => 'required|string|max:255',
+        'revendedora_id' => 'nullable|exists:apprevendedora,id',
+    ]);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+    $equipe->update($request->all());
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    return redirect()->route('equiperevenda.index')->with('success', 'Equipe atualizada com sucesso!');
+}
+
+    public function destroy($id)
     {
-        //
+        $equipe = EquipeRevenda::findOrFail($id);
+        $equipe->delete();
+
+        return redirect()->route('equipes.index')->with('success', 'Equipe excluída com sucesso!');
     }
 }

@@ -16,24 +16,10 @@ class Revendedora extends Model
         'cpf',
         'telefone',
         'whatsapp',
-        'telegram',
-        'instagram',
-        'facebook',
         'email',
         'endereco',
-        'equipe_id',
-        'supervisor_id',
-        'datanascimento',
-        'status',
+        'cidade',
+        'estado',
+        'status'
     ];
-
-    public function equipe()
-    {
-        return $this->belongsTo(EquipeRevenda::class, 'equipe_id');
-    }
-
-    public function supervisor()
-    {
-        return $this->belongsTo(Supervisor::class, 'supervisor_id');
-    }
 }

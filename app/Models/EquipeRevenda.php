@@ -14,17 +14,12 @@ class EquipeRevenda extends Model
     protected $fillable = [
         'nome',
         'descricao',
-        'supervisor_id',
-        'status',
+        'revendedora_id',
+        'status'
     ];
 
-    public function supervisor()
+    public function revendedora()
     {
-        return $this->belongsTo(Supervisor::class, 'supervisor_id');
-    }
-
-    public function revendedoras()
-    {
-        return $this->hasMany(Revendedora::class, 'equipe_id');
+        return $this->belongsTo(\App\Models\Revendedora::class, 'revendedora_id');
     }
 }

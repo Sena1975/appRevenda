@@ -4,20 +4,18 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
-    public function up(): void
-    {
+return new class extends Migration {
+    public function up(): void {
         Schema::create('appuf', function (Blueprint $table) {
             $table->id();
-            $table->string('sigla', 2)->unique();
             $table->string('nome', 100);
+            $table->string('sigla', 2);
+            $table->integer('codigo_ibge')->nullable();
             $table->timestamps();
         });
     }
 
-    public function down(): void
-    {
+    public function down(): void {
         Schema::dropIfExists('appuf');
     }
 };
