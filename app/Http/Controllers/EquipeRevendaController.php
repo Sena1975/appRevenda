@@ -10,14 +10,14 @@ class EquipeRevendaController extends Controller
 {
     public function index()
     {
-        $equipes = EquipeRevenda::with('revendedora')->orderBy('nome')->paginate(10);
-        return view('equipes.index', compact('equipes'));
+        $equipes = \App\Models\EquipeRevenda::with('revendedora')->orderBy('nome')->paginate(10);
+        return view('equiperevenda.index', compact('equipes'));
     }
 
     public function create()
     {
-        $revendedoras = Revendedora::orderBy('nome')->get();
-        return view('equipes.create', compact('revendedoras'));
+        $revendedoras = \App\Models\Revendedora::orderBy('nome')->get();
+        return view('equiperevenda.create', compact('revendedoras'));
     }
 
     public function store(Request $request)
@@ -27,36 +27,37 @@ class EquipeRevendaController extends Controller
             'revendedora_id' => 'nullable|exists:apprevendedora,id',
         ]);
 
-        EquipeRevenda::create($request->all());
+        \App\Models\EquipeRevenda::create($request->all());
 
-        return redirect()->route('equipes.index')->with('success', 'Equipe cadastrada com sucesso!');
+        return redirect()->route('equiperevenda.index')->with('success', 'Equipe cadastrada com sucesso!');
     }
 
-public function edit($id)
-{
-    $equipe = \App\Models\EquipeRevenda::findOrFail($id);
-    $revendedoras = \App\Models\Revendedora::orderBy('nome')->get();
-    return view('equiperevenda.edit', compact('equipe', 'revendedoras'));
-}
-public function update(Request $request, $id)
-{
-    $equipe = \App\Models\EquipeRevenda::findOrFail($id);
+    public function edit($id)
+    {
+        $equipe = \App\Models\EquipeRevenda::findOrFail($id);
+        $revendedoras = \App\Models\Revendedora::orderBy('nome')->get();
+        return view('equiperevenda.edit', compact('equipe', 'revendedoras'));
+    }
 
-    $request->validate([
-        'nome' => 'required|string|max:255',
-        'revendedora_id' => 'nullable|exists:apprevendedora,id',
-    ]);
+    public function update(Request $request, $id)
+    {
+        $equipe = \App\Models\EquipeRevenda::findOrFail($id);
 
-    $equipe->update($request->all());
+        $request->validate([
+            'nome' => 'required|string|max:255',
+            'revendedora_id' => 'nullable|exists:apprevendedora,id',
+        ]);
 
-    return redirect()->route('equiperevenda.index')->with('success', 'Equipe atualizada com sucesso!');
-}
+        $equipe->update($request->all());
+
+        return redirect()->route('equiperevenda.index')->with('success', 'Equipe atualizada com sucesso!');
+    }
 
     public function destroy($id)
     {
         $equipe = EquipeRevenda::findOrFail($id);
         $equipe->delete();
 
-        return redirect()->route('equipes.index')->with('success', 'Equipe excluída com sucesso!');
+        return redirect()->route('equiperevenda.index')->with('success', 'Equipe excluída com sucesso!');
     }
 }

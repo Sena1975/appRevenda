@@ -2,63 +2,60 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Supervisor;
 use Illuminate\Http\Request;
 
 class SupervisorController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $supervisores = Supervisor::orderBy('nome')->get();
+        return view('supervisores.index', compact('supervisores'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('supervisores.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function show($id)
+    {
+        $supervisor = Supervisor::with('equipes')->findOrFail($id);
+        return view('supervisores.show', compact('supervisor'));
+    }
+
+
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nome' => 'required|string|max:150',
+            'cpf' => 'nullable|string|max:14',
+            'email' => 'nullable|email|max:120',
+        ]);
+
+        Supervisor::create($request->all());
+
+        return redirect()->route('supervisores.index')->with('success', 'Supervisor cadastrado com sucesso!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit($id)
     {
-        //
+        $supervisor = Supervisor::findOrFail($id);
+        return view('supervisores.edit', compact('supervisor'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+
+    public function update(Request $request, $id)
     {
-        //
+        $supervisor = Supervisor::findOrFail($id);
+        $supervisor->update($request->all());
+
+        return redirect()->route('supervisores.index')->with('success', 'Supervisor atualizado com sucesso!');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Supervisor $supervisor)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $supervisor->delete();
+        return redirect()->route('supervisores.index')->with('success', 'Supervisor excluído com sucesso!');
     }
 }

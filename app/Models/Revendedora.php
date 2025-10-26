@@ -17,7 +17,9 @@ class Revendedora extends Model
         'telefone',
         'whatsapp',
         'email',
+        'cep',
         'endereco',
+        'bairro',
         'cidade',
         'estado',
         'status'

@@ -14,6 +14,17 @@
             🧴 <span>Produtos</span>
         </a>
 
+        <!-- Tabela de Preços -->
+        <a href="{{ route('tabelapreco.index') }}"
+        class="flex items-center px-4 py-2 rounded hover:bg-blue-50 {{ request()->routeIs('tabelapreco.*') ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700' }}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 7h10M7 11h10M7 15h10M5 5v14h14V5H5z" />
+            </svg>
+            Tabela de Preços
+        </a>
+
+
         <a href="{{ route('fornecedores.index') }}" 
         class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('fornecedores.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
             🏭 <span>Fornecedores</span>
@@ -27,7 +38,7 @@
             👩‍💼 <span>Revendedoras</span>
         </a>
 
-        <a href="{{ route('equiperevenda.index') }}" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-indigo-100 {{ request()->routeIs('equiperevenda.*') ? 'bg-indigo-50 text-indigo-700' : '' }}">
+        <a href="{{ route('equiperevenda.index') }}" class="block px-4 py-2 rounded hover:bg-gray-100">
             👥 <span>Equipes de Revenda</span>
         </a>
 

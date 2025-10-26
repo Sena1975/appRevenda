@@ -22,4 +22,9 @@ class EquipeRevenda extends Model
     {
         return $this->belongsTo(\App\Models\Revendedora::class, 'revendedora_id');
     }
+    public function supervisor()
+    {
+        return $this->belongsTo(Supervisor::class, 'supervisor_id');
+    }
+
 }

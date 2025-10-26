@@ -13,13 +13,21 @@ class Supervisor extends Model
 
     protected $fillable = [
         'nome',
+        'cpf',
         'telefone',
         'whatsapp',
-        'telegram',
-        'instagram',
-        'facebook',
         'email',
-        'datanascimento',
+        'cep',
+        'endereco',
+        'bairro',
+        'cidade',
+        'estado',
         'status',
     ];
+
+    public function equipes()
+    {
+        return $this->hasMany(EquipeRevenda::class, 'supervisor_id');
+    }
+
 }

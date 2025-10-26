@@ -6,7 +6,10 @@
     <div class="bg-white shadow rounded-lg p-6 max-w-6xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-700">Lista de Equipes</h3>
-            <a href="{{ route('equipes.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Nova Equipe</a>
+            <a href="{{ route('equiperevenda.create') }}" 
+               class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                + Nova Equipe
+            </a>
         </div>
 
         @if(session('success'))
@@ -39,8 +42,13 @@
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right space-x-2">
-                            <a href="{{ route('equipes.edit', $eq->id) }}" class="text-blue-600 hover:underline">Editar</a>
-                            <form action="{{ route('equipes.destroy', $eq->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tem certeza que deseja excluir?')">
+                            <a href="{{ route('equiperevenda.edit', $eq->id) }}" 
+                               class="text-blue-600 hover:underline">Editar</a>
+
+                            <form action="{{ route('equiperevenda.destroy', $eq->id) }}" 
+                                  method="POST" 
+                                  class="inline-block" 
+                                  onsubmit="return confirm('Tem certeza que deseja excluir?')">
                                 @csrf
                                 @method('DELETE')
                                 <button class="text-red-600 hover:underline">Excluir</button>

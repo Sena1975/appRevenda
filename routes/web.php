@@ -11,7 +11,7 @@ use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\LocalizacaoController;
 use App\Http\Controllers\AppFornecedorController;
-
+use App\Http\Controllers\TabelaprecoController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -29,9 +29,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('categorias', CategoriaController::class);
     Route::resource('subcategorias', SubcategoriaController::class);
     Route::resource('revendedoras', RevendedoraController::class);
-    Route::resource('equiperevenda', EquipeRevendaController::class);
+    Route::resource('equiperevenda', EquipeRevendaController::class);    
     Route::resource('supervisores', SupervisorController::class);
     Route::resource('clientes', ClienteController::class);
+    Route::resource('tabelapreco', TabelaprecoController::class);
+
     // Rotas AJAX para os combos dinâmicos
     Route::get('/get-cidades/{uf_id}', [LocalizacaoController::class, 'getCidades'])->name('get.cidades');
     Route::get('/get-bairros/{cidade_id}', [LocalizacaoController::class, 'getBairros'])->name('get.bairros');

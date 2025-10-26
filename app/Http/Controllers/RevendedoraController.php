@@ -7,28 +7,29 @@ use Illuminate\Http\Request;
 
 class RevendedoraController extends Controller
 {
-    public function index()
-    {
-        $revendedoras = Revendedora::orderBy('nome')->paginate(10);
-        return view('revendedoras.index', compact('revendedoras'));
-    }
+public function index()
+{
+    $revendedoras = \App\Models\Revendedora::orderBy('nome')->paginate(10);
+    return view('revendedoras.index', compact('revendedoras'));
+}
 
     public function create()
     {
         return view('revendedoras.create');
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'nome' => 'required|string|max:255',
-            'cpf' => 'required|string|max:14|unique:apprevendedora,cpf',
-        ]);
+public function store(Request $request)
+{
+    $request->validate([
+        'nome' => 'required|string|max:255',
+        'cpf' => 'required|string|max:14|unique:apprevendedora,cpf',
+    ]);
 
-        Revendedora::create($request->all());
+    \App\Models\Revendedora::create($request->all());
 
-        return redirect()->route('revendedoras.index')->with('success', 'Revendedora cadastrada com sucesso!');
-    }
+    return redirect()->route('revendedoras.index')->with('success', 'Revendedora cadastrada com sucesso!');
+}
+
 
     public function edit($id)
     {
