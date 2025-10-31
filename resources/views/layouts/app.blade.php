@@ -20,7 +20,8 @@
             <div class="flex flex-1 overflow-hidden">
                 <!-- Área de conteúdo -->
                 <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
-                    {{ $slot }}
++ @yield('content')
+
                 </main>
 
                 <!-- Sidebar direita -->

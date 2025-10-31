@@ -13,6 +13,8 @@ class Tabelapreco extends Model
 
     protected $fillable = [
         'produto_id',
+        'codfab',  
+        'preco_compra',
         'preco_revenda',
         'pontuacao',
         'data_inicio',

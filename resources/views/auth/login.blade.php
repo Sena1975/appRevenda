@@ -3,7 +3,7 @@
         <x-slot name="logo">
             <a href="/">
                 {{-- Aqui você pode colocar o logo da sua empresa --}}
-                <img src="{{ asset('images/logo.png') }}" alt="Logo" class="w-24 h-24 mx-auto">
+                <img src="{{ asset('images/logo-1024.png') }}" alt="Logo" class="w-24 h-24 mx-auto">
             </a>
         </x-slot>
 

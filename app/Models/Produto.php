@@ -13,6 +13,8 @@ class Produto extends Model
 
     protected $fillable = [
         'codfab',
+        'codfabtexto',
+        'codfabnumero',
         'nome',
         'descricao',
         'imagem',
@@ -20,6 +22,8 @@ class Produto extends Model
         'subcategoria_id',
         'fornecedor_id',
         'status',
+        'preco_revenda',
+        'preco_compra',
     ];
 
     public function categoria()

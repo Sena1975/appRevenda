@@ -1,0 +1,458 @@
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="text-xl font-semibold text-gray-700">Novo Pedido de Compra</h2>
+    </x-slot>
+
+    <div class="bg-white shadow rounded-lg p-6 max-w-6xl mx-auto">
+        <form action="{{ route('compras.store') }}" method="POST" id="formCompra">
+            @csrf
+
+            {{-- Cabeçalho --}}
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fornecedor</label>
+                    <select name="fornecedor_id" class="w-full border-gray-300 rounded-md shadow-sm" required>
+                        <option value="">Selecione...</option>
+                        @foreach ($fornecedores as $fornecedor)
+                            <option value="{{ $fornecedor->id }}">{{ $fornecedor->nomefantasia }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Número Pedido</label>
+                    <input type="text" name="numpedcompra" class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+            </div>
+
+            {{-- Cabeçalho da Tabela --}}
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold text-gray-700">Itens da Compra</h3>
+            <button type="button" id="abrirImportacao"
+                style="background-color: #4f46e5; color: white; padding: 6px 16px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
+               📥 Importar Itens por Código
+            </button>
+            </div>
+
+ {{-- Itens --}}
+<table class="min-w-full text-sm border border-gray-200" id="tabela-itens">
+    <thead class="bg-gray-100">
+        <tr>
+            <th class="p-2 border">Produto</th>
+            <th class="p-2 border w-20 text-center">Qtde</th>
+            <th class="p-2 border w-28 text-right">Preço Compra</th>
+            <th class="p-2 border w-28 text-right">Preço Venda</th>
+            <th class="p-2 border w-24 text-center">Pontos</th>
+            <th class="p-2 border w-28 text-right">Total Compra</th>
+            <th class="p-2 border w-28 text-right">Total Venda</th>
+            <th class="p-2 border w-12"></th>
+        </tr>
+    </thead>
+    <tbody id="tbody-itens">
+        <tr>
+            <td class="border p-2">
+                <select name="itens[0][produto_id]" class="w-full border-gray-300 rounded-md shadow-sm produtoSelect" required>
+                    <option value="">Selecione...</option>
+                    @foreach ($produtos as $produto)
+                        <option value="{{ $produto->id }}">{{ $produto->nome }}</option>
+                    @endforeach
+                </select>
+            </td>
+            <td class="border p-2">
+                <input type="number" step="0.01" min="0" name="itens[0][quantidade]" 
+                       class="w-full text-center border-gray-300 rounded-md shadow-sm quantidade" required>
+            </td>
+            <td class="border p-2">
+                <input type="number" step="0.01" min="0" name="itens[0][preco_unitario]" 
+                       class="w-full text-right border-gray-300 rounded-md shadow-sm preco-compra">
+            </td>
+            <td class="border p-2">
+                <input type="number" step="0.01" min="0" name="itens[0][preco_venda_unitario]" 
+                       class="w-full text-right border-gray-300 rounded-md shadow-sm preco-venda">
+            </td>
+            <td class="border p-2 text-center">
+                <input type="number" step="1" min="0" name="itens[0][pontos]" 
+                       class="w-full text-center border-gray-300 rounded-md shadow-sm pontos" value="0">
+            </td>
+            <td class="border p-2 text-right totalCompra">0.00</td>
+            <td class="border p-2 text-right totalVenda">0.00</td>
+            <td class="border p-2 text-center">
+                <button type="button" class="text-red-600 removerItem">✖</button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+
+            <div class="mt-3">
+                <button type="button" id="addItem" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+                    + Adicionar Produto
+                </button>
+            </div>
+
+            {{-- Totais --}}
+            <div class="flex justify-end items-center mt-6 space-x-4">
+                <div>
+                    <label class="font-semibold text-gray-700">Total Compra:</label>
+                    <input type="text" id="valor_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
+                    <input type="hidden" id="valor_total" name="valor_total">
+                </div>
+                <div>
+                    <label class="font-semibold text-gray-700">Total Venda:</label>
+                    <input type="text" id="preco_venda_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
+                    <input type="hidden" id="preco_venda_total" name="preco_venda_total">
+                </div>
+            </div>
+
+            {{-- Botões --}}
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+                <a href="{{ route('compras.index') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">
+                    Cancelar
+                </a>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                    Salvar Pedido
+                </button>
+            </div>
+        </form>
+    </div>
+
+  <!-- Modal de Importação -->
+<div id="modalImportacao" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-[420px]" style="font-family: Arial, sans-serif;">
+
+        <!-- Cabeçalho -->
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Importar Itens por Código</h3>
+        <p class="text-sm text-gray-600 mb-3" style="line-height: 1.5;">
+            Digite o <strong>código</strong>, <strong>quantidade</strong>, <strong>pontos</strong>,
+            <strong>preço compra</strong> e <strong>preço venda</strong>, separados por ponto e vírgula, um por linha.<br>
+            <span style="font-size: 12px; color: #888;">Exemplo: <code>12345;2;10;19.90;29.90</code></span>
+        </p>
+
+        <!-- Contador e limpar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px;">
+            <span style="color: #444;">Linhas: <span id="contadorLinhas" style="font-weight: bold; color: #4f46e5;">0</span></span>
+            <button type="button" id="limparImport"
+                style="color: #dc2626; font-size: 12px; cursor: pointer; text-decoration: underline;">Limpar</button>
+        </div>
+
+        <!-- Textarea -->
+        <textarea id="importText" rows="8"
+            class="w-full border border-gray-300 rounded-md shadow-sm text-sm p-2 mb-4 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-none"
+            style="width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 14px; resize: none;"
+            placeholder="237283;2;10;19.90;29.90&#10;126265;1;5;15.50;25.00"></textarea>
+
+        <!-- Indicador de progresso -->
+        <div id="importProgress" class="hidden" style="margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 6px; color: #555; font-size: 13px; margin-bottom: 5px;">
+                <svg class="animate-spin" style="height: 18px; width: 18px; color: #4f46e5;" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <span id="progressText">Importando itens...</span>
+            </div>
+            <div style="width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                <div id="progressBar" style="background-color: #4f46e5; height: 8px; width: 0%; border-radius: 4px; transition: width 0.3s;"></div>
+            </div>
+        </div>
+
+        <!-- Botões -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+            <button type="button" id="cancelarImportacao"
+                style="background-color: #6b7280; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
+                Cancelar
+            </button>
+            <button type="button" id="btnImportar"
+                style="background-color: #4f46e5; color: white; padding: 6px 16px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
+                Importar
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
+    {{-- 🧩 DEPENDÊNCIAS DO SELECT2 --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    {{-- SCRIPT PRINCIPAL --}}
+    <script>
+        const baseUrl = "{{ url('') }}";
+        let itemIndex = 1;
+
+        // ➕ Adicionar nova linha
+        document.getElementById('addItem').addEventListener('click', () => {
+            const tbody = document.getElementById('tbody-itens');
+            const newRow = tbody.rows[0].cloneNode(true);
+            newRow.querySelectorAll('input, select').forEach(el => {
+                el.value = '';
+                const name = el.getAttribute('name');
+                el.setAttribute('name', name.replace(/\[\d+\]/, `[${itemIndex}]`));
+            });
+            newRow.querySelector('.totalCompra').textContent = '0.00';
+            newRow.querySelector('.totalVenda').textContent = '0.00';
+            tbody.appendChild(newRow);
+            itemIndex++;
+            setTimeout(() => aplicarSelect2(), 100); // reaplica select2
+        });
+
+        // ❌ Remover linha
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('removerItem')) {
+                const rows = document.querySelectorAll('#tbody-itens tr');
+                if (rows.length > 1) e.target.closest('tr').remove();
+                calcularTotais();
+            }
+        });
+
+        // 🔁 Buscar preços automaticamente
+        document.addEventListener('change', async e => {
+            if (e.target.classList.contains('produtoSelect')) {
+                const produtoId = e.target.value;
+                const linha = e.target.closest('tr');
+                if (produtoId) {
+                    const resp = await fetch(`${baseUrl}/produto/preco/${produtoId}`);
+                    const data = await resp.json();
+                    linha.querySelector('.preco-compra').value = parseFloat(data.preco_compra || 0).toFixed(2);
+                    linha.querySelector('.preco-venda').value = parseFloat(data.preco_venda || 0).toFixed(2);
+                    calcularTotais();
+                }
+            }
+        });
+
+        // 🧮 Calcular totais
+        function calcularTotais() {
+            let totalCompra = 0, totalVenda = 0;
+            document.querySelectorAll('#tbody-itens tr').forEach(linha => {
+                const qtd = parseFloat(linha.querySelector('.quantidade').value) || 0;
+                const precoCompra = parseFloat(linha.querySelector('.preco-compra').value) || 0;
+                const precoVenda = parseFloat(linha.querySelector('.preco-venda').value) || 0;
+                const totalC = qtd * precoCompra;
+                const totalV = qtd * precoVenda;
+                linha.querySelector('.totalCompra').textContent = totalC.toFixed(2);
+                linha.querySelector('.totalVenda').textContent = totalV.toFixed(2);
+                totalCompra += totalC;
+                totalVenda += totalV;
+            });
+            document.getElementById('valor_total_display').value = totalCompra.toFixed(2);
+            document.getElementById('preco_venda_total_display').value = totalVenda.toFixed(2);
+            document.getElementById('valor_total').value = totalCompra.toFixed(2);
+            document.getElementById('preco_venda_total').value = totalVenda.toFixed(2);
+        }
+
+        // 🟢 Abrir/fechar modal
+        const modal = document.getElementById('modalImportacao');
+        document.getElementById('abrirImportacao').addEventListener('click', () => modal.classList.remove('hidden'));
+        document.getElementById('cancelarImportacao').addEventListener('click', () => modal.classList.add('hidden'));
+
+// 🟢 Início da função Importar produtos via código e quantidade (corrigido: contador e barra sempre visíveis até o fim)
+
+document.getElementById('btnImportar').addEventListener('click', async () => {
+    const texto = document.getElementById('importText').value.trim();
+    const progressContainer = document.getElementById('importProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const modal = document.getElementById('modalImportacao');
+
+    if (!texto) {
+        alert('Informe pelo menos um produto.');
+        return;
+    }
+
+    const linhas = texto.split('\n').filter(l => l.trim() !== '');
+    const totalLinhas = linhas.length;
+    const tbody = document.getElementById('tbody-itens');
+    let itemIndex = tbody.querySelectorAll('tr').length;
+    const produtosNaoEncontrados = [];
+
+    // Exibe o progresso fixo durante toda a importação
+    progressContainer.classList.remove('hidden');
+    progressContainer.style.opacity = '1';
+    progressBar.style.width = '0%';
+    progressText.textContent = `Importando (0/${totalLinhas})...`;
+
+    const tempoInicio = Date.now();
+
+    for (let i = 0; i < totalLinhas; i++) {
+        const linha = linhas[i];
+        const [codfabnumero, qtdStr, pontosStr, precoCompraStr, precoVendaStr] = linha.split(';').map(s => s.trim());
+        const qtd = parseFloat(qtdStr || 0);
+        const precoCompra = parseFloat(precoCompraStr || 0);
+        const precoVenda = parseFloat(precoVendaStr || 0);
+        const pontos = parseFloat(pontosStr || 0);
+
+        if (!codfabnumero || qtd <= 0) continue;
+
+        try {
+            const resp = await fetch(`${baseUrl}/produto/bycod/${codfabnumero}`);
+            const data = await resp.json();
+
+            if (data && data.id) {
+                const newRow = tbody.rows[0].cloneNode(true);
+                newRow.querySelectorAll('input, select').forEach(el => {
+                    const name = el.getAttribute('name');
+                    el.setAttribute('name', name.replace(/\[\d+\]/, `[${itemIndex}]`));
+                });
+
+                newRow.querySelector('.produtoSelect').value = data.id;
+                newRow.querySelector('.quantidade').value = qtd;
+                newRow.querySelector('.pontos').value = pontos.toFixed(0);
+                newRow.querySelector('.preco-compra').value = precoCompra.toFixed(2);
+                newRow.querySelector('.preco-venda').value = precoVenda.toFixed(2);
+
+                const totalCompra = qtd * precoCompra;
+                const totalVenda = qtd * precoVenda;
+                newRow.querySelector('.totalCompra').textContent = totalCompra.toFixed(2);
+                newRow.querySelector('.totalVenda').textContent = totalVenda.toFixed(2);
+
+                tbody.appendChild(newRow);
+                itemIndex++;
+            } else {
+                produtosNaoEncontrados.push(codfabnumero);
+            }
+        } catch (error) {
+            produtosNaoEncontrados.push(codfabnumero);
+        }
+
+        // Atualiza a barra e o tempo restante
+        const progresso = Math.round(((i + 1) / totalLinhas) * 100);
+        const tempoDecorrido = (Date.now() - tempoInicio) / 1000;
+        const tempoRestante = Math.max(((tempoDecorrido / (i + 1)) * totalLinhas) - tempoDecorrido, 0);
+
+        progressBar.style.width = progresso + '%';
+        progressText.textContent = `Importando (${i + 1}/${totalLinhas}) ⏳ ${tempoRestante.toFixed(1)}s restantes`;
+
+        // 🔒 Garantia de visibilidade — impede desaparecimento acidental
+        progressContainer.classList.remove('hidden');
+        progressContainer.style.display = 'block';
+        progressContainer.style.opacity = '1';
+    }
+
+    // ✅ Conclusão (só aqui pode ocultar)
+    calcularTotais();
+    progressBar.style.width = '100%';
+    progressText.textContent = "✅ Importação concluída com sucesso!";
+
+    // Salva txt se houver produtos não encontrados
+    if (produtosNaoEncontrados.length > 0) {
+        const blob = new Blob([produtosNaoEncontrados.join('\n')], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'produtos_nao_encontrados.txt';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Fade-out + fechamento do modal (somente após o fim real)
+    setTimeout(() => {
+        progressContainer.style.transition = 'opacity 0.8s ease-out';
+        progressContainer.style.opacity = '0';
+        setTimeout(() => {
+            progressContainer.classList.add('hidden');
+            progressContainer.style.opacity = '1';
+            modal.classList.add('hidden');
+        }, 900);
+    }, 1500);
+});
+
+
+// 🟢 Fim da função de Importar produtos via código e quantidade (corrigido: contador e barra sempre visíveis até o fim)
+
+        // 🧩 Ativar Select2
+        function aplicarSelect2() {
+            $('.produtoSelect').select2({
+                width: '100%',
+                placeholder: 'Selecione um produto...',
+                allowClear: true,
+                language: {
+                    noResults: () => "Nenhum produto encontrado",
+                    searching: () => "Buscando..."
+                }
+            });
+        }
+        document.addEventListener("DOMContentLoaded", aplicarSelect2);
+
+// 🧮 Contador de linhas no modal de importação
+const importText = document.getElementById('importText');
+const contadorLinhas = document.getElementById('contadorLinhas');
+const limparImport = document.getElementById('limparImport');
+
+if (importText) {
+    importText.addEventListener('input', () => {
+        const linhas = importText.value.trim().split('\n').filter(l => l.trim() !== '').length;
+        contadorLinhas.textContent = linhas;
+    });
+}
+
+if (limparImport) {
+    limparImport.addEventListener('click', () => {
+        importText.value = '';
+        contadorLinhas.textContent = '0';
+        importText.focus();
+    });
+}
+
+    </script>
+
+<script>
+/* === Timer + Fade-out ao concluir importação === */
+function iniciarImportacaoComFeedback(linhasTotal) {
+    const progressContainer = document.getElementById("importProgress");
+    const progressText = document.getElementById("progressText");
+    const progressBar = document.getElementById("progressBar");
+
+    let startTime = Date.now();
+    let total = linhasTotal;
+    let concluido = 0;
+
+    progressContainer.classList.remove("hidden");
+    progressText.textContent = `Importando (0/${total})...`;
+
+    // Simulação: cada item leva de 100 a 250ms (ajuste conforme necessidade)
+    const tempoEstimadoPorItem = 200; 
+    const tempoTotalEstimado = tempoEstimadoPorItem * total;
+
+    const interval = setInterval(() => {
+        concluido++;
+
+        const progresso = (concluido / total) * 100;
+        const tempoDecorrido = Date.now() - startTime;
+        const tempoRestante = Math.max(tempoTotalEstimado - tempoDecorrido, 0);
+        const segundosRestantes = Math.ceil(tempoRestante / 1000);
+
+        progressBar.style.width = `${progresso}%`;
+        progressText.textContent = `Importando (${concluido}/${total})... ⏳ ${segundosRestantes}s restantes`;
+
+        // Quando finalizar:
+        if (concluido >= total) {
+            clearInterval(interval);
+            progressBar.style.width = "100%";
+            progressText.textContent = "✅ Importação concluída com sucesso!";
+
+            // Suave fade-out depois de 2 segundos
+            setTimeout(() => {
+                progressContainer.style.transition = "opacity 0.8s ease-out";
+                progressContainer.style.opacity = "0";
+                setTimeout(() => {
+                    progressContainer.classList.add("hidden");
+                    progressContainer.style.opacity = "1";
+                    progressContainer.style.transition = "";
+                }, 800);
+            }, 1500);
+        }
+    }, tempoEstimadoPorItem);
+}
+
+// ✅ Exemplo de uso dentro da importação real:
+document.getElementById("btnImportar").addEventListener("click", () => {
+    const linhas = document.getElementById("importText").value.trim().split("\n").filter(l => l.length > 0);
+    if (linhas.length > 0) {
+        iniciarImportacaoComFeedback(linhas.length);
+    }
+});
+</script>
+
+</x-app-layout>

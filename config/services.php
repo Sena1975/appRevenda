@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'botconversa' => [
+        'webhook_url' => env('BOTCONVERSA_WEBHOOK', ''),
+    ],
+    
+
 ];

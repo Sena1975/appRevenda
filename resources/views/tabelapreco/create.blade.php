@@ -18,6 +18,18 @@
                     </select>
                 </div>
 
+                {{-- Código de Fábrica --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Código de Fábrica</label>
+                    <input type="text" name="codfab" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Ex: NT-001">
+                </div>
+
+                {{-- Preço de Compra --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Preço de Compra</label>
+                    <input type="number" step="0.01" name="preco_compra" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="0,00">
+                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Preço de Revenda</label>
                     <input type="number" step="0.01" name="preco_revenda" class="w-full border-gray-300 rounded-md shadow-sm" required>

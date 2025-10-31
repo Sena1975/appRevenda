@@ -20,7 +20,9 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-100">
                 <tr>
+                    <th class="px-4 py-2 text-left">Cód. Fábrica</th>    
                     <th class="px-4 py-2 text-left">Produto</th>
+                    <th class="px-4 py-2 text-left">Preço Compra</th> {{-- 👈 novo campo --}}
                     <th class="px-4 py-2 text-left">Preço Revenda</th>
                     <th class="px-4 py-2 text-left">Pontuação</th>
                     <th class="px-4 py-2 text-left">Data Início</th>
@@ -32,14 +34,14 @@
             <tbody>
                 @foreach($tabelas as $item)
                     <tr class="border-b">
+                        <td class="px-4 py-2">{{ $item->codfab ?? '—' }}</td>
                         <td class="px-4 py-2">{{ $item->produto->nome ?? '—' }}</td>
+                        <td class="px-4 py-2">R$ {{ number_format($item->preco_compra, 2, ',', '.') }}</td> {{-- 👈 novo campo --}}
                         <td class="px-4 py-2">R$ {{ number_format($item->preco_revenda, 2, ',', '.') }}</td>
                         <td class="px-4 py-2">{{ $item->pontuacao }}</td>
                         <td class="px-4 py-2">{{ $item->data_inicio }}</td>
                         <td class="px-4 py-2">{{ $item->data_fim }}</td>
-                        <td class="px-4 py-2">
-                            {{ $item->status ? 'Ativo' : 'Inativo' }}
-                        </td>
+                        <td class="px-4 py-2">{{ $item->status ? 'Ativo' : 'Inativo' }}</td>
                         <td class="px-4 py-2 text-right">
                             <a href="{{ route('tabelapreco.edit', $item->id) }}" class="text-blue-600 hover:underline">Editar</a>
                             <form action="{{ route('tabelapreco.destroy', $item->id) }}" method="POST" class="inline">
