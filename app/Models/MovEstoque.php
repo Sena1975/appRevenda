@@ -2,26 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MovEstoque extends Model
 {
-    use HasFactory;
-
     protected $table = 'appmovestoque';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
 
     protected $fillable = [
         'produto_id',
         'codfabnumero',
-        'tipo_mov',
-        'origem',
+        'tipo_mov',       // ENTRADA | SAIDA
+        'origem',         // COMPRA | VENDA | AJUSTE | DEVOLUCAO
         'origem_id',
         'data_mov',
-        'quantidade',
+        'quantidade',     // pode ser negativa na saída
         'preco_unitario',
         'observacao',
         'status',
+    ];
+
+    protected $casts = [
+        'data_mov' => 'datetime',
     ];
 
     public function produto()

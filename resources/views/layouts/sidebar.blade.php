@@ -1,6 +1,7 @@
 @php
     use Illuminate\Support\Facades\DB;
-
+    use Illuminate\Support\Str;
+    
     // Contadores dinâmicos
     $qtdPedidosPendentes = DB::table('apppedidovenda')->where('status', 'PENDENTE')->count();
     $qtdContasAbertas = DB::table('appcontasreceber')->where('status', 'ABERTO')->count();

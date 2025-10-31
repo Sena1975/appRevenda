@@ -23,6 +23,8 @@ class PedidoVenda extends Model
         'previsao_entrega',
         'status',                 // 'PENDENTE','ENTREGUE','CANCELADO'
         'forma_pagamento_id',
+        'plano_pagamento_id',
+        'codplano',              // NOVO
         'campanha_id',
         'camp_sugerida_id',
         'indicador_id',
@@ -30,23 +32,22 @@ class PedidoVenda extends Model
         'valor_total',
         'valor_desconto',
         'valor_liquido',
+        'pontuacao',             // NOVO (soma dos pontos unitários)
+        'pontuacao_total',       // NOVO (soma de qtd x pontos)
         'observacao',
-        'codplano',
-        'pontuacao',
-        'pontuacao_total',
     ];
 
     protected $casts = [
-        'data_pedido'       => 'date',
-        'previsao_entrega'  => 'date',
+        'data_pedido'         => 'date',
+        'previsao_entrega'    => 'date',
         'confirmacao_usuario' => 'boolean',
-        'valor_total'       => 'decimal:2',
-        'valor_desconto'    => 'decimal:2',
-        'valor_liquido'     => 'decimal:2',
-        'criado_em'         => 'datetime',
-        'atualizado_em'     => 'datetime',
-        'pontuacao'       => 'integer',
-        'pontuacao_total' => 'integer',
+        'valor_total'         => 'decimal:2',
+        'valor_desconto'      => 'decimal:2',
+        'valor_liquido'       => 'decimal:2',
+        'pontuacao'           => 'integer',
+        'pontuacao_total'     => 'integer',
+        'criado_em'           => 'datetime',
+        'atualizado_em'       => 'datetime',
     ];
 
     // Relacionamentos
@@ -70,13 +71,8 @@ class PedidoVenda extends Model
         return $this->belongsTo(FormaPagamento::class, 'forma_pagamento_id', 'id');
     }
 
-    // public function campanha()
-    // {
-    //     return $this->belongsTo(Campanha::class, 'campanha_id', 'id');
-    // }
-
-    public function indicador()
+    public function plano()
     {
-        return $this->belongsTo(Cliente::class, 'indicador_id', 'id');
+        return $this->belongsTo(PlanoPagamento::class, 'plano_pagamento_id', 'id');
     }
 }

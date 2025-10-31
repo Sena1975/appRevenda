@@ -16,6 +16,9 @@ class ContasReceber extends Model
 
     protected $table = 'appcontasreceber';
 
+    const CREATED_AT = 'criado_em';
+    const UPDATED_AT = 'atualizado_em';
+
     protected $fillable = [
         'pedido_id',
         'cliente_id',
@@ -29,7 +32,7 @@ class ContasReceber extends Model
         'valor',
         'valor_pago',
         'status',
-        'observacao'
+        'observacao',
     ];
 
     /* ============================

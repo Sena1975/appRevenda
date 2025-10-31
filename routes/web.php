@@ -98,9 +98,9 @@ Route::middleware(['auth'])->group(function () {
  // Exportar um pedido de venda (CSV)
     Route::get('vendas/{id}/exportar', [\App\Http\Controllers\PedidoVendaController::class, 'exportar'])
         ->name('vendas.exportar');
+    Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');    
 
     // Route::put('vendas/{id}/status', [PedidoVendaController::class, 'updateStatus'])->name('vendas.updateStatus');
-    // Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');    
 
     // Route::resource('vendas', PedidoVendaController::class);
     // Route::get('/vendas/novo', [PedidoVendaController::class, 'create'])->name('vendas.create');
