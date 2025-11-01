@@ -58,7 +58,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
+          protocol: sftp
           local-dir: ./
           server-dir: /apprevenda/
           exclude: |
@@ -85,7 +85,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
+          protocol: sftp
           local-dir: ./public/
           server-dir: /www/apprevenda/
           exclude: |
