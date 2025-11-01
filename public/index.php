@@ -1,20 +1,29 @@
 <?php
 
-use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
+/**
+ * Bootstrap compatível com LOCAL e HOSTNET.
+ * - Se existir o caminho absoluto de produção, usa ele.
+ * - Caso contrário, usa os caminhos relativos padrão (ambiente local).
+ */
 
-define('LARAVEL_START', microtime(true));
+$prodBase = '/home/senadevtech/apprevenda';
 
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
+if (is_dir($prodBase) && file_exists($prodBase . '/vendor/autoload.php')) {
+    // Produção (Hostnet) - caminhos ABSOLUTOS
+    require $prodBase . '/vendor/autoload.php';
+    $app = require_once $prodBase . '/bootstrap/app.php';
+} else {
+    // Desenvolvimento LOCAL - caminhos RELATIVOS padrão Laravel
+    require __DIR__ . '/../vendor/autoload.php';
+    $app = require_once __DIR__ . '/../bootstrap/app.php';
 }
 
-// Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
+$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
-// Bootstrap Laravel and handle the request...
-/** @var Application $app */
-$app = require_once __DIR__.'/../bootstrap/app.php';
+$response = $kernel->handle(
+    $request = Illuminate\Http\Request::capture()
+);
 
-$app->handleRequest(Request::capture());
+$response->send();
+
+$kernel->terminate($request, $response);

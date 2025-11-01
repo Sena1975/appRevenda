@@ -20,7 +20,7 @@ use App\Http\Controllers\TabelaprecoController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\ContasReceberController;
-use app\Http\Controllers\BaixaReceberController;
+use App\Http\Controllers\BaixaReceberController;
 use App\Http\Controllers\PlanoPagamentoController;
 use App\Http\Controllers\FormaPagamentoController;
 
@@ -107,10 +107,10 @@ Route::middleware(['auth'])->group(function () {
     // Route::post('/vendas', [PedidoVendaController::class, 'store'])->name('vendas.store');
 
     // Contas a receber e baixas
-    Route::get('financeiro/contas', [ContasReceberController::class, 'index'])->name('contas.index');
-    Route::get('financeiro/contas/{id}', [ContasReceberController::class, 'show'])->name('contas.show');
-    Route::get('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'create'])->name('baixa.create');
-    Route::post('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'store'])->name('baixa.store');
+    // Route::get('financeiro/contas', [ContasReceberController::class, 'index'])->name('contas.index');
+    // Route::get('financeiro/contas/{id}', [ContasReceberController::class, 'show'])->name('contas.show');
+    // Route::get('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'create'])->name('baixa.create');
+    // Route::post('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'store'])->name('baixa.store');
 
     /*
     |--------------------------------------------------------------------------

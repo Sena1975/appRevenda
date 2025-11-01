@@ -1,132 +1,139 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="text-xl font-semibold text-gray-700">Contas a Receber</h2>
+    </x-slot>
 
-@section('content')
-<div class="max-w-7xl mx-auto space-y-4">
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl font-semibold text-gray-800">Contas a Receber</h1>
-    </div>
+    <div class="space-y-6">
 
-    <!-- Filtros -->
-    <form method="GET" class="bg-white p-4 rounded-lg shadow flex flex-wrap gap-3 items-end">
-        <div>
-            <label class="block text-xs text-gray-500">Buscar</label>
-            <input type="text" name="q" value="{{ $q }}" placeholder="Cliente, Revendedora, Obs ou #Pedido"
-                   class="border-gray-300 rounded-md w-64">
+        {{-- Filtros --}}
+        <form method="GET" class="bg-white shadow rounded-lg p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
+            <div>
+                <label class="text-xs text-gray-600">Cliente</label>
+                <select name="cliente_id" class="w-full border-gray-300 rounded">
+                    <option value="">Todos</option>
+                    @foreach($clientes as $c)
+                        <option value="{{ $c->id }}" @selected(request('cliente_id')==$c->id)>{{ $c->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-600">Revendedora</label>
+                <select name="revendedora_id" class="w-full border-gray-300 rounded">
+                    <option value="">Todas</option>
+                    @foreach($revendedoras as $r)
+                        <option value="{{ $r->id }}" @selected(request('revendedora_id')==$r->id)>{{ $r->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-600">Forma</label>
+                <select name="forma_pagamento_id" class="w-full border-gray-300 rounded">
+                    <option value="">Todas</option>
+                    @foreach($formas as $f)
+                        <option value="{{ $f->id }}" @selected(request('forma_pagamento_id')==$f->id)>{{ $f->nome }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-600">Status</label>
+                <select name="status" class="w-full border-gray-300 rounded">
+                    @php $st = request('status'); @endphp
+                    <option value="">Todos</option>
+                    <option value="ABERTO"  @selected($st==='ABERTO')>Aberto</option>
+                    <option value="PAGO"    @selected($st==='PAGO')>Pago</option>
+                    <option value="VENCIDO" @selected($st==='VENCIDO')>Vencido</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-600">Venc. de</label>
+                <input type="date" name="vencimento_de" value="{{ request('vencimento_de') }}" class="w-full border-gray-300 rounded">
+            </div>
+            <div>
+                <label class="text-xs text-gray-600">Venc. até</label>
+                <input type="date" name="vencimento_ate" value="{{ request('vencimento_ate') }}" class="w-full border-gray-300 rounded">
+            </div>
+
+            <div class="md:col-span-6 flex gap-2 justify-end">
+                <input type="text" name="pedido_id" value="{{ request('pedido_id') }}" placeholder="Pedido #"
+                       class="border-gray-300 rounded w-36 text-sm px-2">
+                <a href="{{ route('contasreceber.index') }}" class="px-3 py-2 bg-gray-100 rounded text-sm">Limpar</a>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded">Filtrar</button>
+            </div>
+        </form>
+
+        {{-- Totais --}}
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="bg-white shadow rounded p-4">
+                <div class="text-xs text-gray-500">Total Geral</div>
+                <div class="text-lg font-semibold">R$ {{ number_format($total_geral,2,',','.') }}</div>
+            </div>
+            <div class="bg-white shadow rounded p-4">
+                <div class="text-xs text-gray-500">Em Aberto</div>
+                <div class="text-lg font-semibold text-yellow-700">R$ {{ number_format($total_aberto,2,',','.') }}</div>
+            </div>
+            <div class="bg-white shadow rounded p-4">
+                <div class="text-xs text-gray-500">Recebido</div>
+                <div class="text-lg font-semibold text-green-700">R$ {{ number_format($total_pago,2,',','.') }}</div>
+            </div>
+            <div class="bg-white shadow rounded p-4">
+                <div class="text-xs text-gray-500">Vencido</div>
+                <div class="text-lg font-semibold text-red-700">R$ {{ number_format($total_vencido,2,',','.') }}</div>
+            </div>
         </div>
 
-        <div>
-            <label class="block text-xs text-gray-500">Status</label>
-            <select name="status" class="border-gray-300 rounded-md">
-                <option value="">Todos</option>
-                @foreach(['ABERTO','BAIXADO','CANCELADO'] as $st)
-                    <option value="{{ $st }}" @selected($status===$st)>{{ $st }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-xs text-gray-500">Forma</label>
-            <select name="forma_pagamento_id" class="border-gray-300 rounded-md">
-                <option value="">Todas</option>
-                @foreach($formas as $f)
-                    <option value="{{ $f->id }}" @selected((string)$formaId===(string)$f->id)>{{ $f->nome }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="block text-xs text-gray-500"># Pedido</label>
-            <input type="number" name="pedido_id" value="{{ $pedido }}" class="border-gray-300 rounded-md w-28">
-        </div>
-
-        <div>
-            <label class="block text-xs text-gray-500">Venc. Inicial</label>
-            <input type="date" name="ini" value="{{ $ini }}" class="border-gray-300 rounded-md">
-        </div>
-        <div>
-            <label class="block text-xs text-gray-500">Venc. Final</label>
-            <input type="date" name="fim" value="{{ $fim }}" class="border-gray-300 rounded-md">
-        </div>
-
-        <div>
-            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Filtrar</button>
-        </div>
-        <div>
-            <a href="{{ route('contasreceber.index') }}" class="px-3 py-2 bg-gray-100 border rounded-lg hover:bg-gray-200">Limpar</a>
-        </div>
-    </form>
-
-    <!-- Cards de totalizadores -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-xs text-gray-500">ABERTO</div>
-            <div class="text-lg font-semibold">R$ {{ number_format($totalAberto,2,',','.') }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-xs text-gray-500">BAIXADO</div>
-            <div class="text-lg font-semibold">R$ {{ number_format($totalBaixado,2,',','.') }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-xs text-gray-500">CANCELADO</div>
-            <div class="text-lg font-semibold">R$ {{ number_format($totalCancelado,2,',','.') }}</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-4">
-            <div class="text-xs text-gray-500">TOTAL (Filtro)</div>
-            <div class="text-lg font-semibold">R$ {{ number_format($totalGeral,2,',','.') }}</div>
-        </div>
-    </div>
-
-    <!-- Tabela -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-gray-600">
-                <tr>
-                    <th class="px-3 py-2 text-left">Parc.</th>
-                    <th class="px-3 py-2 text-left">Pedido</th>
-                    <th class="px-3 py-2 text-left">Cliente</th>
-                    <th class="px-3 py-2 text-left">Revendedora</th>
-                    <th class="px-3 py-2 text-left">Emissão</th>
-                    <th class="px-3 py-2 text-left">Vencimento</th>
-                    <th class="px-3 py-2 text-right">Valor</th>
-                    <th class="px-3 py-2 text-center">Status</th>
-                    <th class="px-3 py-2 text-left">Obs</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($parcelas as $c)
-                    <tr class="border-t">
-                        <td class="px-3 py-2">{{ $c->parcela }}/{{ $c->total_parcelas }}</td>
-                        <td class="px-3 py-2">
-                            <a class="text-blue-600 hover:underline" href="{{ route('vendas.edit', $c->pedido_id) }}">#{{ $c->pedido_id }}</a>
-                        </td>
-                        <td class="px-3 py-2">{{ $c->cliente->nome ?? '-' }}</td>
-                        <td class="px-3 py-2">{{ $c->revendedora->nome ?? '-' }}</td>
-                        <td class="px-3 py-2">{{ \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y') }}</td>
-                        <td class="px-3 py-2">{{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y') }}</td>
-                        <td class="px-3 py-2 text-right">R$ {{ number_format($c->valor,2,',','.') }}</td>
-                        <td class="px-3 py-2 text-center">
-                            @php
-                                $badge = [
-                                    'ABERTO'    => 'bg-yellow-100 text-yellow-700',
-                                    'BAIXADO'   => 'bg-green-100 text-green-700',
-                                    'CANCELADO' => 'bg-red-100 text-red-700',
-                                ][$c->status] ?? 'bg-gray-100 text-gray-700';
-                            @endphp
-                            <span class="px-2 py-1 text-xs rounded {{ $badge }}">{{ $c->status }}</span>
-                        </td>
-                        <td class="px-3 py-2 truncate max-w-[280px]" title="{{ $c->observacao }}">{{ $c->observacao }}</td>
-                    </tr>
-                @empty
+        {{-- Tabela --}}
+        <div class="bg-white shadow rounded-lg overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-100">
                     <tr>
-                        <td colspan="9" class="px-3 py-6 text-center text-gray-500">Nenhuma parcela encontrada.</td>
+                        <th class="px-3 py-2 text-left">Parc.</th>
+                        <th class="px-3 py-2 text-left">Pedido</th>
+                        <th class="px-3 py-2 text-left">Cliente</th>
+                        <th class="px-3 py-2 text-left">Forma</th>
+                        <th class="px-3 py-2 text-center">Vencimento</th>
+                        <th class="px-3 py-2 text-right">Valor (R$)</th>
+                        <th class="px-3 py-2 text-center">Status</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($contas as $c)
+                        @php
+                            $vencido = $c->status === 'ABERTO' && $c->data_vencimento < $hoje;
+                        @endphp
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="px-3 py-2">{{ $c->parcela }}/{{ $c->total_parcelas }}</td>
+                            <td class="px-3 py-2">#{{ $c->pedido_id }}</td>
+                            <td class="px-3 py-2">{{ $c->cliente->nome ?? '—' }}</td>
+                            <td class="px-3 py-2">{{ $c->forma->nome ?? '—' }}</td>
+                            <td class="px-3 py-2 text-center {{ $vencido ? 'text-red-700 font-semibold' : '' }}">
+                                {{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y') }}
+                            </td>
+                            <td class="px-3 py-2 text-right">
+                                {{ number_format($c->valor,2,',','.') }}
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                                @if($vencido)
+                                    <span class="px-2 py-1 text-xs rounded bg-red-100 text-red-700">VENCIDO</span>
+                                @elseif($c->status==='PAGO')
+                                    <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-700">PAGO</span>
+                                @else
+                                    <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">ABERTO</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="px-3 py-6 text-center text-gray-500">Nenhuma conta encontrada.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
 
-        <div class="px-3 py-2">
-            {{ $parcelas->links() }}
+            <div class="p-3">
+                {{ $contas->links() }}
+            </div>
         </div>
     </div>
-</div>
-@endsection
+</x-app-layout>

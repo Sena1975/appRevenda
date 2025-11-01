@@ -1,3 +1,6 @@
+{{-- resources/views/components/app-layout.blade.php --}}
+@props(['header' => null])
+
 <!DOCTYPE html> 
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -19,18 +22,16 @@
 
             <div class="flex flex-1 overflow-hidden">
                 {{-- Área de conteúdo --}}
-<main class="flex-1 overflow-y-auto bg-gray-100 p-6">
+                <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
+                    {{-- Header opcional vindo de <x-slot name="header"> --}}
+                    @isset($header)
+                        <div class="mb-4">
+                            {{ $header }}
+                        </div>
+                    @endisset
 
-    {{-- Renderiza conteúdo vindo de componente (<x-app-layout>) --}}
-    @isset($slot)
-        {{ $slot }}
-
-    {{-- Renderiza conteúdo vindo de @extends/@section --}}
-    @elseif (View::hasSection('content'))
-        @yield('content')
-    @endif
-</main>
-
+                    {{ $slot }}
+                </main>
 
                 {{-- Sidebar direita (opcional) --}}
                 @include('layouts.sidebar-right')
