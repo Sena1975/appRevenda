@@ -2,7 +2,7 @@ name: Deploy apprevenda to Hostnet
 
 on:
   push:
-    branches: [ "main" ]   # troque se seu branch for outro
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
@@ -41,10 +41,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Node deps
-        # se não tiver package-lock.json, troque para: npm install
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-      # Garante que o build está com base /apprevenda/
       - name: Assert Vite base
         run: |
           grep -R "base: '/apprevenda/'" vite.config.* || (echo "Falta base '/apprevenda/' no vite.config.js" && exit 1)
@@ -52,14 +51,14 @@ jobs:
       - name: Build assets
         run: npm run build
 
-      # --- DEPLOY 1: Núcleo do app -> /apprevenda (sem public/, sem .env) ---
+      # DEPLOY 1 — núcleo do app para /apprevenda (sem public/, sem .env)
       - name: Deploy core to /apprevenda
-        uses: SamKirkland/FTP-Deploy-Action@v4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps             # troque para ftp ou sftp conforme seu plano
+          protocol: ftps
           local-dir: ./
           server-dir: /apprevenda/
           exclude: |
@@ -73,15 +72,15 @@ jobs:
             .env
             **/.DS_Store
 
-      # Ajusta public/index.php para apontar para ../../apprevenda (subpasta)
+      # Ajuste do index.php para subpasta
       - name: Patch public/index.php for subfolder
         run: |
           sed -i "s#require __DIR__.'/../vendor/autoload.php';#require __DIR__.'/../../apprevenda/vendor/autoload.php';#g" public/index.php
           sed -i "s#require_once __DIR__.'/../bootstrap/app.php';#\$app = require_once __DIR__.'/../../apprevenda/bootstrap/app.php';#g" public/index.php
 
-      # --- DEPLOY 2: Conteúdo da public -> /www/apprevenda ---
+      # DEPLOY 2 — conteúdo da public/ para /www/apprevenda
       - name: Deploy public/ to /www/apprevenda
-        uses: SamKirkland/FTP-Deploy-Action@v4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
