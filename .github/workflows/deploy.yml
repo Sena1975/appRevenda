@@ -1,8 +1,8 @@
-name: Deploy apprevenda to Hostnet
+name: Deploy apprevenda to Hostnet (SFTP)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]   # ajuste se usar outro branch
 
 jobs:
   build-and-deploy:
@@ -15,6 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ---- PHP / Composer ----
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -34,6 +35,7 @@ jobs:
       - name: Install Composer deps (no-dev)
         run: composer install --no-dev --optimize-autoloader
 
+      # ---- Node / Vite ----
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -48,51 +50,40 @@ jobs:
         run: |
           grep -R "base: '/apprevenda/'" vite.config.* || (echo "Falta base '/apprevenda/' no vite.config.js" && exit 1)
 
-      - name: Build assets
+      - name: Build assets (Vite)
         run: npm run build
 
-      # =========================
-      # DEPLOY 1 — núcleo (sem public/)
-      # =========================
-      - name: Deploy core via SFTP to /apprevenda
+      # ---- Limpeza para não enviar coisas desnecessárias ----
+      - name: Cleanup before deploy
+        run: |
+          rm -rf node_modules tests .git .github
+
+      # ---- DEPLOY 1: núcleo do app para /home/senadevtech/apprevenda ----
+      - name: Deploy core via SFTP to /home/senadevtech/apprevenda
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ${{ secrets.FTP_SERVER }}          # host SFTP
-          username: ${{ secrets.FTP_USERNAME }}       # usuário SFTP
-          password: ${{ secrets.FTP_PASSWORD }}       # senha SFTP
+          server: ${{ secrets.FTP_SERVER }}      # ex.: sftp.seuprovedor.com
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
           port: 22
-          local_path: "./"
-          remote_path: "/apprevenda/"
           sftp_only: true
-          exclude: |
-            .git*
-            .github/**
-            node_modules/**
-            tests/**
-            public/**
-            storage/logs/**
-            storage/framework/**
-            .env
-            **/.DS_Store
+          local_path: "./"
+          remote_path: "/home/senadevtech/apprevenda/"
 
-      # Ajusta public/index.php para subpasta
-      - name: Patch public/index.php for subfolder
+      # ---- Ajusta o index.php da pasta pública para apontar por caminho ABSOLUTO ----
+      - name: Patch public/index.php for subfolder (ABS path)
         run: |
-          sed -i "s#require __DIR__.'/../vendor/autoload.php';#require __DIR__.'/../../apprevenda/vendor/autoload.php';#g" public/index.php
-          sed -i "s#require_once __DIR__.'/../bootstrap/app.php';#\$app = require_once __DIR__.'/../../apprevenda/bootstrap/app.php';#g" public/index.php
+          sed -i "s#require __DIR__.'/../vendor/autoload.php';#require '/home/senadevtech/apprevenda/vendor/autoload.php';#g" public/index.php
+          sed -i "s#require_once __DIR__.'/../bootstrap/app.php';#\$app = require_once '/home/senadevtech/apprevenda/bootstrap/app.php';#g" public/index.php
 
-      # =========================
-      # DEPLOY 2 — conteúdo da public/
-      # =========================
-      - name: Deploy public/ via SFTP to /www/apprevenda
+      # ---- DEPLOY 2: conteúdo da public para /home/senadevtech/www/apprevenda ----
+      - name: Deploy public/ via SFTP to /home/senadevtech/www/apprevenda
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: 22
-          local_path: "./public/"
-          remote_path: "/www/apprevenda/"
           sftp_only: true
-          exclude: |
-            **/.DS_Store
+          local_path: "./public/"
+          remote_path: "/home/senadevtech/www/apprevenda/"
