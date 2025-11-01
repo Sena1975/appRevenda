@@ -1,0 +1,92 @@
+name: Deploy apprevenda to Hostnet
+
+on:
+  push:
+    branches: [ "main" ]   # troque se seu branch for outro
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, curl, dom, fileinfo, bcmath, pdo_mysql
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            vendor
+          key: composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            composer-
+
+      - name: Install Composer deps (no-dev)
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node deps
+        run: npm ci
+
+      # Garante que o build está com base /apprevenda/
+      - name: Assert Vite base
+        run: |
+          grep -R "base: '/apprevenda/'" vite.config.* || (echo "Falta base '/apprevenda/' no vite.config.js" && exit 1)
+
+      - name: Build assets
+        run: npm run build
+
+      # --- DEPLOY 1: Núcleo do app -> /apprevenda (sem public/, sem .env) ---
+      - name: Deploy core to /apprevenda
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps             # troque para ftp ou sftp se necessário
+          local-dir: ./
+          server-dir: /apprevenda/
+          exclude: |
+            .git*
+            .github/**
+            node_modules/**
+            tests/**
+            public/**
+            storage/logs/**
+            storage/framework/**
+            .env
+            **/.DS_Store
+
+      # --- Ajusta index.php público para apontar para ../../apprevenda ---
+      - name: Patch public/index.php for subfolder
+        run: |
+          sed -i "s#require __DIR__.'/../vendor/autoload.php';#require __DIR__.'/../../apprevenda/vendor/autoload.php';#g" public/index.php
+          sed -i "s#require_once __DIR__.'/../bootstrap/app.php';#\$app = require_once __DIR__.'/../../apprevenda/bootstrap/app.php';#g" public/index.php
+
+      # --- DEPLOY 2: Conteúdo da public -> /www/apprevenda ---
+      - name: Deploy public/ to /www/apprevenda
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./public/
+          server-dir: /www/apprevenda/
+          exclude: |
+            **/.DS_Store
