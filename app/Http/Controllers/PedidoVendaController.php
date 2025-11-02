@@ -17,6 +17,7 @@ use App\Models\Produto;
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
+use App\Services\CampaignEvaluatorService; // <<< ADICIONADO
 
 class PedidoVendaController extends Controller
 {
@@ -56,6 +57,7 @@ class PedidoVendaController extends Controller
 
     /**
      * Salva um novo pedido (status PENDENTE) e RESERVA estoque
+     * + aplica campanhas no salvar (idempotente por reavaliação)
      */
     public function store(Request $request)
     {
@@ -155,8 +157,14 @@ class PedidoVendaController extends Controller
             // Gera Contas a Receber
             $this->cr->gerarParaPedido($pedido);
 
+            // >>> APLICA / REAVALIA CAMPANHAS AO SALVAR <<<
+            $pedido->load('itens');
+            $service   = app(CampaignEvaluatorService::class);
+            $campanhas = $service->reavaliarPedido($pedido); // idempotente: limpa e reaplica
+            session()->flash('campanhas', $campanhas);
+
             DB::commit();
-            return redirect()->route('vendas.index')->with('success', 'Pedido salvo como PENDENTE, estoque reservado e parcelas geradas.');
+            return redirect()->route('vendas.index')->with('success', 'Pedido salvo como PENDENTE, estoque reservado, parcelas geradas e campanhas aplicadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Erro ao salvar: '.$e->getMessage())->withInput();
@@ -185,6 +193,7 @@ class PedidoVendaController extends Controller
 
     /**
      * Atualiza pedido (mantém como estiver; se ainda PENDENTE, mantém reserva)
+     * + reavalia campanhas
      */
     public function update(Request $request, $id)
     {
@@ -300,8 +309,14 @@ class PedidoVendaController extends Controller
             // Recalcula/gera CR (apaga ABERTAS e gera de novo)
             $this->cr->recalcularParaPedido($pedido);
 
+            // >>> REAVALIA CAMPANHAS NA EDIÇÃO <<<
+            $pedido->load('itens');
+            $service   = app(CampaignEvaluatorService::class);
+            $campanhas = $service->reavaliarPedido($pedido);
+            session()->flash('campanhas', $campanhas);
+
             DB::commit();
-            return redirect()->route('vendas.index')->with('success', 'Pedido atualizado com sucesso!');
+            return redirect()->route('vendas.index')->with('success', 'Pedido atualizado, reservas/parcelas ajustadas e campanhas reavaliadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Erro ao atualizar: '.$e->getMessage())->withInput();
@@ -310,6 +325,7 @@ class PedidoVendaController extends Controller
 
     /**
      * Confirma pedido: baixa gerencial e libera reserva
+     * + reavalia campanhas na confirmação para consistência final
      */
     public function confirmar($id)
     {
@@ -328,8 +344,14 @@ class PedidoVendaController extends Controller
             // Baixa gerencial e libera reserva
             $this->estoque->confirmarSaidaVenda($pedido);
 
+            // >>> REAVALIA CAMPANHAS NA CONFIRMAÇÃO <<<
+            $pedido->load('itens');
+            $service   = app(CampaignEvaluatorService::class);
+            $campanhas = $service->reavaliarPedido($pedido);
+            session()->flash('campanhas', $campanhas);
+
             DB::commit();
-            return redirect()->route('vendas.index')->with('success', 'Pedido confirmado, reserva liberada e estoque baixado.');
+            return redirect()->route('vendas.index')->with('success', 'Pedido confirmado, reserva liberada, estoque baixado e campanhas reavaliadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Falha ao confirmar pedido: '.$e->getMessage());

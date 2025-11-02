@@ -1,6 +1,5 @@
-
 <div class="flex items-center justify-between h-16 bg-white border-b px-6 shadow-sm">
-    <!-- Botão menu (para mobile ou futuro recolhimento) -->
+    <!-- Botão menu (mobile ou recolhimento futuro) -->
     <button class="p-2 rounded-md bg-gray-100 hover:bg-gray-200">
         ☰
     </button>
@@ -8,14 +7,34 @@
     <!-- Título -->
     <h1 class="text-lg font-semibold text-gray-700">Painel Administrativo</h1>
 
-    <!-- Usuário -->
-    <div class="flex items-center gap-4">
-        <div class="text-right">
-            <p class="text-sm font-medium text-gray-700">{{ Auth::user()->nome }}</p>
-            <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
+    <!-- Usuário com dropdown -->
+    <div x-data="{ open: false }" class="relative">
+        <div @click="open = !open" class="flex items-center gap-4 cursor-pointer select-none">
+            <div class="text-right">
+                <p class="text-sm font-medium text-gray-700">{{ Auth::user()->nome }}</p>
+                <p class="text-xs text-gray-500">{{ Auth::user()->email }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold">
+                {{ strtoupper(substr(Auth::user()->nome, 0, 1)) }}
+            </div>
         </div>
-        <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold">
-            {{ strtoupper(substr(Auth::user()->nome, 0, 1)) }}
+
+        <!-- Dropdown -->
+        <div x-show="open"
+             @click.outside="open = false"
+             x-transition
+             class="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <a href="{{ route('profile.edit') }}"
+               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                ⚙️ Perfil
+            </a>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit"
+                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    🚪 Sair
+                </button>
+            </form>
         </div>
     </div>
 </div>

@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Campanha extends Model
+{
+    protected $table = 'appcampanha';
+    protected $primaryKey = 'id';
+    public $timestamps = true;
+
+    // Campos de timestamp customizados
+    const CREATED_AT = 'criado_em';
+    const UPDATED_AT = 'atualizado_em';
+
+    protected $fillable = [
+        'nome','descricao','tipo_id','data_inicio','data_fim','ativa','cumulativa',
+        'aplicacao_automatica','prioridade','valor_base_cupom','acumulativa_por_valor',
+        'acumulativa_por_quantidade','quantidade_minima_cupom','tipo_acumulacao',
+        'produto_brinde_id'
+    ];
+
+    protected $casts = [
+        'ativa' => 'boolean',
+        'cumulativa' => 'boolean',
+        'aplicacao_automatica' => 'boolean',
+        'acumulativa_por_valor' => 'boolean',
+        'acumulativa_por_quantidade' => 'boolean',
+        'data_inicio' => 'date',
+        'data_fim' => 'date',
+        'valor_base_cupom' => 'decimal:2',
+        'prioridade' => 'integer',
+        'quantidade_minima_cupom' => 'integer',
+    ];
+
+    // Convenções úteis
+    public function tipo()
+    {
+        return $this->belongsTo(CampanhaTipo::class, 'tipo_id', 'id');
+    }
+
+    public function premios()
+    {
+        return $this->hasMany(CampanhaPremio::class, 'campanha_id', 'id');
+    }
+
+    public function produtos()
+    {
+        return $this->hasMany(CampanhaProduto::class, 'campanha_id', 'id');
+    }
+
+    public function clientes()
+    {
+        return $this->hasMany(CampanhaCliente::class, 'campanha_id', 'id');
+    }
+
+    public function cupons()
+    {
+        return $this->hasMany(CampanhaCupom::class, 'campanha_id', 'id');
+    }
+
+    // Regras auxiliares
+    public function emVigencia(): bool
+    {
+        $hoje = now()->toDateString();
+        return $this->ativa && $this->data_inicio->toDateString() <= $hoje && $hoje <= $this->data_fim->toDateString();
+    }
+
+    public function isCumulativa(): bool
+    {
+        return (bool) $this->cumulativa;
+    }
+}

@@ -12,6 +12,8 @@
         {{-- Sidebar esquerda --}}
         @include('layouts.sidebar')
 
+        @include('layouts.aniversariantes')
+
         {{-- Conteúdo principal + Sidebar direita --}}
         <div class="flex flex-1 flex-col">
             {{-- Topbar --}}

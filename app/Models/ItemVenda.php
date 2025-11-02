@@ -49,4 +49,17 @@ class ItemVenda extends Model
     {
         return $this->belongsTo(Produto::class, 'produto_id', 'id');
     }
+    
+    //Plugando campanhas no seu fluxo atual
+    public function getValorTotalAttribute()
+    {
+        // Prioriza preco_total; se não houver, calcula pelo unitário * qtd
+        if (isset($this->attributes['preco_total'])) {
+            return (float) $this->attributes['preco_total'];
+        }
+        $unit = (float) ($this->attributes['preco_unitario'] ?? 0);
+        $qtd  = (int)   ($this->attributes['quantidade'] ?? 0);
+        return $unit * $qtd;
+    }
+
 }

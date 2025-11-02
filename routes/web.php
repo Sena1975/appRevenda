@@ -23,6 +23,13 @@ use App\Http\Controllers\ContasReceberController;
 use App\Http\Controllers\BaixaReceberController;
 use App\Http\Controllers\PlanoPagamentoController;
 use App\Http\Controllers\FormaPagamentoController;
+use App\Http\Controllers\CampanhaController;
+use App\Http\Controllers\CampanhaProdutoController;
+use App\Http\Controllers\AniversarianteController;
+
+
+
+
 
 use App\Models\PlanoPagamento;
 
@@ -74,7 +81,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/get-cidades/{uf_id}', [LocalizacaoController::class, 'getCidades'])->name('get.cidades');
     Route::get('/get-bairros/{cidade_id}', [LocalizacaoController::class, 'getBairros'])->name('get.bairros');
     Route::get('/get-localizacao', [LocalizacaoController::class, 'getLocalizacao'])->name('get.localizacao');
+Route::get('/get-cidades/{ufId}', function ($ufId) {
+    return DB::table('appcidade')
+        ->where('uf_id', $ufId)
+        ->orderBy('nome')
+        ->get(['id','nome']);
+})->name('ajax.cidades');
 
+Route::get('/get-bairros/{cidadeId}', function ($cidadeId) {
+    return DB::table('appbairro')
+        ->where('cidade_id', $cidadeId)
+        ->orderBy('nome')
+        ->get(['id','nome']);
+})->name('ajax.bairros');
     /*
     |--------------------------------------------------------------------------
     | COMPRAS E ESTOQUE
@@ -162,6 +181,24 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/aniversariantes/{mes}', [AniversarianteController::class, 'listar']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | CAMPANHAS
+    |--------------------------------------------------------------------------
+    */    
+    Route::prefix('campanhas')->group(function () {
+    Route::get('/', [CampanhaController::class, 'index'])->name('campanhas.index'); // opcional
+    Route::get('/create', [CampanhaController::class, 'create'])->name('campanhas.create');
+    Route::post('/', [CampanhaController::class, 'store'])->name('campanhas.store');
+
+    // Rotas de restrições (precisam do {campanha})
+    Route::get('{campanha}/restricoes', [CampanhaProdutoController::class, 'index'])->name('campanhas.restricoes');
+    Route::post('{campanha}/restricoes', [CampanhaProdutoController::class, 'store'])->name('campanhas.restricoes.store');
+    Route::delete('{campanha}/restricoes/{id}', [CampanhaProdutoController::class, 'destroy'])->name('campanhas.restricoes.destroy');
+    
+});    
 
 });
 

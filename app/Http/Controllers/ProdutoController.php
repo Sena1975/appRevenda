@@ -11,11 +11,30 @@ use Illuminate\Support\Facades\DB;
 
 class ProdutoController extends Controller
 {
-    public function index()
-    {
-        $produtos = Produto::with(['categoria', 'subcategoria', 'fornecedor'])->paginate(10);
-        return view('produtos.index', compact('produtos'));
+ public function index(Request $request)
+{
+    $query = \App\Models\Produto::with(['categoria', 'subcategoria', 'fornecedor']);
+
+    if ($request->filled('busca')) {
+        $query->where(function ($q) use ($request) {
+            $q->where('nome', 'like', '%' . $request->busca . '%')
+              ->orWhere('codfab', 'like', '%' . $request->busca . '%');
+        });
     }
+
+    if ($request->filled('categoria_id')) {
+        $query->where('categoria_id', $request->categoria_id);
+    }
+
+    $porPagina = $request->get('por_pagina', 10);
+
+    $produtos = $query->orderBy('nome')->paginate($porPagina);
+    $categorias = \App\Models\Categoria::orderBy('nome')->get();
+
+    return view('produtos.index', compact('produtos', 'categorias'));
+}
+
+
 
     public function create()
     {

@@ -1,35 +1,68 @@
-<div class="w-72 bg-white border-l shadow-inner flex flex-col">
-    <div class="p-4 border-b bg-indigo-600 text-white font-semibold text-lg flex items-center justify-between">
-        🎂 <span>Feliz Aniversário</span>
+@php
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
+// Mês atual
+$mesAtual = Carbon::now()->month;
+
+// Busca aniversariantes do mês atual
+$aniversariantes = DB::table('appcliente')
+    ->select('nome', 'data_nascimento')
+    ->whereMonth('data_nascimento', $mesAtual)
+    ->orderByRaw('DAY(data_nascimento)')
+    ->get();
+@endphp
+
+<div x-data="{ open: true }" class="border-l bg-white shadow-sm w-64 flex flex-col transition-all duration-300"
+     :class="open ? 'w-64' : 'w-10'">
+    
+    <!-- Cabeçalho -->
+    <div class="flex items-center justify-between px-3 py-2 bg-indigo-600 text-white cursor-pointer"
+         @click="open = !open">
+        <div class="flex items-center gap-2">
+            <span>🎂</span>
+            <span x-show="open" class="font-semibold">Feliz Aniversário</span>
+        </div>
+        <button class="focus:outline-none">
+            <svg x-show="open" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4 space-y-3">
-        <!-- Exemplo de aniversariantes (dados estáticos por enquanto) -->
-        @php
-            $aniversariantes = [
-                ['nome' => 'Maria Silva', 'cargo' => 'Cliente Ouro', 'data' => '25 de Out', 'foto' => null],
-                ['nome' => 'João Santos', 'cargo' => 'Cliente Prata', 'data' => '26 de Out', 'foto' => null],
-                ['nome' => 'Carla Souza', 'cargo' => 'Cliente Bronze', 'data' => '28 de Out', 'foto' => null],
-                ['nome' => 'Paulo Oliveira', 'cargo' => 'Cliente Ouro', 'data' => '29 de Out', 'foto' => null],
-            ];
-        @endphp
-
-        @foreach ($aniversariantes as $a)
-            <div class="flex items-center gap-3 bg-gray-50 hover:bg-indigo-50 rounded-lg p-3 shadow-sm">
-                @if ($a['foto'])
-                    <img src="{{ asset('images/' . $a['foto']) }}" alt="{{ $a['nome'] }}" class="w-10 h-10 rounded-full">
-                @else
-                    <div class="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold">
-                        {{ strtoupper(substr($a['nome'], 0, 1)) }}
+    <!-- Lista -->
+    <div x-show="open" x-transition class="flex-1 overflow-y-auto p-3">
+        @if($aniversariantes->isEmpty())
+            <p class="text-gray-500 text-sm text-center mt-4">Nenhum aniversariante este mês 🎈</p>
+        @else
+            @foreach($aniversariantes as $aniv)
+                @php
+                    $dia = Carbon::parse($aniv->data_nascimento)->format('d');
+                    $mes = Carbon::parse($aniv->data_nascimento)->format('m');
+                    $diaFormatado = Carbon::parse($aniv->data_nascimento)->format('d \d\e M');
+                    $idade = Carbon::parse($aniv->data_nascimento)->age;
+                    $hoje = Carbon::now()->isSameDay(Carbon::parse($aniv->data_nascimento));
+                @endphp
+                <div class="flex items-center gap-2 p-2 rounded-md mb-2 border hover:bg-gray-50 transition">
+                    <div class="w-8 h-8 bg-indigo-100 text-indigo-700 flex items-center justify-center rounded-full font-bold">
+                        {{ strtoupper(substr($aniv->nome, 0, 1)) }}
                     </div>
-                @endif
-
-                <div class="flex-1">
-                    <p class="text-sm font-semibold text-gray-800">{{ $a['nome'] }}</p>
-                    <p class="text-xs text-gray-500">{{ $a['cargo'] }}</p>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800">{{ $aniv->nome }}</p>
+                        <p class="text-xs text-gray-500">
+                            {{ $hoje ? '🎉 Hoje!' : $diaFormatado }} 
+                            <span class="text-gray-400">({{ $idade }} anos)</span>
+                        </p>
+                    </div>
                 </div>
-                <span class="text-xs font-medium text-indigo-600">{{ $a['data'] }}</span>
-            </div>
-        @endforeach
+            @endforeach
+        @endif
     </div>
 </div>
