@@ -22,7 +22,7 @@
             @include('layouts.sidebar')
         </aside>
 
-        {{-- OVERLAY do mobile para sidebar esquerda --}}
+        {{-- OVERLAY do mobile para sidebar esquerda left--}}
         <div
             class="fixed inset-0 z-30 bg-black/40 lg:hidden"
             x-show="leftOpen"
@@ -30,7 +30,7 @@
             @click="leftOpen = false"
         ></div>
 
-        {{-- CONTEÚDO + SIDEBAR DIREITA --}}
+        {{-- CONTEÚDO + SIDEBAR DIREITA rigth--}}
         <div class="flex flex-1 flex-col min-w-0">
             {{-- Topbar (terá o botão para abrir a esquerda) --}}
             @include('layouts.topbar')
