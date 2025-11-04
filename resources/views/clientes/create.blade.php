@@ -16,86 +16,132 @@
                 <!-- Nome -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nome</label>
-                    <input type="text" name="nome" class="w-full border-gray-300 rounded-md shadow-sm" required>
+                    <input type="text" name="nome" class="w-full border-gray-300 rounded-md shadow-sm"
+                        value="{{ old('nome') }}" required>
+                    @error('nome')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- CPF -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">CPF</label>
                     <input type="text" name="cpf" class="w-full border-gray-300 rounded-md shadow-sm"
-                        placeholder="000.000.000-00">
+                        value="{{ old('cpf') }}" placeholder="000.000.000-00">
+                    @error('cpf')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Telefone -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Telefone</label>
                     <input type="text" name="telefone" class="w-full border-gray-300 rounded-md shadow-sm"
-                        placeholder="(xx) xxxx-xxxx">
+                        value="{{ old('telefone') }}" placeholder="(xx) xxxx-xxxx">
+                    @error('telefone')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <!-- WhatsApp -->
+                {{-- WhatsApp --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">WhatsApp</label>
-                    <input type="text" name="whatsapp" class="w-full border-gray-300 rounded-md shadow-sm"
-                        placeholder="(xx) 9xxxx-xxxx">
+                    <label for="whatsapp" class="block text-sm font-medium text-gray-700">WhatsApp</label>
+                    <input type="text" name="whatsapp" id="whatsapp" value="{{ old('whatsapp') }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="(71) 99999-9999">
+                    @error('whatsapp')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <!-- Telegram -->
+                {{-- Telegram --}}
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Telegram</label>
-                    <input type="text" name="telegram" class="w-full border-gray-300 rounded-md shadow-sm"
+                    <label for="telegram" class="block text-sm font-medium text-gray-700">Telegram</label>
+                    <input type="text" name="telegram" id="telegram"
+                        value="{{ old('telegram') ? '@' . ltrim(old('telegram'), '@') : '' }}"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         placeholder="@usuario">
+                    @error('telegram')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Instagram -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Instagram</label>
                     <input type="text" name="instagram" class="w-full border-gray-300 rounded-md shadow-sm"
-                        placeholder="@usuario">
+                        value="{{ old('instagram') }}" placeholder="@usuario" autocomplete="off">
+                    @error('instagram')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Facebook -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Facebook</label>
                     <input type="text" name="facebook" class="w-full border-gray-300 rounded-md shadow-sm"
-                        placeholder="facebook.com/usuario">
+                        value="{{ old('facebook') }}" placeholder="facebook.com/usuario">
+                    @error('facebook')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Email -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">E-mail</label>
-                    <input type="email" name="email" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <label for="email" class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" name="email" id="email" inputmode="email" autocomplete="email"
+                        class="w-full border-gray-300 rounded-md shadow-sm" value="{{ old('email') }}"
+                        placeholder="nome@dominio.com" pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$">
+                    <small class="text-xs text-gray-500">Use um e-mail válido, ex: nome@dominio.com</small>
+                    @error('email')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
+
 
                 <!-- CEP -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">CEP</label>
                     <div class="relative">
                         <input type="text" name="cep" id="cep"
-                            class="w-full border-gray-300 rounded-md shadow-sm pr-10" placeholder="00000-000">
+                            class="w-full border-gray-300 rounded-md shadow-sm pr-10" value="{{ old('cep') }}"
+                            placeholder="00000-000">
                         <div id="cep-loader"
                             class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin">⏳</div>
                     </div>
                     <p id="cep-msg" class="text-xs mt-1"></p>
+                    @error('cep')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Endereço -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Endereço</label>
                     <input type="text" name="endereco" id="endereco"
-                        class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Rua, avenida, número...">
+                        class="w-full border-gray-300 rounded-md shadow-sm" value="{{ old('endereco') }}"
+                        placeholder="Rua, avenida, número...">
+                    @error('endereco')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- UF -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">UF</label>
-                    <select name="uf_id" id="uf_id" class="w-full border-gray-300 rounded-md shadow-sm" required>
+                    <select name="uf_id" id="uf_id" class="w-full border-gray-300 rounded-md shadow-sm"
+                        required>
                         <option value="">Selecione</option>
                         @foreach (DB::table('appuf')->orderBy('nome')->get() as $uf)
-                            <option value="{{ $uf->id }}" data-sigla="{{ $uf->sigla }}">{{ $uf->sigla }} -
-                                {{ $uf->nome }}</option>
+                            <option value="{{ $uf->id }}" data-sigla="{{ $uf->sigla }}"
+                                @selected(old('uf_id') == $uf->id)>
+                                {{ $uf->sigla }} - {{ $uf->nome }}
+                            </option>
                         @endforeach
                     </select>
+                    @error('uf_id')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Cidade -->
@@ -103,8 +149,15 @@
                     <label class="block text-sm font-medium text-gray-700">Cidade</label>
                     <select name="cidade_id" id="cidade_id" class="w-full border-gray-300 rounded-md shadow-sm"
                         required>
-                        <option value="">Selecione a UF primeiro</option>
+                        @if (old('cidade_id'))
+                            <option value="{{ old('cidade_id') }}" selected>Selecionada anteriormente</option>
+                        @else
+                            <option value="">Selecione a UF primeiro</option>
+                        @endif
                     </select>
+                    @error('cidade_id')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Bairro -->
@@ -112,14 +165,25 @@
                     <label class="block text-sm font-medium text-gray-700">Bairro</label>
                     <select name="bairro_id" id="bairro_id" class="w-full border-gray-300 rounded-md shadow-sm"
                         required>
-                        <option value="">Selecione a cidade primeiro</option>
+                        @if (old('bairro_id'))
+                            <option value="{{ old('bairro_id') }}" selected>Selecionado anteriormente</option>
+                        @else
+                            <option value="">Selecione a cidade primeiro</option>
+                        @endif
                     </select>
+                    @error('bairro_id')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Data de Nascimento -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data de Nascimento</label>
-                    <input type="date" name="data_nascimento" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="date" name="data_nascimento" class="w-full border-gray-300 rounded-md shadow-sm"
+                        value="{{ old('data_nascimento') }}">
+                    @error('data_nascimento')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Time do Coração -->
@@ -169,38 +233,49 @@
                     {{-- Campo livre só aparece se escolher "Outro" --}}
                     <input type="text" id="time_outro"
                         class="mt-2 w-full border-gray-300 rounded-md shadow-sm hidden" placeholder="Digite o time"
-                        autocomplete="off">
+                        autocomplete="off" value="{{ old('timecoracao') }}">
 
-                    {{-- Campo que realmente envia (trocamos o name via JS) --}}
-                    <input type="hidden" id="time_hidden" name="timecoracao" value="">
+                    {{-- Campo que realmente envia --}}
+                    <input type="hidden" id="time_hidden" name="timecoracao" value="{{ old('timecoracao') }}">
+                    @error('timecoracao')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
-
 
                 <!-- Sexo -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Sexo</label>
                     <select name="sexo" class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Selecione</option>
-                        <option value="Masculino">Masculino</option>
-                        <option value="Feminino">Feminino</option>
-                        <option value="Outro">Outro</option>
+                        <option value="Masculino" @selected(old('sexo') === 'Masculino')>Masculino</option>
+                        <option value="Feminino" @selected(old('sexo') === 'Feminino')>Feminino</option>
+                        <option value="Outro" @selected(old('sexo') === 'Outro')>Outro</option>
                     </select>
+                    @error('sexo')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Filhos -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Filhos</label>
                     <input type="number" name="filhos" min="0"
-                        class="w-full border-gray-300 rounded-md shadow-sm" value="0">
+                        class="w-full border-gray-300 rounded-md shadow-sm" value="{{ old('filhos', 0) }}">
+                    @error('filhos')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Status -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Status</label>
                     <select name="status" class="w-full border-gray-300 rounded-md shadow-sm">
-                        <option value="Ativo">Ativo</option>
-                        <option value="Inativo">Inativo</option>
+                        <option value="Ativo" @selected(old('status') === 'Ativo')>Ativo</option>
+                        <option value="Inativo" @selected(old('status') === 'Inativo')>Inativo</option>
                     </select>
+                    @error('status')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Foto com preview -->
@@ -215,6 +290,9 @@
                             <p class="text-xs text-gray-500 mt-1">Formatos: JPG, PNG. Máx: 2MB</p>
                         </div>
                     </div>
+                    @error('foto')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
             </div>
@@ -239,42 +317,41 @@
             const enderecoInput = document.getElementById('endereco');
             const loader = document.getElementById('cep-loader');
             const msg = document.getElementById('cep-msg');
-
             const hiddenBairroNome = document.getElementById('bairro_nome_hidden');
 
- // --- Time do Coração (select + "Outro") ---
-const timeSelect = document.getElementById('time_select');
-const timeOutro  = document.getElementById('time_outro');
-const timeHidden = document.getElementById('time_hidden');
+            // --- Time do Coração (select + "Outro") ---
+            const timeSelect = document.getElementById('time_select');
+            const timeOutro = document.getElementById('time_outro');
+            const timeHidden = document.getElementById('time_hidden');
 
-// estado inicial
-timeHidden.value = '';
+            // estado inicial
+            timeHidden.value = timeOutro.value.trim();
 
-function atualizarTime() {
-    const val = timeSelect.value;
-    if (val === '__OUTRO__') {
-        timeOutro.classList.remove('hidden');
-        timeOutro.focus();
-        timeHidden.value = timeOutro.value.trim(); // se já tiver digitado
-    } else {
-        timeOutro.classList.add('hidden');
-        timeOutro.value = '';
-        timeHidden.value = val || '';
-    }
-}
+            function atualizarTime() {
+                const val = timeSelect.value;
+                if (val === '__OUTRO__') {
+                    timeOutro.classList.remove('hidden');
+                    timeOutro.focus();
+                    timeHidden.value = timeOutro.value.trim(); // se já tiver digitado
+                } else {
+                    timeOutro.classList.add('hidden');
+                    timeOutro.value = '';
+                    timeHidden.value = val || '';
+                }
+            }
 
-timeSelect.addEventListener('change', atualizarTime);
-timeOutro.addEventListener('input', () => {
-    // enquanto digita no "Outro", mantemos em timeHidden para enviar
-    timeHidden.value = timeOutro.value.trim();
-});
+            timeSelect.addEventListener('change', atualizarTime);
+            timeOutro.addEventListener('input', () => {
+                // enquanto digita no "Outro", mantemos em timeHidden para enviar
+                timeHidden.value = timeOutro.value.trim();
+            });
 
-// garante que, ao enviar o form, o valor correto está em timeHidden
-const form = document.querySelector('form');
-form.addEventListener('submit', () => {
-    atualizarTime();
-});
-           
+            // garante que, ao enviar o form, o valor correto está em timeHidden
+            const form = document.querySelector('form');
+            form.addEventListener('submit', () => {
+                atualizarTime();
+            });
+
             // Pré-visualização da foto
             const inputFoto = document.getElementById('foto');
             const previewFoto = document.getElementById('foto-preview');
@@ -347,7 +424,7 @@ form.addEventListener('submit', () => {
                         const match = c.nome.trim().toLowerCase() === cidadeNome.toLowerCase();
                         cidadeSelect.insertAdjacentHTML('beforeend',
                             `<option value="${c.id}" ${match ? 'selected' : ''}>${c.nome}</option>`
-                            );
+                        );
                         if (match) cidadeEncontrada = c;
                     });
 
@@ -363,7 +440,7 @@ form.addEventListener('submit', () => {
                                 .toLowerCase() && bairroNome !== '';
                             bairroSelect.insertAdjacentHTML('beforeend',
                                 `<option value="${b.id}" ${selected ? 'selected' : ''}>${b.nome}</option>`
-                                );
+                            );
                             if (selected) marcou = true;
                         });
 
@@ -413,9 +490,8 @@ form.addEventListener('submit', () => {
 
             // Quando o usuário mexer manualmente no select de bairro:
             bairroSelect.addEventListener('change', function() {
-                // Se escolheu "custom", mantém o hidden (valor deve estar definido por CEP)
+                // Se escolheu "custom", mantém o hidden (valor deve ser definido via CEP)
                 if (this.value !== 'custom') {
-                    // Qualquer bairro diferente de custom limpa o hidden
                     hiddenBairroNome.value = '';
                 }
             });

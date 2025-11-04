@@ -31,7 +31,7 @@
                 <label class="text-xs text-gray-600">Forma</label>
                 <select name="forma_pagamento_id" class="w-full border-gray-300 rounded">
                     <option value="">Todas</option>
-                    @foreach($formas as $f)
+                    @foreach($forma as $f)
                         <option value="{{ $f->id }}" @selected(request('forma_pagamento_id')==$f->id)>{{ $f->nome }}</option>
                     @endforeach
                 </select>

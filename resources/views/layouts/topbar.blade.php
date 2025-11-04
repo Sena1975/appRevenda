@@ -1,8 +1,14 @@
 <div class="flex items-center justify-between h-16 bg-white border-b px-6 shadow-sm">
-    <!-- Botão menu (mobile ou recolhimento futuro) -->
-    <button class="p-2 rounded-md bg-gray-100 hover:bg-gray-200">
-        ☰
+
+    <!-- Botão hamburguer (mobile) -->
+    <button class="lg:hidden inline-flex items-center justify-center p-2 rounded-md border bg-white hover:bg-gray-50"
+        @click="leftOpen = true" aria-label="Abrir menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
     </button>
+
 
     <!-- Título -->
     <h1 class="text-lg font-semibold text-gray-700">Painel Administrativo</h1>
@@ -20,18 +26,14 @@
         </div>
 
         <!-- Dropdown -->
-        <div x-show="open"
-             @click.outside="open = false"
-             x-transition
-             class="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-            <a href="{{ route('profile.edit') }}"
-               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+        <div x-show="open" @click.outside="open = false" x-transition
+            class="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 ⚙️ Perfil
             </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit"
-                        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                     🚪 Sair
                 </button>
             </form>

@@ -18,7 +18,7 @@ class ContasReceberController extends Controller
     {
         $hoje = Carbon::today()->toDateString();
 
-        $query = ContasReceber::with(['cliente:id,nome', 'revendedora:id,nome', 'forma:id,nome'])
+        $query = ContasReceber::with(['cliente:id,nome', 'revendedora:id,nome', 'formaPagamento:id,nome'])
             ->when($request->filled('cliente_id'), fn ($q) =>
                 $q->where('cliente_id', $request->cliente_id)
             )
@@ -61,10 +61,10 @@ class ContasReceberController extends Controller
         // Combos
         $clientes = Cliente::orderBy('nome')->get(['id','nome']);
         $revendedoras = Revendedora::orderBy('nome')->get(['id','nome']);
-        $formas = FormaPagamento::orderBy('nome')->get(['id','nome']);
+        $forma = FormaPagamento::orderBy('nome')->get(['id','nome']);
 
         return view('contasreceber.index', compact(
-            'contas','clientes','revendedoras','formas',
+            'contas','clientes','revendedoras','forma',
             'total_geral','total_aberto','total_pago','total_vencido','hoje'
         ));
     }
