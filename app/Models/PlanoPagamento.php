@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PlanoPagamento extends Model
 {
-    use HasFactory;
-
     protected $table = 'appplanopagamento';
 
+    public const CREATED_AT = 'criado_em';
+    public const UPDATED_AT = 'atualizado_em';
+
     protected $fillable = [
-        'codplano',
+        'codplano',         // único
         'descricao',
         'formapagamento_id',
         'parcelas',
@@ -20,16 +20,27 @@ class PlanoPagamento extends Model
         'prazo2',
         'prazo3',
         'prazomedio',
-        'ativo',
+        'ativo',            // 0/1
     ];
 
-    const CREATED_AT = 'criado_em';
-    const UPDATED_AT = 'atualizado_em';
+    protected $casts = [
+        'formapagamento_id' => 'integer',
+        'parcelas'          => 'integer',
+        'prazo1'            => 'integer',
+        'prazo2'            => 'integer',
+        'prazo3'            => 'integer',
+        'prazomedio'        => 'integer',
+        'ativo'             => 'boolean',
+        'criado_em'         => 'datetime',
+        'atualizado_em'     => 'datetime',
+    ];
 
-    public $timestamps = true;
-
-    public function formaPagamento()
-    {
-        return $this->belongsTo(\App\Models\FormaPagamento::class, 'formapagamento_id');
-    }
+    /* Relacionamentos */
+public function formaPagamento()
+{
+    // Reaproveita o relacionamento já definido
+    return $this->belongsTo(\App\Models\FormaPagamento::class, 'formapagamento_id', 'id');
+}
+    /* Scopes úteis */
+    public function scopeAtivo($q) { return $q->where('ativo', 1); }
 }

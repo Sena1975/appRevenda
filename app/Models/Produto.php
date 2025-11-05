@@ -40,4 +40,19 @@ class Produto extends Model
     {
         return $this->belongsTo(Fornecedor::class, 'fornecedor_id');
     }
+    // app/Models/Produto.php
+
+    public function precos()
+    {
+        // todos os registros de tabela de preço do produto
+        return $this->hasMany(\App\Models\TabelaPreco::class, 'produto_id', 'id');
+    }
+
+    public function precoVigente()
+    {
+        // preço vigente (status=1 e dentro do intervalo), pegando o mais recente por data_inicio
+        return $this->hasOne(\App\Models\TabelaPreco::class, 'produto_id', 'id')
+            ->vigente()
+            ->latestOfMany('data_inicio');
+    }
 }

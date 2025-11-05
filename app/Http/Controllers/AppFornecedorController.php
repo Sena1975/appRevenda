@@ -2,17 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Fornecedor;
+use App\Http\Requests\FornecedorRequest;
 use Illuminate\Http\Request;
+use App\Models\Fornecedor;
 
 class AppFornecedorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Busca todos os fornecedores, ordenados por nome
-        $fornecedores = Fornecedor::orderBy('nomefantasia', 'asc')->get();
+        $q = Fornecedor::query();
 
-        // Envia os dados para a view
+        if ($request->filled('busca')) {
+            $busca = trim($request->busca);
+            $q->where(function($w) use ($busca) {
+                $w->where('razaosocial', 'like', "%{$busca}%")
+                  ->orWhere('nomefantasia', 'like', "%{$busca}%")
+                  ->orWhere('cnpj', 'like', "%{$busca}%");
+            });
+        }
+
+        if ($request->filled('status') && in_array($request->status, ['0','1'], true)) {
+            $q->where('status', (int)$request->status);
+        }
+
+        $allowed = [10,25,50,100];
+        $porPagina = (int)$request->get('por_pagina', 10);
+        if (!in_array($porPagina, $allowed, true)) {
+            $porPagina = 10;
+        }
+
+        $fornecedores = $q->orderBy('razaosocial')
+                          ->paginate($porPagina)
+                          ->withQueryString();
+
         return view('fornecedores.index', compact('fornecedores'));
     }
 
@@ -21,35 +43,40 @@ class AppFornecedorController extends Controller
         return view('fornecedores.create');
     }
 
-    public function store(Request $request)
+    public function store(FornecedorRequest $request)
     {
-        $data = $request->all();
-        $data['status'] = $request->has('status');
+        Fornecedor::create($request->validated());
 
-        Fornecedor::create($data);
-
-        return redirect()->route('fornecedores.index')->with('success', 'Fornecedor cadastrado com sucesso!');
+        return redirect()
+            ->route('fornecedores.index')
+            ->with('success', 'Fornecedor cadastrado com sucesso!');
     }
 
-    public function edit($id)
+    public function edit(Fornecedor $fornecedore)
     {
-        $fornecedor = Fornecedor::findOrFail($id);
-        return view('fornecedores.edit', compact('fornecedor'));
+        return view('fornecedores.edit', ['fornecedor' => $fornecedore]);
     }
 
-    public function update(Request $request, $id)
+    public function update(FornecedorRequest $request, Fornecedor $fornecedore)
     {
-        $fornecedor = Fornecedor::findOrFail($id);
-        $data = $request->all();
-        $data['status'] = $request->has('status');
-        $fornecedor->update($data);
+        $fornecedore->update($request->validated());
 
-        return redirect()->route('fornecedores.index')->with('success', 'Fornecedor atualizado com sucesso!');
+        return redirect()
+            ->route('fornecedores.index')
+            ->with('success', 'Fornecedor atualizado com sucesso!');
     }
 
-    public function destroy($id)
+    public function destroy(Fornecedor $fornecedore)
     {
-        Fornecedor::destroy($id);
-        return redirect()->route('fornecedores.index')->with('success', 'Fornecedor excluído com sucesso!');
+        $fornecedore->delete();
+
+        return redirect()
+            ->route('fornecedores.index')
+            ->with('success', 'Fornecedor excluído com sucesso!');
+    }
+
+    public function show(Fornecedor $fornecedore)
+    {
+        return view('fornecedores.show', ['fornecedor' => $fornecedore]);
     }
 }

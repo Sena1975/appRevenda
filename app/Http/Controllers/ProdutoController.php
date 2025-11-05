@@ -11,30 +11,36 @@ use Illuminate\Support\Facades\DB;
 
 class ProdutoController extends Controller
 {
- public function index(Request $request)
-{
-    $query = \App\Models\Produto::with(['categoria', 'subcategoria', 'fornecedor']);
+    public function index(Request $request)
+    {
+        $query = Produto::with(['categoria', 'subcategoria', 'fornecedor']);
 
-    if ($request->filled('busca')) {
-        $query->where(function ($q) use ($request) {
-            $q->where('nome', 'like', '%' . $request->busca . '%')
-              ->orWhere('codfab', 'like', '%' . $request->busca . '%');
-        });
+        // Filtros
+        if ($request->filled('busca')) {
+            $busca = trim($request->busca);
+            $query->where(function ($q) use ($busca) {
+                $q->where('nome', 'like', '%' . $busca . '%')
+                    ->orWhere('codfab', 'like', '%' . $busca . '%')
+                    ->orWhere('codfabnumero', 'like', '%' . $busca . '%');
+            });
+        }
+
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+
+        // Itens por página (somente valores permitidos)
+        $allowed = [10, 25, 50, 100];
+        $porPagina = (int) $request->get('por_pagina', 10);
+        if (! in_array($porPagina, $allowed)) {
+            $porPagina = 10;
+        }
+
+        $produtos   = $query->orderBy('nome')->paginate($porPagina)->withQueryString();
+        $categorias = Categoria::orderBy('nome')->get();
+
+        return view('produtos.index', compact('produtos', 'categorias'));
     }
-
-    if ($request->filled('categoria_id')) {
-        $query->where('categoria_id', $request->categoria_id);
-    }
-
-    $porPagina = $request->get('por_pagina', 10);
-
-    $produtos = $query->orderBy('nome')->paginate($porPagina);
-    $categorias = \App\Models\Categoria::orderBy('nome')->get();
-
-    return view('produtos.index', compact('produtos', 'categorias'));
-}
-
-
 
     public function create()
     {

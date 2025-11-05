@@ -20,88 +20,65 @@ use App\Http\Controllers\TabelaprecoController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\ContasReceberController;
-use App\Http\Controllers\BaixaReceberController;
 use App\Http\Controllers\PlanoPagamentoController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\CampanhaController;
 use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
-
-
-
-
-
-use App\Models\PlanoPagamento;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Aqui ficam todas as rotas da aplicação web protegidas por autenticação.
-| Todas as funcionalidades do painel (CRUDs, relatórios e consultas)
-| estão organizadas dentro do grupo middleware(['auth']).
-|
 */
-
-// Página inicial (welcome)
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Painel principal
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
-// Agrupamento de rotas protegidas por autenticação
 Route::middleware(['auth'])->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     /*
     |--------------------------------------------------------------------------
     | CADASTROS BÁSICOS
     |--------------------------------------------------------------------------
     */
-
     Route::resource('produtos', ProdutoController::class);
     Route::resource('fornecedores', AppFornecedorController::class);
     Route::resource('categorias', CategoriaController::class);
     Route::resource('subcategorias', SubcategoriaController::class);
     Route::resource('revendedoras', RevendedoraController::class);
-    Route::resource('equiperevenda', EquipeRevendaController::class);
+    Route::resource('equiperevenda', \App\Http\Controllers\EquipeRevendaController::class);
     Route::resource('supervisores', SupervisorController::class);
     Route::resource('clientes', ClienteController::class);
     Route::resource('tabelapreco', TabelaprecoController::class);
+
     /*
     |--------------------------------------------------------------------------
     | LOCALIZAÇÃO (UF, CIDADES, BAIRROS)
     |--------------------------------------------------------------------------
+    | Mantemos APENAS as rotas do controller para evitar duplicidade de URIs.
     */
- 
-    Route::get('/get-cidades/{uf_id}', [LocalizacaoController::class, 'getCidades'])->name('get.cidades');
+    Route::get('/get-cidades/{uf_id}',   [LocalizacaoController::class, 'getCidades'])->name('get.cidades');
     Route::get('/get-bairros/{cidade_id}', [LocalizacaoController::class, 'getBairros'])->name('get.bairros');
-    Route::get('/get-localizacao', [LocalizacaoController::class, 'getLocalizacao'])->name('get.localizacao');
-Route::get('/get-cidades/{ufId}', function ($ufId) {
-    return DB::table('appcidade')
-        ->where('uf_id', $ufId)
-        ->orderBy('nome')
-        ->get(['id','nome']);
-})->name('ajax.cidades');
+    Route::get('/get-localizacao',       [LocalizacaoController::class, 'getLocalizacao'])->name('get.localizacao');
 
-Route::get('/get-bairros/{cidadeId}', function ($cidadeId) {
-    return DB::table('appbairro')
-        ->where('cidade_id', $cidadeId)
-        ->orderBy('nome')
-        ->get(['id','nome']);
-})->name('ajax.bairros');
     /*
     |--------------------------------------------------------------------------
     | COMPRAS E ESTOQUE
     |--------------------------------------------------------------------------
-    */    
-    Route::get('/compras/{id}/importar', [PedidoCompraController::class, 'importarItens'])->name('compras.importar');
+    */
+    Route::get('/compras/{id}/importar',  [PedidoCompraController::class, 'importarItens'])->name('compras.importar');
     Route::post('/compras/{id}/importar', [PedidoCompraController::class, 'processarImportacao'])->name('compras.processarImportacao');
-    Route::get('/compras/{id}/exportar', [PedidoCompraController::class, 'exportarItens'])->name('compras.exportar');
+    Route::get('/compras/{id}/exportar',  [PedidoCompraController::class, 'exportarItens'])->name('compras.exportar');
     Route::resource('compras', PedidoCompraController::class);
 
     Route::resource('estoque', EstoqueController::class);
@@ -109,97 +86,112 @@ Route::get('/get-bairros/{cidadeId}', function ($cidadeId) {
 
     /*
     |--------------------------------------------------------------------------
-    | VENDAS E FINANCEIRO
+    | VENDAS
     |--------------------------------------------------------------------------
     */
-    // Vendas
-    Route::resource('vendas', \App\Http\Controllers\PedidoVendaController::class);
- // Exportar um pedido de venda (CSV)
-    Route::get('vendas/{id}/exportar', [\App\Http\Controllers\PedidoVendaController::class, 'exportar'])
-        ->name('vendas.exportar');
-    Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');    
+    Route::resource('vendas', PedidoVendaController::class);
+    Route::get('vendas/{id}/exportar', [PedidoVendaController::class, 'exportar'])->name('vendas.exportar');
+    Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');
 
-    // Route::put('vendas/{id}/status', [PedidoVendaController::class, 'updateStatus'])->name('vendas.updateStatus');
+    /*
+    |--------------------------------------------------------------------------
+    | FINANCEIRO – CONTAS A RECEBER
+    |--------------------------------------------------------------------------
+    | Alinhado ao ContasReceberController (métodos: baixa [GET], baixar [POST], recibo).
+    | Mantemos um alias baixaForm() no controller para compatibilidade, se algum
+    | link antigo chamar.
+    */
 
-    // Route::resource('vendas', PedidoVendaController::class);
-    // Route::get('/vendas/novo', [PedidoVendaController::class, 'create'])->name('vendas.create');
-    // Route::post('/vendas', [PedidoVendaController::class, 'store'])->name('vendas.store');
+Route::resource('contasreceber', \App\Http\Controllers\ContasReceberController::class);
 
-    // Contas a receber e baixas
-    // Route::get('financeiro/contas', [ContasReceberController::class, 'index'])->name('contas.index');
-    // Route::get('financeiro/contas/{id}', [ContasReceberController::class, 'show'])->name('contas.show');
-    // Route::get('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'create'])->name('baixa.create');
-    // Route::post('financeiro/contas/{id}/baixa', [BaixaReceberController::class, 'store'])->name('baixa.store');
+// Baixa (GET formulário / POST efetiva)
+Route::get('contasreceber/{id}/baixa',  [\App\Http\Controllers\ContasReceberController::class, 'baixar'])
+    ->name('contasreceber.baixa');
+Route::post('contasreceber/{id}/baixa', [\App\Http\Controllers\ContasReceberController::class, 'baixarStore'])
+    ->name('contasreceber.baixa.store');
+// Estorno + Recibo
+Route::post('contasreceber/{id}/estornar', [\App\Http\Controllers\ContasReceberController::class, 'estornar'])
+    ->name('contasreceber.estornar');
+Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
+    ->name('contasreceber.recibo');
 
     /*
     |--------------------------------------------------------------------------
     | FORMAS E PLANOS DE PAGAMENTO
     |--------------------------------------------------------------------------
-    */   
-
-    Route::resource('planopagamento', PlanoPagamentoController::class);   
+    */
+    Route::resource('planopagamento', PlanoPagamentoController::class);
     Route::resource('formapagamento', FormaPagamentoController::class);
 
-    // Ajax: buscar planos de pagamento por forma
+    // Ajax oficial usado no front (create/edit de vendas)
     Route::get('/planos-por-forma/{forma_id}', [PlanoPagamentoController::class, 'getByForma'])
         ->name('planopagamento.getByForma');
 
-
-    // VERIFICAR PLANOS     
-    Route::get('planos/byforma/{id}', [PlanoPagamentoController::class, 'getByForma']);    
-    Route::get('planos/by-forma/{formaId}', function($formaId) {return PlanoPagamento::where('forma_pagamento_id', $formaId)->get();});
-
-
-
-    Route::resource('contasreceber', ContasReceberController::class);
-
-  
-
-    // // Opcional: endpoint para buscar detalhes de produto pelo código (se precisar)
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)
+    |--------------------------------------------------------------------------
+    */
     Route::get('/produto/bycod/{codfabnumero}', function ($codfabnumero) {
-    $produto = DB::table('appproduto')
-        ->join('apptabelapreco', 'appproduto.id', '=', 'apptabelapreco.produto_id')
-        ->where('appproduto.codfabnumero', $codfabnumero)
-        ->select(
-            'appproduto.id',
-            'appproduto.codfabnumero',
-            'appproduto.nome',
-            'apptabelapreco.preco_compra',
-            'apptabelapreco.preco_revenda as preco_venda',
-            'apptabelapreco.pontuacao'
-        )
-        ->first();
+        $hoje = now()->toDateString();
 
-    return response()->json($produto ?? []);
+        $produto = DB::table('appproduto as p')
+            ->leftJoin('apptabelapreco as t', function ($join) use ($hoje) {
+                $join->on('t.produto_id', '=', 'p.id')
+                    ->where('t.status', 1)
+                    ->whereDate('t.data_inicio', '<=', $hoje)
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('t.data_fim')
+                            ->orWhereDate('t.data_fim', '>=', $hoje);
+                    });
+            })
+            ->where('p.codfabnumero', $codfabnumero)
+            ->select(
+                'p.id',
+                'p.codfabnumero',
+                'p.nome',
+                DB::raw('COALESCE(t.preco_compra, 0) as preco_compra'),
+                DB::raw('COALESCE(t.preco_revenda, 0) as preco_venda'),
+                DB::raw('COALESCE(t.pontuacao, 0) as pontuacao')
+            )
+            ->first();
+
+        return response()->json($produto ?? []);
     });
+
     /*
     |--------------------------------------------------------------------------
     | PERFIL DO USUÁRIO
     |--------------------------------------------------------------------------
     */
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile',  [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/aniversariantes/{mes}', [AniversarianteController::class, 'listar']);
+    /*
+    |--------------------------------------------------------------------------
+    | API simples para o painel
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/aniversariantes/{mes}/json', [AniversarianteController::class, 'listarJson'])
+        ->whereNumber('mes')
+        ->name('aniversariantes.json');
 
     /*
     |--------------------------------------------------------------------------
     | CAMPANHAS
     |--------------------------------------------------------------------------
-    */    
+    */
     Route::prefix('campanhas')->group(function () {
-    Route::get('/', [CampanhaController::class, 'index'])->name('campanhas.index'); // opcional
-    Route::get('/create', [CampanhaController::class, 'create'])->name('campanhas.create');
-    Route::post('/', [CampanhaController::class, 'store'])->name('campanhas.store');
+        Route::get('/',       [CampanhaController::class, 'index'])->name('campanhas.index');
+        Route::get('/create', [CampanhaController::class, 'create'])->name('campanhas.create');
+        Route::post('/',      [CampanhaController::class, 'store'])->name('campanhas.store');
 
-    // Rotas de restrições (precisam do {campanha})
-    Route::get('{campanha}/restricoes', [CampanhaProdutoController::class, 'index'])->name('campanhas.restricoes');
-    Route::post('{campanha}/restricoes', [CampanhaProdutoController::class, 'store'])->name('campanhas.restricoes.store');
-    Route::delete('{campanha}/restricoes/{id}', [CampanhaProdutoController::class, 'destroy'])->name('campanhas.restricoes.destroy');
-    
-});    
-
+        // Restrições
+        Route::get('{campanha}/restricoes',         [CampanhaProdutoController::class, 'index'])->name('campanhas.restricoes');
+        Route::post('{campanha}/restricoes',        [CampanhaProdutoController::class, 'store'])->name('campanhas.restricoes.store');
+        Route::delete('{campanha}/restricoes/{id}', [CampanhaProdutoController::class, 'destroy'])->name('campanhas.restricoes.destroy');
+    });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

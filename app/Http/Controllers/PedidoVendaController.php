@@ -17,7 +17,7 @@ use App\Models\Produto;
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
-use App\Services\CampaignEvaluatorService; // <<< ADICIONADO
+use App\Services\CampaignEvaluatorService; // <<<
 
 class PedidoVendaController extends Controller
 {
@@ -31,13 +31,22 @@ class PedidoVendaController extends Controller
     }
 
     /**
-     * Lista pedidos
+     * Lista pedidos (com filtros: cliente, período e status)
      */
-    public function index()
+    public function index(Request $request)
     {
-        $pedidos = PedidoVenda::with(['cliente:id,nome', 'revendedora:id,nome'])
-            ->orderByDesc('id')
-            ->paginate(10);
+        $q = PedidoVenda::with(['cliente:id,nome', 'revendedora:id,nome']);
+
+        // Filtro por status
+        $status = strtoupper((string)$request->query('status', ''));
+        if ($status === 'PENDENTES') {
+            $q->whereIn('status', ['PENDENTE', 'ABERTO']);
+        } elseif (in_array($status, ['PENDENTE', 'ABERTO', 'ENTREGUE', 'CANCELADO'])) {
+            $q->where('status', $status);
+        }
+
+        // (espaço pra filtros extras no futuro, ex: cliente, datas etc.)
+        $pedidos = $q->orderByDesc('id')->paginate(10)->appends($request->query());
 
         return view('vendas.index', compact('pedidos'));
     }
@@ -47,12 +56,12 @@ class PedidoVendaController extends Controller
      */
     public function create()
     {
-        $clientes     = Cliente::orderBy('nome')->get(['id','nome']);
-        $revendedoras = Revendedora::orderBy('nome')->get(['id','nome']);
-        $formas       = FormaPagamento::orderBy('nome')->get(['id','nome']);
-        $produtos     = Produto::orderBy('nome')->get(['id','nome','codfabnumero']);
+        $clientes     = Cliente::orderBy('nome')->get(['id', 'nome']);
+        $revendedoras = Revendedora::orderBy('nome')->get(['id', 'nome']);
+        $formas       = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
+        $produtos     = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
 
-        return view('vendas.create', compact('clientes','revendedoras','formas','produtos'));
+        return view('vendas.create', compact('clientes', 'revendedoras', 'formas', 'produtos'));
     }
 
     /**
@@ -82,7 +91,7 @@ class PedidoVendaController extends Controller
 
             'pontuacao'        => 'nullable|integer|min:0',
             'pontuacao_total'  => 'nullable|integer|min:0',
-        ],[
+        ], [
             'cliente_id.required'         => 'Selecione um cliente.',
             'forma_pagamento_id.required' => 'Selecione a forma de pagamento.',
             'plano_pagamento_id.required' => 'Selecione o plano de pagamento.',
@@ -120,7 +129,7 @@ class PedidoVendaController extends Controller
                 'status'             => 'PENDENTE',
                 'forma_pagamento_id' => $request->forma_pagamento_id,
                 'plano_pagamento_id' => $request->plano_pagamento_id,
-                'codplano'           => $request->codplano, // VARCHAR(20)
+                'codplano'           => $request->codplano,
                 'valor_total'        => $total,
                 'valor_desconto'     => $desconto,
                 'valor_liquido'      => $liquido,
@@ -160,14 +169,14 @@ class PedidoVendaController extends Controller
             // >>> APLICA / REAVALIA CAMPANHAS AO SALVAR <<<
             $pedido->load('itens');
             $service   = app(CampaignEvaluatorService::class);
-            $campanhas = $service->reavaliarPedido($pedido); // idempotente: limpa e reaplica
+            $campanhas = $service->reavaliarPedido($pedido); // idempotente
             session()->flash('campanhas', $campanhas);
 
             DB::commit();
             return redirect()->route('vendas.index')->with('success', 'Pedido salvo como PENDENTE, estoque reservado, parcelas geradas e campanhas aplicadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Erro ao salvar: '.$e->getMessage())->withInput();
+            return back()->with('error', 'Erro ao salvar: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -179,21 +188,19 @@ class PedidoVendaController extends Controller
         $pedido = PedidoVenda::with(['itens.produto:id,nome,codfabnumero', 'cliente:id,nome', 'revendedora:id,nome'])
             ->findOrFail($id);
 
-        $clientes     = Cliente::orderBy('nome')->get(['id','nome']);
-        $revendedoras = Revendedora::orderBy('nome')->get(['id','nome']);
-        $formas       = FormaPagamento::orderBy('nome')->get(['id','nome']);
-        // Busca planos da forma atual do pedido
+        $clientes     = Cliente::orderBy('nome')->get(['id', 'nome']);
+        $revendedoras = Revendedora::orderBy('nome')->get(['id', 'nome']);
+        $formas       = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
         $planos       = PlanoPagamento::where('formapagamento_id', $pedido->forma_pagamento_id)
-                            ->orderBy('descricao')
-                            ->get(['id','descricao','formapagamento_id','parcelas','prazo1','prazo2','prazo3']);
-        $produtos     = Produto::orderBy('nome')->get(['id','nome','codfabnumero']);
+            ->orderBy('descricao')
+            ->get(['id', 'descricao', 'formapagamento_id', 'parcelas', 'prazo1', 'prazo2', 'prazo3']);
+        $produtos     = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
 
-        return view('vendas.edit', compact('pedido','clientes','revendedoras','formas','planos','produtos'));
+        return view('vendas.edit', compact('pedido', 'clientes', 'revendedoras', 'formas', 'planos', 'produtos'));
     }
 
     /**
-     * Atualiza pedido (mantém como estiver; se ainda PENDENTE, mantém reserva)
-     * + reavalia campanhas
+     * Atualiza (e reavalia campanhas)
      */
     public function update(Request $request, $id)
     {
@@ -243,7 +250,6 @@ class PedidoVendaController extends Controller
             $desconto = (float)($request->valor_desconto ?? 0);
             $liquido  = max(0, $total - $desconto);
 
-            // Atualiza cabeçalho (mantém status atual)
             $pedido->update([
                 'cliente_id'         => $request->cliente_id,
                 'revendedora_id'     => $request->revendedora_id,
@@ -283,9 +289,8 @@ class PedidoVendaController extends Controller
                 ]);
             }
 
-            // Se o pedido ainda for PENDENTE, garantimos que a RESERVA esteja coerente:
+            // Reserva se ainda pendente
             if (strtoupper($pedido->status) === 'PENDENTE') {
-                // Remove movimentos PENDENTES antigos deste pedido e reverte reserva antiga
                 $old = $pedido->load('itens');
                 foreach ($old->itens as $itemOld) {
                     DB::table('appestoque')
@@ -301,15 +306,14 @@ class PedidoVendaController extends Controller
                     ->where('status', 'PENDENTE')
                     ->delete();
 
-                // Reaplica reserva conforme itens novos
                 $pedido->load('itens.produto');
                 $this->estoque->reservarVenda($pedido);
             }
 
-            // Recalcula/gera CR (apaga ABERTAS e gera de novo)
+            // Recalcula/gera CR
             $this->cr->recalcularParaPedido($pedido);
 
-            // >>> REAVALIA CAMPANHAS NA EDIÇÃO <<<
+            // Reavalia campanhas
             $pedido->load('itens');
             $service   = app(CampaignEvaluatorService::class);
             $campanhas = $service->reavaliarPedido($pedido);
@@ -319,32 +323,28 @@ class PedidoVendaController extends Controller
             return redirect()->route('vendas.index')->with('success', 'Pedido atualizado, reservas/parcelas ajustadas e campanhas reavaliadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Erro ao atualizar: '.$e->getMessage())->withInput();
+            return back()->with('error', 'Erro ao atualizar: ' . $e->getMessage())->withInput();
         }
     }
 
     /**
-     * Confirma pedido: baixa gerencial e libera reserva
-     * + reavalia campanhas na confirmação para consistência final
+     * Confirma pedido
      */
     public function confirmar($id)
     {
         $pedido = PedidoVenda::with('itens.produto')->findOrFail($id);
 
-        if (!in_array(strtoupper($pedido->status), ['PENDENTE','ABERTO'])) {
+        if (!in_array(strtoupper($pedido->status), ['PENDENTE', 'ABERTO'])) {
             return back()->with('info', 'Este pedido não está pendente para confirmação.');
         }
 
         DB::beginTransaction();
         try {
-            // Status ENTREGUE
             $pedido->status = 'ENTREGUE';
             $pedido->save();
 
-            // Baixa gerencial e libera reserva
             $this->estoque->confirmarSaidaVenda($pedido);
 
-            // >>> REAVALIA CAMPANHAS NA CONFIRMAÇÃO <<<
             $pedido->load('itens');
             $service   = app(CampaignEvaluatorService::class);
             $campanhas = $service->reavaliarPedido($pedido);
@@ -354,7 +354,7 @@ class PedidoVendaController extends Controller
             return redirect()->route('vendas.index')->with('success', 'Pedido confirmado, reserva liberada, estoque baixado e campanhas reavaliadas.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return back()->with('error', 'Falha ao confirmar pedido: '.$e->getMessage());
+            return back()->with('error', 'Falha ao confirmar pedido: ' . $e->getMessage());
         }
     }
 
@@ -417,15 +417,12 @@ class PedidoVendaController extends Controller
         try {
             $pedido = PedidoVenda::with('itens.produto')->findOrFail($id);
 
-            // Se estava PENDENTE, desfaz a reserva usando o service (insere movimentação de estorno)
             if (strtoupper($pedido->status) === 'PENDENTE') {
                 $this->estoque->cancelarReservaVenda($pedido);
             }
 
-            // Cancela parcelas ABERTAS do CR
             $this->cr->cancelarAbertasPorPedido($pedido->id);
 
-            // Exclui itens e pedido
             ItemVenda::where('pedido_id', $pedido->id)->delete();
             $pedido->delete();
 
@@ -433,7 +430,7 @@ class PedidoVendaController extends Controller
             return redirect()->route('vendas.index')->with('success', 'Pedido excluído com sucesso.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return redirect()->route('vendas.index')->with('error', 'Erro ao excluir: '.$e->getMessage());
+            return redirect()->route('vendas.index')->with('error', 'Erro ao excluir: ' . $e->getMessage());
         }
     }
 }

@@ -3,59 +3,62 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supervisor;
+use App\Http\Requests\SupervisorRequest;
 use Illuminate\Http\Request;
 
 class SupervisorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $supervisores = Supervisor::orderBy('nome')->get();
+        $q = Supervisor::query();
+
+        if ($request->filled('busca')) {
+            $busca = trim($request->busca);
+            $q->where(function($w) use ($busca){
+                $w->where('nome','like',"%{$busca}%")
+                  ->orWhere('cpf','like',"%{$busca}%")
+                  ->orWhere('email','like',"%{$busca}%");
+            });
+        }
+
+        if ($request->filled('status') && in_array($request->status, ['0','1'], true)) {
+            $q->where('status', (int)$request->status);
+        }
+
+        $pp = in_array((int)$request->por_pagina,[10,25,50,100]) ? (int)$request->por_pagina : 10;
+
+        $supervisores = $q->orderBy('nome')->paginate($pp)->withQueryString();
+
         return view('supervisores.index', compact('supervisores'));
     }
 
-    public function create()
+    public function create() { return view('supervisores.create'); }
+
+    public function store(SupervisorRequest $request)
     {
-        return view('supervisores.create');
+        Supervisor::create($request->validated());
+        return redirect()->route('supervisores.index')->with('success','Supervisor cadastrado com sucesso!');
     }
 
-    public function show($id)
+    public function edit(Supervisor $supervisore)
     {
-        $supervisor = Supervisor::with('equipes')->findOrFail($id);
-        return view('supervisores.show', compact('supervisor'));
+        return view('supervisores.edit', ['supervisor'=>$supervisore]);
     }
 
-
-    public function store(Request $request)
+    public function update(SupervisorRequest $request, Supervisor $supervisore)
     {
-        $request->validate([
-            'nome' => 'required|string|max:150',
-            'cpf' => 'nullable|string|max:14',
-            'email' => 'nullable|email|max:120',
-        ]);
-
-        Supervisor::create($request->all());
-
-        return redirect()->route('supervisores.index')->with('success', 'Supervisor cadastrado com sucesso!');
+        $supervisore->update($request->validated());
+        return redirect()->route('supervisores.index')->with('success','Supervisor atualizado com sucesso!');
     }
 
-    public function edit($id)
+    public function destroy(Supervisor $supervisore)
     {
-        $supervisor = Supervisor::findOrFail($id);
-        return view('supervisores.edit', compact('supervisor'));
+        $supervisore->delete();
+        return redirect()->route('supervisores.index')->with('success','Supervisor excluído com sucesso!');
     }
 
-
-    public function update(Request $request, $id)
+    public function show(Supervisor $supervisore)
     {
-        $supervisor = Supervisor::findOrFail($id);
-        $supervisor->update($request->all());
-
-        return redirect()->route('supervisores.index')->with('success', 'Supervisor atualizado com sucesso!');
-    }
-
-    public function destroy(Supervisor $supervisor)
-    {
-        $supervisor->delete();
-        return redirect()->route('supervisores.index')->with('success', 'Supervisor excluído com sucesso!');
+        return view('supervisores.show', ['supervisor'=>$supervisore]);
     }
 }

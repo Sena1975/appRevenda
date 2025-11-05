@@ -1,230 +1,104 @@
+{{-- resources/views/fornecedores/edit.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-700">Editar Fornecedor</h2>
     </x-slot>
 
-    <div class="bg-white shadow rounded-lg p-6 max-w-5xl mx-auto">
-        <form action="{{ route('fornecedores.update', $fornecedor->id) }}" method="POST">
+    <div class="bg-white shadow rounded-lg p-6 max-w-4xl mx-auto">
+        @if ($errors->any())
+            <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-red-800">
+                <ul class="list-disc pl-5 text-sm">
+                    @foreach ($errors->all() as $e)
+                        <li>{{ $e }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form action="{{ route('fornecedores.update', $fornecedor) }}" method="POST">
             @csrf
             @method('PUT')
 
-            <div class="grid grid-cols-2 gap-4">
-                <!-- Razão Social -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Razão Social</label>
-                    <input type="text" name="razaosocial" value="{{ $fornecedor->razaosocial }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="razaosocial" value="{{ old('razaosocial', $fornecedor->razaosocial) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" required>
                 </div>
 
-                <!-- Nome Fantasia -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nome Fantasia</label>
-                    <input type="text" name="nomefantasia" value="{{ $fornecedor->nomefantasia }}" class="w-full border-gray-300 rounded-md shadow-sm" required>
+                    <input type="text" name="nomefantasia" value="{{ old('nomefantasia', $fornecedor->nomefantasia) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
 
-                <!-- CNPJ -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">CNPJ</label>
-                    <input type="text" name="cnpj" value="{{ $fornecedor->cnpj }}" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="00.000.000/0000-00">
+                    <label class="block text-sm font-medium text-gray-700">CNPJ (apenas dígitos)</label>
+                    <input type="text" name="cnpj" value="{{ old('cnpj', $fornecedor->cnpj) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="14" required>
                 </div>
 
-                <!-- Pessoa de Contato -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Pessoa de Contato</label>
-                    <input type="text" name="pessoacontato" value="{{ $fornecedor->pessoacontato }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">Pessoa Contato</label>
+                    <input type="text" name="pessoacontato" value="{{ old('pessoacontato', $fornecedor->pessoacontato) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
 
-                <!-- Telefone -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Telefone</label>
-                    <input type="text" name="telefone" value="{{ $fornecedor->telefone }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="telefone" value="{{ old('telefone', $fornecedor->telefone) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="20">
                 </div>
 
-                <!-- WhatsApp -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">WhatsApp</label>
-                    <input type="text" name="whatsapp" value="{{ $fornecedor->whatsapp }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="whatsapp" value="{{ old('whatsapp', $fornecedor->whatsapp) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="20">
                 </div>
 
-                <!-- Telegram -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Telegram</label>
-                    <input type="text" name="telegram" value="{{ $fornecedor->telegram }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="telegram" value="{{ old('telegram', $fornecedor->telegram) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="50">
                 </div>
 
-                <!-- Instagram -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Instagram</label>
-                    <input type="text" name="instagram" value="{{ $fornecedor->instagram }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="instagram" value="{{ old('instagram', $fornecedor->instagram) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="100">
                 </div>
 
-                <!-- Facebook -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Facebook</label>
-                    <input type="text" name="facebook" value="{{ $fornecedor->facebook }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="facebook" value="{{ old('facebook', $fornecedor->facebook) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="100">
                 </div>
 
-                <!-- Email -->
-                <div>
+                <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">E-mail</label>
-                    <input type="email" name="email" value="{{ $fornecedor->email }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="email" name="email" value="{{ old('email', $fornecedor->email) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="120">
                 </div>
 
-                <!-- Endereço -->
-                <div class="col-span-2">
+                <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Endereço</label>
-                    <input type="text" name="endereco" value="{{ $fornecedor->endereco }}" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="text" name="endereco" value="{{ old('endereco', $fornecedor->endereco) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm" maxlength="200">
                 </div>
 
-                <!-- Status -->
-                <div class="col-span-2 flex items-center mt-2">
-                    <input type="checkbox" name="status" value="1" {{ $fornecedor->status ? 'checked' : '' }} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                    <label class="ml-2 text-sm text-gray-700">Ativo</label>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <select name="status" class="w-full border-gray-300 rounded-md shadow-sm">
+                        <option value="1" {{ (int)old('status', $fornecedor->status)===1 ? 'selected' : '' }}>Ativo</option>
+                        <option value="0" {{ (int)old('status', $fornecedor->status)===0 ? 'selected' : '' }}>Inativo</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- Botões -->
-            <div class="mt-8 flex justify-end">
-                <a href="{{ route('fornecedores.index') }}" 
-                   class="px-5 py-2 mr-6 bg-gray-500 text-white font-semibold rounded-md shadow hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 transition">
-                    ❌ Cancelar
-                </a>
-
-                <button type="submit" 
-                    class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition">
-                    💾 Salvar
-                </button>
+            <div class="flex justify-end mt-6 gap-3">
+                <a href="{{ route('fornecedores.index') }}" class="rounded border px-4 py-2 hover:bg-gray-50">Cancelar</a>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Atualizar</button>
             </div>
         </form>
     </div>
-
-    {{-- Script de preenchimento automático via CNPJ
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const cnpjInput = document.querySelector('input[name="cnpj"]');
-
-        cnpjInput.addEventListener('blur', async function() {
-            let cnpj = this.value.replace(/\D/g, '');
-            if (cnpj.length !== 14) {
-                alert('CNPJ inválido!');
-                return;
-            }
-
-            cnpjInput.style.backgroundColor = '#fef9c3'; // amarelo (carregando)
-
-            try {
-                const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`);
-                if (!response.ok) throw new Error('Erro ao consultar o CNPJ');
-                const data = await response.json();
-
-                const nomeFantasia = data.nome_fantasia && data.nome_fantasia.trim() !== ''
-                    ? data.nome_fantasia
-                    : data.razao_social;
-
-                const est = data.estabelecimento ?? {};
-                const endereco = [
-                    est.logradouro,
-                    est.numero,
-                    est.bairro,
-                    est.cidade?.nome,
-                    est.estado?.sigla
-                ].filter(Boolean).join(', ');
-
-                document.querySelector('input[name="razaosocial"]').value = data.razao_social ?? '';
-                document.querySelector('input[name="nomefantasia"]').value = nomeFantasia ?? '';
-                document.querySelector('input[name="email"]').value = est.email ?? '';
-                document.querySelector('input[name="telefone"]').value = est.telefone1 ?? '';
-                document.querySelector('input[name="endereco"]').value = endereco ?? '';
-                document.querySelector('input[name="status"]').checked = true;
-
-                cnpjInput.style.backgroundColor = '#dcfce7'; // verde (sucesso)
-            } catch (error) {
-                alert('Erro ao buscar CNPJ ou CNPJ não encontrado.');
-                cnpjInput.style.backgroundColor = '#fee2e2'; // vermelho (erro)
-            }
-        });
-    });
-    </script>
- --}}
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const cnpjInput = document.querySelector('input[name="cnpj"]');
-    const telInput = document.querySelector('input[name="telefone"]');
-    const whatsappInput = document.querySelector('input[name="whatsapp"]');
-
-    // --- MÁSCARA DE CNPJ ---
-    cnpjInput.addEventListener('input', function() {
-        let value = this.value.replace(/\D/g, '');
-        if (value.length > 14) value = value.slice(0, 14);
-        value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-        value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-        value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
-        value = value.replace(/(\d{4})(\d)/, '$1-$2');
-        this.value = value;
-    });
-
-    // --- MÁSCARA DE TELEFONE ---
-    function aplicarMascaraTelefone(campo) {
-        campo.addEventListener('input', function() {
-            let value = this.value.replace(/\D/g, '');
-            if (value.length > 11) value = value.slice(0, 11);
-
-            if (value.length <= 10) {
-                value = value.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-            } else {
-                value = value.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-            }
-
-            this.value = value;
-        });
-    }
-
-    aplicarMascaraTelefone(telInput);
-    aplicarMascaraTelefone(whatsappInput);
-
-    // --- CONSULTA DE CNPJ ---
-    cnpjInput.addEventListener('blur', async function() {
-        let cnpj = this.value.replace(/\D/g, '');
-        if (cnpj.length !== 14) {
-            alert('CNPJ inválido!');
-            return;
-        }
-
-        cnpjInput.style.backgroundColor = '#fef9c3'; // amarelo (carregando)
-
-        try {
-            const response = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`);
-            if (!response.ok) throw new Error('Erro ao consultar o CNPJ');
-            const data = await response.json();
-
-            const nomeFantasia = data.nome_fantasia && data.nome_fantasia.trim() !== ''
-                ? data.nome_fantasia
-                : data.razao_social;
-
-            const est = data.estabelecimento ?? {};
-            const endereco = [
-                est.logradouro,
-                est.numero,
-                est.bairro,
-                est.cidade?.nome,
-                est.estado?.sigla
-            ].filter(Boolean).join(', ');
-
-            document.querySelector('input[name="razaosocial"]').value = data.razao_social ?? '';
-            document.querySelector('input[name="nomefantasia"]').value = nomeFantasia ?? '';
-            document.querySelector('input[name="email"]').value = est.email ?? '';
-            document.querySelector('input[name="telefone"]').value = est.telefone1 ?? '';
-            document.querySelector('input[name="endereco"]').value = endereco ?? '';
-            document.querySelector('input[name="status"]').checked = true;
-
-            cnpjInput.style.backgroundColor = '#dcfce7'; // verde (sucesso)
-        } catch (error) {
-            console.error(error);
-            alert('Erro ao buscar CNPJ ou CNPJ não encontrado.');
-            cnpjInput.style.backgroundColor = '#fee2e2'; // vermelho (erro)
-        }
-    });
-});
-</script>
-
-
 </x-app-layout>

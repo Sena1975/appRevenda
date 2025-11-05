@@ -19,6 +19,51 @@
         <div class="mb-3 p-3 rounded bg-blue-100 text-blue-800">{{ session('info') }}</div>
     @endif
 
+    {{-- FILTROS --}}
+    <form method="GET" action="{{ route('vendas.index') }}" class="mb-4 bg-white border rounded p-3">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            {{-- Cliente --}}
+            <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Cliente (nome)</label>
+                <input type="text" name="cliente" value="{{ request('cliente') }}"
+                       class="w-full border rounded px-3 py-2" placeholder="Ex.: Maria Silva">
+            </div>
+
+            {{-- Data inicial --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Data inicial</label>
+                <input type="date" name="data_ini" value="{{ request('data_ini') }}"
+                       class="w-full border rounded px-3 py-2">
+            </div>
+
+            {{-- Data final --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Data final</label>
+                <input type="date" name="data_fim" value="{{ request('data_fim') }}"
+                       class="w-full border rounded px-3 py-2">
+            </div>
+
+            {{-- Status --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select name="status" class="w-full border rounded px-3 py-2">
+                    @php
+                        $stSel = strtoupper(request('status', ''));
+                        $opts = ['' => 'Todos', 'PENDENTE'=>'Pendente', 'ABERTO'=>'Aberto', 'ENTREGUE'=>'Entregue', 'CANCELADO'=>'Cancelado'];
+                    @endphp
+                    @foreach($opts as $value => $label)
+                        <option value="{{ $value }}" @selected($stSel === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+
+        <div class="mt-3 flex items-center gap-2">
+            <button type="submit" class="px-3 py-2 bg-blue-600 text-white rounded">Filtrar</button>
+            <a href="{{ route('vendas.index') }}" class="px-3 py-2 border rounded">Limpar</a>
+        </div>
+    </form>
+
     <div class="overflow-x-auto bg-white border rounded">
         <table class="min-w-full">
             <thead class="bg-gray-50 text-sm">
@@ -47,6 +92,7 @@
                                 $badge  = match($status){
                                     'ENTREGUE'  => 'bg-green-100 text-green-800',
                                     'CANCELADO' => 'bg-red-100 text-red-800',
+                                    'ABERTO'    => 'bg-blue-100 text-blue-800',
                                     default     => 'bg-yellow-100 text-yellow-800',
                                 };
                             @endphp

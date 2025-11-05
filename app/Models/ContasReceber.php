@@ -2,82 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Cliente;
-use App\Models\Revendedora;
-use App\Models\PedidoVenda;
-use App\Models\FormaPagamento;
-use App\Models\BaixaReceber;
 
 class ContasReceber extends Model
 {
-    use HasFactory;
-
     protected $table = 'appcontasreceber';
+    protected $primaryKey = 'id';
 
     const CREATED_AT = 'criado_em';
     const UPDATED_AT = 'atualizado_em';
 
     protected $fillable = [
-        'pedido_id',
-        'cliente_id',
-        'revendedora_id',
-        'parcela',
-        'total_parcelas',
-        'forma_pagamento_id',
-        'data_emissao',
-        'data_vencimento',
-        'data_pagamento',
-        'valor',
-        'valor_pago',
-        'status',
-        'observacao',
+        'pedido_id','cliente_id','revendedora_id','parcela','total_parcelas',
+        'forma_pagamento_id','data_emissao','data_vencimento','valor',
+        'status','data_pagamento','valor_pago','nosso_numero','observacao',
+        'criado_em','atualizado_em'
     ];
 
-    /* ============================
-     * RELACIONAMENTOS
-     * ============================ */
+    protected $casts = [
+        'data_emissao'    => 'date',
+        'data_vencimento' => 'date',
+        // sem cast em data_pagamento para manter 'Y-m-d' como string (evita hora)
+        // sem cast em valor_pago para não envolver float/rounding
+        'valor'           => 'decimal:2',
+    ];
 
-    public function pedido()
-    {
-        return $this->belongsTo(PedidoVenda::class, 'pedido_id');
-    }
-
-    public function cliente()
-    {
-        return $this->belongsTo(Cliente::class, 'cliente_id');
-    }
-
-    public function revendedora()
-    {
-        return $this->belongsTo(Revendedora::class, 'revendedora_id');
-    }
-
-    public function formaPagamento()
-    {
-        return $this->belongsTo(FormaPagamento::class, 'forma_pagamento_id');
-    }
-
-    public function baixas()
-    {
-        return $this->hasMany(BaixaReceber::class, 'conta_id');
-    }
-
-    /* ============================
-     * MÉTODOS ÚTEIS
-     * ============================ */
-
-    // Retorna o saldo a receber (valor - valor pago)
-    public function getSaldoAttribute()
-    {
-        $pago = $this->valor_pago ?? 0;
-        return $this->valor - $pago;
-    }
-
-    // Retorna se o título está vencido
-    public function getVencidoAttribute()
-    {
-        return $this->status == 'ABERTO' && now()->gt($this->data_vencimento);
-    }
+    public function cliente() { return $this->belongsTo(\App\Models\Cliente::class, 'cliente_id'); }
+    public function forma()   { return $this->belongsTo(\App\Models\FormaPagamento::class, 'forma_pagamento_id'); }
 }

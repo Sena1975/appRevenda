@@ -2,24 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Subcategoria extends Model
 {
-    use HasFactory;
-
     protected $table = 'appsubcategoria';
 
-    protected $fillable = [
-        'nome',
-        'categoria_id',
-        'subcategoria',
-        'status',
-    ];
+    protected $fillable = ['nome','categoria_id','subcategoria','status'];
+
+    protected $casts = ['status'=>'boolean'];
 
     public function categoria()
     {
-        return $this->belongsTo(Categoria::class, 'categoria_id');
+        return $this->belongsTo(\App\Models\Categoria::class, 'categoria_id', 'id');
     }
 }

@@ -2,45 +2,37 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FormaPagamento extends Model
 {
-    use HasFactory;
-
     protected $table = 'appformapagamento';
+
+    // Seus nomes de timestamp são diferentes dos padrões:
+    public const CREATED_AT = 'criado_em';
+    public const UPDATED_AT = 'atualizado_em';
 
     protected $fillable = [
         'nome',
-        'gera_receber',
-        'max_parcelas',
-        'ativo',
+        'gera_receber',   // bool (0/1)
+        'max_parcelas',   // int
+        'ativo',          // bool (0/1)
     ];
-    const CREATED_AT = 'criado_em';
-    const UPDATED_AT = 'atualizado_em';
-    /**
-     * Retorna se essa forma de pagamento gera contas a receber
-     */
-    public function geraFinanceiro(): bool
+
+    protected $casts = [
+        'gera_receber' => 'boolean',
+        'max_parcelas' => 'integer',
+        'ativo'        => 'boolean',
+        'criado_em'    => 'datetime',
+        'atualizado_em'=> 'datetime',
+    ];
+
+    /* Relacionamentos */
+    public function planos()
     {
-        return (bool) $this->gera_receber;
+        return $this->hasMany(PlanoPagamento::class, 'formapagamento_id', 'id');
     }
 
-    /**
-     * Define um escopo para trazer apenas as formas ativas
-     */
-    public function scopeAtivas($query)
-    {
-        return $query->where('ativo', 1);
-    }
-
-    /**
-     * Retorna texto formatado da forma (ex: PIX - até 1x)
-     */
-    public function getDescricaoCompletaAttribute(): string
-    {
-        $parcelas = $this->max_parcelas > 1 ? "até {$this->max_parcelas}x" : "à vista";
-        return "{$this->nome} ({$parcelas})";
-    }
+    /* Scopes úteis */
+    public function scopeAtivo($q) { return $q->where('ativo', 1); }
 }

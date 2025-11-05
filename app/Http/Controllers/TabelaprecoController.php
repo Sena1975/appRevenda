@@ -2,58 +2,134 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Tabelapreco;
+use App\Http\Requests\TabelaPrecoRequest;
+use App\Models\TabelaPreco;
 use App\Models\Produto;
 use Illuminate\Http\Request;
 
 class TabelaprecoController extends Controller
 {
-    public function index()
+    /**
+     * Listagem com filtros e paginação
+     * Filtros:
+     * - busca: por nome do produto ou codfab/codfabnumero
+     * - produto_id
+     * - status (1 ativo, 0 inativo)
+     * - vigencia: atual|futura|expirada
+     */
+    public function index(Request $request)
     {
-        $tabelas = Tabelapreco::with('produto')->orderBy('id', 'desc')->get();
-        return view('tabelapreco.index', compact('tabelas'));
+        $query = TabelaPreco::query()
+            ->with(['produto' => function($q) {
+                $q->select('id','nome','codfab','codfabnumero');
+            }]);
+
+        if ($request->filled('busca')) {
+            $busca = trim($request->busca);
+            $query->where(function($q) use ($busca) {
+                $q->where('codfab', 'like', "%{$busca}%")
+                  ->orWhereHas('produto', function($qp) use ($busca) {
+                      $qp->where('nome', 'like', "%{$busca}%")
+                         ->orWhere('codfab', 'like', "%{$busca}%")
+                         ->orWhere('codfabnumero', 'like', "%{$busca}%");
+                  });
+            });
+        }
+
+        if ($request->filled('produto_id')) {
+            $query->where('produto_id', $request->produto_id);
+        }
+
+        if ($request->filled('status')) {
+            $status = (int) $request->status;
+            if (in_array($status, [0,1], true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('vigencia')) {
+            $hoje = now()->toDateString();
+            switch ($request->vigencia) {
+                case 'atual':
+                    $query->where('data_inicio', '<=', $hoje)
+                          ->where('data_fim', '>=', $hoje);
+                    break;
+                case 'futura':
+                    $query->where('data_inicio', '>', $hoje);
+                    break;
+                case 'expirada':
+                    $query->where('data_fim', '<', $hoje);
+                    break;
+            }
+        }
+
+        $allowed = [10,25,50,100];
+        $porPagina = (int) $request->get('por_pagina', 10);
+        if (! in_array($porPagina, $allowed)) {
+            $porPagina = 10;
+        }
+
+        $tabelas = $query
+            ->orderByRaw('data_inicio desc, id desc')
+            ->paginate($porPagina)
+            ->withQueryString();
+
+        // Para o filtro por produto em select
+        $produtos = Produto::select('id','nome','codfab','codfabnumero')
+            ->orderBy('nome')->limit(500)->get();
+
+        return view('tabelapreco.index', compact('tabelas', 'produtos'));
     }
 
     public function create()
     {
-        $produtos = Produto::orderBy('nome')->get();
+        $produtos = Produto::select('id','nome','codfab','codfabnumero')
+            ->orderBy('nome')->limit(500)->get();
+
         return view('tabelapreco.create', compact('produtos'));
     }
 
-    public function store(Request $request)
+    public function store(TabelaPrecoRequest $request)
     {
-        $request->validate([
-            'produto_id' => 'required',
-            'preco_revenda' => 'required|numeric',
-        ]);
+        TabelaPreco::create($request->validated());
 
-        Tabelapreco::create($request->all());
-        return redirect()->route('tabelapreco.index')->with('success', 'Tabela de preço cadastrada com sucesso!');
+        return redirect()
+            ->route('tabelapreco.index')
+            ->with('success', 'Tabela de preço criada com sucesso!');
     }
 
-    public function edit($id)
+    public function show(TabelaPreco $tabelapreco)
     {
-        $tabela = Tabelapreco::findOrFail($id);
-        $produtos = Produto::orderBy('nome')->get();
-        return view('tabelapreco.edit', compact('tabela', 'produtos'));
+        $tabelapreco->load(['produto' => function($q) {
+            $q->select('id','nome','codfab','codfabnumero');
+        }]);
+
+        return view('tabelapreco.show', compact('tabelapreco'));
     }
 
-    public function update(Request $request, $id)
+    public function edit(TabelaPreco $tabelapreco)
     {
-        $request->validate([
-            'produto_id' => 'required',
-            'preco_revenda' => 'required|numeric',
-        ]);
+        $produtos = Produto::select('id','nome','codfab','codfabnumero')
+            ->orderBy('nome')->limit(500)->get();
 
-        $tabela = Tabelapreco::findOrFail($id);
-        $tabela->update($request->all());
-
-        return redirect()->route('tabelapreco.index')->with('success', 'Tabela de preço atualizada com sucesso!');
+        return view('tabelapreco.edit', compact('tabelapreco','produtos'));
     }
 
-    public function destroy($id)
+    public function update(TabelaPrecoRequest $request, TabelaPreco $tabelapreco)
     {
-        Tabelapreco::destroy($id);
-        return redirect()->route('tabelapreco.index')->with('success', 'Registro excluído com sucesso!');
+        $tabelapreco->update($request->validated());
+
+        return redirect()
+            ->route('tabelapreco.index')
+            ->with('success', 'Tabela de preço atualizada com sucesso!');
+    }
+
+    public function destroy(TabelaPreco $tabelapreco)
+    {
+        $tabelapreco->delete();
+
+        return redirect()
+            ->route('tabelapreco.index')
+            ->with('success', 'Tabela de preço excluída com sucesso!');
     }
 }
