@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ main ]   # troque para master se for seu padrão
+    branches: [ main ]   # troque para master se seu padrão for 'master'
 
 jobs:
   deploy:
@@ -18,12 +18,12 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           port: 22
           script_stop: true
+          debug: true
           script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
+            set -euo pipefail
+            BRANCH="main"   # <— troque para "master" se for o seu caso
+            cd /var/www/appRevenda
             git fetch --all
-            BRANCH="${{ vars.DEPLOY_BRANCH }}"
-            if [ -z "$BRANCH" ]; then BRANCH="master"; fi
             git reset --hard origin/$BRANCH
             export COMPOSER_ALLOW_SUPERUSER=1
             ./deploy.sh
