@@ -62,3 +62,5 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 Incluido secrets para acessar hotnet
 07/11/205 excluído secrets para acessar hotnet e incluído para Hostiger
+## 🚀 Deploy por TAG (VPS + Nginx + PHP-FPM 8.3)
+# (cole aqui o bloco completo que enviei na mensagem anterior)
