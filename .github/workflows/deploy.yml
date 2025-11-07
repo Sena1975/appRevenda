@@ -1,33 +1,18 @@
-name: Deploy to VPS
+name: SSH Test
 
 on:
-  push:
-    branches:
-      - main   # troque para master se for seu padrão
+  workflow_dispatch: {}   # permite rodar manualmente
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout (apenas para log)
-        uses: actions/checkout@v4
-
-      - name: SSH Deploy - run deploy.sh on server
+      - name: Test SSH to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           port: 22
-          script_stop: true
           script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }}
-            git fetch --all
-            # usa variável de repo se existir, senão 'main'
-            BRANCH="${{ vars.DEPLOY_BRANCH }}"
-            if [ -z "$BRANCH" ]; then BRANCH="main"; fi
-            git reset --hard origin/$BRANCH
-            export COMPOSER_ALLOW_SUPERUSER=1
-            ./deploy.sh
+            echo "OK from $(hostname)"
