@@ -23,7 +23,7 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch --all
             BRANCH="${{ vars.DEPLOY_BRANCH }}"
-            if [ -z "$BRANCH" ]; then BRANCH="main"; fi
+            if [ -z "$BRANCH" ]; then BRANCH="master"; fi
             git reset --hard origin/$BRANCH
             export COMPOSER_ALLOW_SUPERUSER=1
             ./deploy.sh
