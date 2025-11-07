@@ -61,3 +61,4 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 Incluido secrets para acessar hotnet
+07/11/205 excluído secrets para acessar hotnet e incluído para Hostiger
