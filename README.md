@@ -62,3 +62,44 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 Incluido secrets para acessar hotnet
 07/11/205 excluído secrets para acessar hotnet e incluído para Hostiger
+Como lançar uma nova versão
+
+No seu PC:
+
+git checkout main
+git pull
+
+# edite/commit suas mudanças...
+git commit -m "Minha mudança X"
+git push
+
+# crie a nova tag (ex.: v1.0.1)
+git tag -a v1.0.1 -m "Release v1.0.1"
+git push origin v1.0.1
+
+
+No VPS:
+
+cd /var/www/appRevenda
+./deploy.sh           # publica a ÚLTIMA tag enviada (ex.: v1.0.1)
+# ou escolher uma tag específica:
+# ./deploy-tag.sh v1.0.1
+
+Comandos úteis
+
+Listar tags:
+
+git tag --list
+
+
+Rollback para uma tag anterior:
+
+./deploy-tag.sh v1.0.0
+
+
+Apagar uma tag (se criou errado):
+
+# remoto
+git push origin :refs/tags/v1.0.1
+# local
+git tag -d v1.0.1
