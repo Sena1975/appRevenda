@@ -1,89 +1,33 @@
-name: Deploy apprevenda to Hostnet (SFTP)
+name: Deploy to VPS
 
 on:
   push:
-    branches: [ "main" ]   # ajuste se usar outro branch
+    branches:
+      - main   # troque para master se for seu padrão
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-
     steps:
-      - name: Checkout
+      - name: Checkout (apenas para log)
         uses: actions/checkout@v4
 
-      # ---- PHP / Composer ----
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: SSH Deploy - run deploy.sh on server
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          php-version: '8.2'
-          extensions: mbstring, curl, dom, fileinfo, bcmath, pdo_mysql
-
-      - name: Cache Composer
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache
-            vendor
-          key: composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            composer-
-
-      - name: Install Composer deps (no-dev)
-        run: composer install --no-dev --optimize-autoloader
-
-      # ---- Node / Vite ----
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Node deps
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-      - name: Assert Vite base
-        run: |
-          grep -R "base: '/apprevenda/'" vite.config.* || (echo "Falta base '/apprevenda/' no vite.config.js" && exit 1)
-
-      - name: Build assets (Vite)
-        run: npm run build
-
-      # ---- Limpeza para não enviar coisas desnecessárias ----
-      - name: Cleanup before deploy
-        run: |
-          rm -rf node_modules tests .git .github
-
-      # ---- DEPLOY 1: núcleo do app para /home/senadevtech/apprevenda ----
-      - name: Deploy core via SFTP to /home/senadevtech/apprevenda
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}      # ex.: sftp.seuprovedor.com
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
           port: 22
-          sftp_only: true
-          local_path: "./"
-          remote_path: "/home/senadevtech/apprevenda/"
-
-      # ---- Ajusta o index.php da pasta pública para apontar por caminho ABSOLUTO ----
-      - name: Patch public/index.php for subfolder (ABS path)
-        run: |
-          sed -i "s#require __DIR__.'/../vendor/autoload.php';#require '/home/senadevtech/apprevenda/vendor/autoload.php';#g" public/index.php
-          sed -i "s#require_once __DIR__.'/../bootstrap/app.php';#\$app = require_once '/home/senadevtech/apprevenda/bootstrap/app.php';#g" public/index.php
-
-      # ---- DEPLOY 2: conteúdo da public para /home/senadevtech/www/apprevenda ----
-      - name: Deploy public/ via SFTP to /home/senadevtech/www/apprevenda
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 22
-          sftp_only: true
-          local_path: "./public/"
-          remote_path: "/home/senadevtech/www/apprevenda/"
+          script_stop: true
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch --all
+            # usa variável de repo se existir, senão 'main'
+            BRANCH="${{ vars.DEPLOY_BRANCH }}"
+            if [ -z "$BRANCH" ]; then BRANCH="main"; fi
+            git reset --hard origin/$BRANCH
+            export COMPOSER_ALLOW_SUPERUSER=1
+            ./deploy.sh
