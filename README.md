@@ -88,3 +88,29 @@ systemctl status nginx --no-pager
 systemctl status php8.3-fpm --no-pager
 tail -n 100 storage/logs/laravel.log
 \\\
+
+## 🚀 Deploy por TAG (VPS + Nginx + PHP-FPM 8.3)
+
+### Como lançar
+\\\ash
+git checkout main
+git pull
+git tag -a v1.0.1 -m "Release v1.0.1"
+git push origin v1.0.1
+# No VPS:
+# cd /var/www/appRevenda && ./deploy.sh
+\\\
+
+### Rollback
+\\\ash
+cd /var/www/appRevenda
+./deploy-tag.sh v1.0.1
+\\\
+
+### Checklist rápido
+\\\ash
+cd /var/www/appRevenda && ./deploy.sh
+systemctl status nginx --no-pager
+systemctl status php8.3-fpm --no-pager
+tail -n 100 storage/logs/laravel.log
+\\\
