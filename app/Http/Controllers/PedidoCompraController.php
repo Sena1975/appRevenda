@@ -6,6 +6,8 @@ use App\Models\PedidoCompra;
 use App\Models\Fornecedor;
 use App\Models\Produto;
 use App\Models\ItensCompra;
+use App\Models\ViewProduto;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\EstoqueService;
@@ -38,64 +40,106 @@ class PedidoCompraController extends Controller
      * Grava o pedido de compra e seus itens
      */
 public function store(Request $request)
-{
-    DB::beginTransaction();
+    {
+        $data = $request->validate([
+            'fornecedor_id'       => 'required|integer',
+            'data_pedido'         => 'required|date',
+            'observacao'          => 'nullable|string|max:1000',
+            'desconto'            => 'nullable|numeric|min:0',
 
-    try {
-        // Cabeçalho da compra
-        $pedido = PedidoCompra::create([
-            'fornecedor_id' => $request->fornecedor_id,
-            'data_compra' => now(),
-            'numpedcompra' => $request->numpedcompra,
-            'valor_total' => 0,
-            'preco_venda_total' => 0,
-            'formapgto' => $request->formapgto,
-            'qt_parcelas' => $request->qt_parcelas ?? 1,
-            'status' => 'PENDENTE',
+            'itens'               => 'required|array|min:1',
+            'itens.*.produto_id'  => 'required|integer',
+            'itens.*.codfabnumero'=> 'nullable|string',
+            'itens.*.quantidade'  => 'required|integer|min:1',
         ]);
 
-        $totalCompra = 0;
-        $totalVenda = 0;
+        return DB::transaction(function () use ($data) {
 
-        // Itens da compra
-        if ($request->itens && is_array($request->itens)) {
-            foreach ($request->itens as $item) {
-                $precoCompra = floatval($item['preco_unitario']);
-                $precoVenda = floatval($item['preco_venda_unitario'] ?? 0);
-                $quantidade = floatval($item['quantidade']);
+            $totalBruto = 0.0;
+            $totalPontosUnit = 0;
+            $totalPontosGeral = 0;
 
-                ItensCompra::create([
-                    'compra_id' => $pedido->id,
-                    'produto_id' => $item['produto_id'],
-                    'quantidade' => $quantidade,
-                    'preco_unitario' => $precoCompra,
-                    'preco_venda_unitario' => $precoVenda,
-                    'total_item' => $quantidade * $precoCompra,
-                    'total_venda' => $quantidade * $precoVenda,
-                    'pontos' => $item['pontos'] ?? 0,
-                    'qtd_disponivel' => $quantidade,
-                ]);
+            $itensCalc = [];
 
-                $totalCompra += $quantidade * $precoCompra;
-                $totalVenda += $quantidade * $precoVenda;
+            foreach ($data['itens'] as $idx => $item) {
+
+                $codfab = $item['codfabnumero'] ?? null;
+
+                $vp = $codfab
+                    ? ViewProduto::where('codigo_fabrica', $codfab)->first()
+                    : null;
+
+                if (!$vp) {
+                    abort(422, "Produto inválido na linha ".($idx+1)." (código não encontrado na view).");
+                }
+
+                // COMPRA -> usa preço de compra
+                $qtd           = (int) $item['quantidade'];
+                $precoUnit     = (float) $vp->preco_compra;   // <- PREÇO OFICIAL de compra
+                $pontosUnit    = (int) $vp->pontos;           // se quiser considerar pontos já na compra
+                $estoqueAtual  = (int) $vp->qtd_estoque;
+
+                $totalLinha    = $qtd * $precoUnit;
+                $pontosLinha   = $qtd * $pontosUnit;
+
+                $totalBruto       += $totalLinha;
+                $totalPontosUnit  += $pontosUnit;
+                $totalPontosGeral += $pontosLinha;
+
+                $itensCalc[] = [
+                    'produto_id'       => $item['produto_id'],
+                    'codfabnumero'     => $codfab ?? $vp->codigo_fabrica,
+                    'descricao'        => $vp->descricao_produto,
+                    'quantidade'       => $qtd,
+                    'preco_unitario'   => $precoUnit,
+                    'total'            => $totalLinha,
+                    'pontuacao'        => $pontosUnit,
+                    'pontuacao_total'  => $pontosLinha,
+                    'estoque_atual'    => $estoqueAtual,
+                ];
             }
-        }
 
-        // Atualiza o total no cabeçalho
-        $pedido->update([
-            'valor_total' => $totalCompra,
-            'preco_venda_total' => $totalVenda,
-        ]);
+            $desconto     = (float) ($data['desconto'] ?? 0);
+            $totalLiquido = max(0, $totalBruto - $desconto);
 
-        DB::commit();
+            // Cabeçalho
+            $compraId = DB::table('compras')->insertGetId([
+                'fornecedor_id'   => $data['fornecedor_id'],
+                'data_pedido'     => $data['data_pedido'],
+                'observacao'      => $data['observacao'] ?? null,
+                'total_bruto'     => $totalBruto,
+                'desconto'        => $desconto,
+                'total_liquido'   => $totalLiquido,
+                'pontuacao'       => $totalPontosUnit,
+                'pontuacao_total' => $totalPontosGeral,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
 
-        return redirect()->route('compras.index')->with('success', 'Pedido de compra cadastrado com sucesso!');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Erro ao salvar compra: ' . $e->getMessage());
+            // Itens
+            foreach ($itensCalc as $it) {
+                DB::table('compra_itens')->insert([
+                    'compra_id'        => $compraId,
+                    'produto_id'       => $it['produto_id'],
+                    'codfabnumero'     => $it['codfabnumero'],
+                    'descricao'        => $it['descricao'],
+                    'quantidade'       => $it['quantidade'],
+                    'preco_unitario'   => $it['preco_unitario'],
+                    'total'            => $it['total'],
+                    'pontuacao'        => $it['pontuacao'],
+                    'pontuacao_total'  => $it['pontuacao_total'],
+                    'estoque_atual'    => $it['estoque_atual'],
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ]);
+            }
+
+            // (Opcional) Só daremos entrada em estoque no item (2).
+            return redirect()
+                ->route('compras.index')
+                ->with('success', 'Compra salva com sucesso (totais recalculados no servidor).');
+        });
     }
-    dd($request->all());
-}
 
 
     /**

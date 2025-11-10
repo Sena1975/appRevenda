@@ -6,6 +6,15 @@
     <div class="bg-white shadow rounded-lg p-6 max-w-5xl mx-auto">
         <form action="{{ route('revendedoras.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
+@if ($errors->any())
+  <div class="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+      <ul class="list-disc list-inside">
+          @foreach ($errors->all() as $error)
+              <li>{{ $error }}</li>
+          @endforeach
+      </ul>
+  </div>
+@endif
 
             <div class="grid grid-cols-2 gap-4">
                 <!-- Nome -->
@@ -61,6 +70,13 @@
                     <label class="block text-sm font-medium text-gray-700">WhatsApp</label>
                     <input type="text" name="whatsapp" value="{{ old('whatsapp') }}" class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
+<div class="flex items-center gap-2">
+    <input type="checkbox" id="revenda_padrao" name="revenda_padrao" value="1"
+           class="h-4 w-4 border-gray-300 rounded">
+    <label for="revenda_padrao" class="text-sm text-gray-700">
+        Definir como Revendedora Padrão
+    </label>
+</div>
 
                 <!-- Email -->
                 <div class="col-span-2">

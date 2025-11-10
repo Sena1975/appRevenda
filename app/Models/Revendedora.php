@@ -14,14 +14,25 @@ class Revendedora extends Model
     protected $fillable = [
         'nome',
         'cpf',
+        'cep',
         'telefone',
         'whatsapp',
+        'telegram',
+        'instagram',
+        'facebook',
         'email',
-        'cep',
         'endereco',
         'bairro',
         'cidade',
         'estado',
-        'status'
+        'equipe_id',
+        'supervisor_id',
+        'datanascimento',
+        'status',
+        'revenda_padrao',
+    ];
+    protected $casts = [
+        'revenda_padrao' => 'boolean',
+        'status'         => 'integer',
     ];
 }

@@ -26,6 +26,8 @@ use App\Http\Controllers\CampanhaController;
 use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProdutoLookupController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -92,7 +94,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('vendas', PedidoVendaController::class);
     Route::get('vendas/{id}/exportar', [PedidoVendaController::class, 'exportar'])->name('vendas.exportar');
     Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');
-
+    Route::post('/vendas/{id}/cancelar', [PedidoVendaController::class, 'cancelar'])
+        ->name('vendas.cancelar');
+    Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
+    ->name('vendas.confirmarEntrega');    
     /*
     |--------------------------------------------------------------------------
     | FINANCEIRO – CONTAS A RECEBER
@@ -102,18 +107,28 @@ Route::middleware(['auth'])->group(function () {
     | link antigo chamar.
     */
 
-Route::resource('contasreceber', \App\Http\Controllers\ContasReceberController::class);
+    Route::resource('contasreceber', \App\Http\Controllers\ContasReceberController::class);
 
-// Baixa (GET formulário / POST efetiva)
-Route::get('contasreceber/{id}/baixa',  [\App\Http\Controllers\ContasReceberController::class, 'baixar'])
-    ->name('contasreceber.baixa');
-Route::post('contasreceber/{id}/baixa', [\App\Http\Controllers\ContasReceberController::class, 'baixarStore'])
-    ->name('contasreceber.baixa.store');
-// Estorno + Recibo
-Route::post('contasreceber/{id}/estornar', [\App\Http\Controllers\ContasReceberController::class, 'estornar'])
-    ->name('contasreceber.estornar');
-Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
-    ->name('contasreceber.recibo');
+    // Baixa (GET formulário / POST efetiva)
+    Route::get('contasreceber/{id}/baixa',  [\App\Http\Controllers\ContasReceberController::class, 'baixar'])
+        ->name('contasreceber.baixa');
+    Route::post('contasreceber/{id}/baixa', [\App\Http\Controllers\ContasReceberController::class, 'baixarStore'])
+        ->name('contasreceber.baixa.store');
+    // Estorno + Recibo
+    Route::post('contasreceber/{id}/estornar', [\App\Http\Controllers\ContasReceberController::class, 'estornar'])
+        ->name('contasreceber.estornar');
+    Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
+        ->name('contasreceber.recibo');
+
+    /*
+    |--------------------------------------------------------------------------
+    | ROTA PARA VIEW DE PRODUTOS COM ESTOQUE E PREÇO
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('api')->group(function () {
+        Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])
+            ->name('api.produtos.buscar');
+    });
 
     /*
     |--------------------------------------------------------------------------

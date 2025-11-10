@@ -10,6 +10,8 @@
     {{-- Alpine (se já incluir em outro lugar, pode remover) --}}
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
     {{-- Tailwind/Vite --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -198,4 +200,8 @@
         {{-- <footer class="py-4 text-center text-xs text-gray-400">© {{ date('Y') }} - appRevenda</footer> --}}
     </div>
 </body>
+{{-- antes de </body> --}}
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 </html>

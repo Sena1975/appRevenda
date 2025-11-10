@@ -65,6 +65,15 @@
                         <option value="0" {{ !$revendedora->status ? 'selected' : '' }}>Inativa</option>
                     </select>
                 </div>
+                <div class="flex items-center gap-2">
+    <input type="checkbox" id="revenda_padrao" name="revenda_padrao" value="1"
+           @checked(old('revenda_padrao', $revendedora->revenda_padrao))
+           class="h-4 w-4 border-gray-300 rounded">
+    <label for="revenda_padrao" class="text-sm text-gray-700">
+        Definir como Revendedora Padrão
+    </label>
+</div>
+
             </div>
 
             <div class="flex justify-end mt-6 space-x-2">
