@@ -141,7 +141,10 @@ Route::middleware(['auth'])->group(function () {
     // Ajax oficial usado no front (create/edit de vendas)
     Route::get('/planos-por-forma/{forma_id}', [PlanoPagamentoController::class, 'getByForma'])
         ->name('planopagamento.getByForma');
-
+        
+    Route::get('/estoque', [EstoqueController::class, 'index'])->name('estoque.index');
+    Route::get('/estoque/{id}/edit', [EstoqueController::class, 'edit'])->name('estoque.edit');
+    Route::put('/estoque/{id}', [EstoqueController::class, 'update'])->name('estoque.update');
     /*
     |--------------------------------------------------------------------------
     | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)
