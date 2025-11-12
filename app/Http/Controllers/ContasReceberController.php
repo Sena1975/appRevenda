@@ -63,7 +63,7 @@ class ContasReceberController extends Controller
 
         $clientes = DB::table('appcliente')->orderBy('nome')->get(['id','nome']);
 
-        return view('Financeiro.index', compact('contas', 'filtros', 'clientes'));
+        return view('financeiro.index', compact('contas', 'filtros', 'clientes'));
     }
 
     public function show($id)
