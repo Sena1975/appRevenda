@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\Estoque;
 use Illuminate\Http\Request;
 
@@ -18,9 +19,9 @@ class EstoqueController extends Controller
         if ($busca = $request->get('busca')) {
             $query->whereHas('produto', function ($q) use ($busca) {
                 $q->where('nome', 'like', '%' . $busca . '%')
-                  ->orWhere('codfabnumero', $busca)
-                  ->orWhere('codfab', $busca)
-                  ->orWhere('codfabtexto', 'like', '%' . $busca . '%');
+                    ->orWhere('codfabnumero', $busca)
+                    ->orWhere('codfab', $busca)
+                    ->orWhere('codfabtexto', 'like', '%' . $busca . '%');
             });
         }
 
@@ -44,20 +45,20 @@ class EstoqueController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $request->validate([
+        // validação
+        $dados = $request->validate([
             'estoque_gerencial' => ['required', 'numeric'],
             'reservado'         => ['required', 'numeric'],
             'avaria'            => ['required', 'numeric'],
         ]);
 
+        // busca o registro de estoque
         $estoque = Estoque::findOrFail($id);
 
-        $estoque->update([
-            'estoque_gerencial' => $request->estoque_gerencial,
-            'reservado'         => $request->reservado,
-            'avaria'            => $request->avaria,
-        ]);
+        // atualiza usando os dados validados
+        $estoque->update($dados);
 
+        // redireciona de volta pra lista
         return redirect()
             ->route('estoque.index')
             ->with('success', 'Estoque atualizado com sucesso!');
