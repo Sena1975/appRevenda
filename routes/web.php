@@ -58,14 +58,14 @@ Route::middleware(['auth'])->group(function () {
     */
     // 1) LOOKUP PRIMEIRO
     Route::get('/produtos/lookup', [ProdutoLookupController::class, 'buscar'])
-    ->name('produtos.lookup');
+        ->name('produtos.lookup');
 
     Route::prefix('api')->group(function () {
         Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])
             ->name('api.produtos.buscar');
     });
 
-   // 2) RESOURCE SEM SHOW (você não tem método show no controller)
+    // 2) RESOURCE SEM SHOW (você não tem método show no controller)
     Route::resource('produtos', ProdutoController::class)->except(['show']);
 
     // restante você deixa igual:
@@ -100,7 +100,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('estoque', EstoqueController::class);
     Route::resource('movestoque', MovEstoqueController::class);
-
     /*
     |--------------------------------------------------------------------------
     | VENDAS
@@ -112,7 +111,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vendas/{id}/cancelar', [PedidoVendaController::class, 'cancelar'])
         ->name('vendas.cancelar');
     Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
-    ->name('vendas.confirmarEntrega');    
+        ->name('vendas.confirmarEntrega');
     /*
     |--------------------------------------------------------------------------
     | FINANCEIRO – CONTAS A RECEBER
@@ -179,11 +178,6 @@ Route::middleware(['auth'])->group(function () {
     // Ajax oficial usado no front (create/edit de vendas)
     Route::get('/planos-por-forma/{forma_id}', [PlanoPagamentoController::class, 'getByForma'])
         ->name('planopagamento.getByForma');
-
-    Route::get('/estoque', [EstoqueController::class, 'index'])->name('estoque.index');
-    Route::get('/estoque/{id}/edit', [EstoqueController::class, 'edit'])->name('estoque.edit');
-    Route::put('/estoque/{id}', [EstoqueController::class, 'update'])->name('estoque.update');
-
 
     /*
     |--------------------------------------------------------------------------
