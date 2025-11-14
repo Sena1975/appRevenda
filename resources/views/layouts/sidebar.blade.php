@@ -139,6 +139,44 @@
             </div>
         </div>
 
+        <!-- ESTOQUE -->
+        <div x-data="{ open: {{ request()->routeIs('estoque.*') || request()->routeIs('movestoque.*') ? 'true' : 'false' }} }" class="mt-2">
+            <button @click="open = !open"
+                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
+                </svg>
+                <span x-show="openSidebar" class="ml-3 flex-1 text-left">Estoque</span>
+                <svg x-show="openSidebar" :class="{'rotate-180': open}" xmlns="http://www.w3.org/2000/svg"
+                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
+                <a href="{{ route('estoque.index') }}"
+                   class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                          {{ request()->routeIs('estoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 7h18M3 12h18M3 17h18" />
+                    </svg>
+                    <span x-show="openSidebar" class="ml-2">Estoque</span>
+                </a>
+
+                <a href="{{ route('movestoque.index') }}"
+                   class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                          {{ request()->routeIs('movestoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 4v5h.582a2 2 0 011.789 1.106L9 14l2-4 2 6 1-3h6" />
+                    </svg>
+                    <span x-show="openSidebar" class="ml-2">Movimentações</span>
+                </a>
+            </div>
+        </div>
+
         <!-- FINANCEIRO -->
         <div x-data="{ open: false }" class="mt-2">
             <button @click="open = !open"

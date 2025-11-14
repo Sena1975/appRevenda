@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\MovEstoque;
 use App\Models\Produto;
 use App\Services\EstoqueService;
+use Carbon\Carbon;
 
 class MovEstoqueController extends Controller
 {
@@ -19,11 +20,68 @@ class MovEstoqueController extends Controller
     /**
      * Lista todas as movimentações
      */
-    public function index()
+    public function index(Request $request)
     {
-        $movs = MovEstoque::with('produto')->orderBy('data_mov', 'desc')->paginate(20);
-        return view('movestoque.index', compact('movs'));
+        // Datas padrão: 1º dia do mês até hoje
+        $hoje = Carbon::today()->toDateString();
+        $primeiroDiaMes = Carbon::today()->startOfMonth()->toDateString();
+
+        // Se vier na requisição, usa; senão, fica o default
+        if ($request->filled('data_ini')) {
+            $dataIni = $request->input('data_ini');
+        } else {
+            $dataIni = $primeiroDiaMes;
+        }
+
+        if ($request->filled('data_fim')) {
+            $dataFim = $request->input('data_fim');
+        } else {
+            $dataFim = $hoje;
+        }
+
+        // Query base
+        $query = MovEstoque::with('produto')
+            ->orderBy('data_mov', 'desc');
+
+        // Filtro por produto (código/descrição)
+        if ($request->filled('produto')) {
+            $busca = trim($request->produto);
+
+            $query->whereHas('produto', function ($q) use ($busca) {
+                $q->where('nome', 'like', "%{$busca}%")
+                  ->orWhere('codfabnumero', 'like', "%{$busca}%");
+            });
+        }
+
+        // Tipo
+        if ($request->filled('tipo')) {
+            $query->where('tipo_mov', $request->tipo);
+        }
+
+        // Origem
+        if ($request->filled('origem')) {
+            $query->where('origem', $request->origem);
+        }
+
+        // Período (AGORA sempre aplica, com default do mês)
+        $query->whereDate('data_mov', '>=', $dataIni)
+              ->whereDate('data_mov', '<=', $dataFim);
+
+        $movimentos = $query->paginate(20)->withQueryString();
+
+        $tipos   = ['ENTRADA', 'SAIDA'];
+        $origens = ['COMPRA', 'VENDA', 'AJUSTE'];
+
+        // manda as datas pra view
+        return view('movestoque.index', compact(
+            'movimentos',
+            'tipos',
+            'origens',
+            'dataIni',
+            'dataFim'
+        ));
     }
+
 
     /**
      * Mostra o formulário para registrar nova movimentação
