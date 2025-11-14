@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProdutoController;
+use App\Http\Controllers\ProdutoLookupController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\SubcategoriaController;
 use App\Http\Controllers\RevendedoraController;
@@ -26,7 +27,7 @@ use App\Http\Controllers\CampanhaController;
 use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProdutoLookupController;
+
 
 
 /*
@@ -52,8 +53,22 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     | CADASTROS BÁSICOS
     |--------------------------------------------------------------------------
+    | ROTA PARA VIEW DE PRODUTOS COM ESTOQUE E PREÇO
+    |--------------------------------------------------------------------------
     */
-    Route::resource('produtos', ProdutoController::class);
+    // 1) LOOKUP PRIMEIRO
+    Route::get('/produtos/lookup', [ProdutoLookupController::class, 'buscar'])
+    ->name('produtos.lookup');
+
+    Route::prefix('api')->group(function () {
+        Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])
+            ->name('api.produtos.buscar');
+    });
+
+   // 2) RESOURCE SEM SHOW (você não tem método show no controller)
+    Route::resource('produtos', ProdutoController::class)->except(['show']);
+
+    // restante você deixa igual:
     Route::resource('fornecedores', AppFornecedorController::class);
     Route::resource('categorias', CategoriaController::class);
     Route::resource('subcategorias', SubcategoriaController::class);
@@ -120,31 +135,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
         ->name('contasreceber.recibo');
 
-    /*
-    |--------------------------------------------------------------------------
-    | ROTA PARA VIEW DE PRODUTOS COM ESTOQUE E PREÇO
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('api')->group(function () {
-        Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])
-            ->name('api.produtos.buscar');
-    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | FORMAS E PLANOS DE PAGAMENTO
-    |--------------------------------------------------------------------------
-    */
-    Route::resource('planopagamento', PlanoPagamentoController::class);
-    Route::resource('formapagamento', FormaPagamentoController::class);
 
-    // Ajax oficial usado no front (create/edit de vendas)
-    Route::get('/planos-por-forma/{forma_id}', [PlanoPagamentoController::class, 'getByForma'])
-        ->name('planopagamento.getByForma');
-        
-    Route::get('/estoque', [EstoqueController::class, 'index'])->name('estoque.index');
-    Route::get('/estoque/{id}/edit', [EstoqueController::class, 'edit'])->name('estoque.edit');
-    Route::put('/estoque/{id}', [EstoqueController::class, 'update'])->name('estoque.update');
     /*
     |--------------------------------------------------------------------------
     | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)
@@ -176,6 +168,22 @@ Route::middleware(['auth'])->group(function () {
 
         return response()->json($produto ?? []);
     });
+    /*
+    |--------------------------------------------------------------------------
+    | FORMAS E PLANOS DE PAGAMENTO
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('planopagamento', PlanoPagamentoController::class);
+    Route::resource('formapagamento', FormaPagamentoController::class);
+
+    // Ajax oficial usado no front (create/edit de vendas)
+    Route::get('/planos-por-forma/{forma_id}', [PlanoPagamentoController::class, 'getByForma'])
+        ->name('planopagamento.getByForma');
+
+    Route::get('/estoque', [EstoqueController::class, 'index'])->name('estoque.index');
+    Route::get('/estoque/{id}/edit', [EstoqueController::class, 'edit'])->name('estoque.edit');
+    Route::put('/estoque/{id}', [EstoqueController::class, 'update'])->name('estoque.update');
+
 
     /*
     |--------------------------------------------------------------------------

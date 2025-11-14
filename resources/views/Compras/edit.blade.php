@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-700">
-            Editar Pedido de Compra 
+            Editar Pedido de Compra
             <span class="text-blue-600 ml-2">#{{ $numeroPedido ?? $pedido->numpedcompra }}</span>
         </h2>
     </x-slot>
@@ -12,18 +12,26 @@
             @method('PUT')
 
             {{-- Cabeçalho --}}
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-3 gap-4 mb-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Fornecedor</label>
-                    <input type="text" value="{{ $pedido->fornecedor->nomefantasia }}" 
+                    <input type="text" value="{{ $pedido->fornecedor->nomefantasia }}"
                         class="w-full border-gray-300 rounded-md shadow-sm bg-gray-100" readonly>
                 </div>
+
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Nº Pedido</label>
-                    <input type="text" name="numpedcompra" value="{{ $pedido->numpedcompra }}" 
+                    <input type="text" name="numpedcompra" value="{{ $pedido->numpedcompra }}"
+                        class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nota Fiscal</label>
+                    <input type="text" name="numero_nota" value="{{ $pedido->numero_nota }}"
                         class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
             </div>
+
 
             {{-- Itens --}}
             <table class="min-w-full text-sm border border-gray-200" id="tabela-itens">
@@ -43,9 +51,10 @@
                     @foreach ($pedido->itens as $index => $item)
                         <tr>
                             <td class="border p-2">
-                                <select name="itens[{{ $index }}][produto_id]" class="w-full border-gray-300 rounded-md shadow-sm produtoSelect">
+                                <select name="itens[{{ $index }}][produto_id]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm produtoSelect">
                                     @foreach ($produtos as $produto)
-                                        <option value="{{ $produto->id }}" 
+                                        <option value="{{ $produto->id }}"
                                             {{ $produto->id == $item->produto_id ? 'selected' : '' }}>
                                             {{ $produto->nome }}
                                         </option>
@@ -54,26 +63,28 @@
                             </td>
 
                             <td class="border p-2 text-center">
-                                <input type="number" step="1" min="0" name="itens[{{ $index }}][quantidade]" 
-                                    value="{{ $item->quantidade }}" 
+                                <input type="number" step="1" min="0"
+                                    name="itens[{{ $index }}][quantidade]" value="{{ $item->quantidade }}"
                                     class="w-full text-center border-gray-300 rounded-md shadow-sm quantidade">
                             </td>
 
                             <td class="border p-2 text-right">
-                                <input type="number" step="0.01" min="0" name="itens[{{ $index }}][preco_unitario]" 
-                                    value="{{ number_format($item->preco_unitario, 2, '.', '') }}" 
+                                <input type="number" step="0.01" min="0"
+                                    name="itens[{{ $index }}][preco_unitario]"
+                                    value="{{ number_format($item->preco_unitario, 2, '.', '') }}"
                                     class="w-full text-right border-gray-300 rounded-md shadow-sm preco-compra">
                             </td>
 
                             <td class="border p-2 text-right">
-                                <input type="number" step="0.01" min="0" name="itens[{{ $index }}][preco_venda_unitario]" 
-                                    value="{{ number_format($item->preco_venda_unitario ?? 0, 2, '.', '') }}" 
+                                <input type="number" step="0.01" min="0"
+                                    name="itens[{{ $index }}][preco_venda_unitario]"
+                                    value="{{ number_format($item->preco_venda_unitario ?? 0, 2, '.', '') }}"
                                     class="w-full text-right border-gray-300 rounded-md shadow-sm preco-venda">
                             </td>
 
                             <td class="border p-2 text-center">
-                                <input type="number" step="1" min="0" name="itens[{{ $index }}][pontos]" 
-                                    value="{{ $item->pontos ?? 0 }}" 
+                                <input type="number" step="1" min="0"
+                                    name="itens[{{ $index }}][pontos]" value="{{ $item->pontos ?? 0 }}"
                                     class="w-full text-center border-gray-300 rounded-md shadow-sm pontos">
                             </td>
 
@@ -96,26 +107,29 @@
             <div class="flex justify-end items-center mt-6 space-x-8">
                 <div class="text-right">
                     <label class="font-semibold text-gray-700 block">Total Compra:</label>
-                    <input type="text" id="valor_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
+                    <input type="text" id="valor_total_display"
+                        class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
                     <input type="hidden" id="valor_total" name="valor_total">
                 </div>
                 <div class="text-right">
                     <label class="font-semibold text-gray-700 block">Total Venda:</label>
-                    <input type="text" id="preco_venda_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
+                    <input type="text" id="preco_venda_total_display"
+                        class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
                     <input type="hidden" id="preco_venda_total" name="preco_venda_total">
                 </div>
                 <div class="text-right">
                     <label class="font-semibold text-gray-700 block">Total Pontos:</label>
-                    <input type="text" id="pontos_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
+                    <input type="text" id="pontos_total_display"
+                        class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
                     <input type="hidden" id="pontos_total" name="pontos_total">
                 </div>
             </div>
 
             {{-- Botões --}}
             <div class="flex justify-end mt-10 space-x-6">
-                <a href="{{ route('compras.index') }}" 
-                   class="px-6 py-3 rounded-md shadow-md transition font-semibold text-base"
-                   style="background-color: #6b7280; color: #ffffff !important; letter-spacing: 0.5px;">
+                <a href="{{ route('compras.index') }}"
+                    class="px-6 py-3 rounded-md shadow-md transition font-semibold text-base"
+                    style="background-color: #6b7280; color: #ffffff !important; letter-spacing: 0.5px;">
                     ← Voltar
                 </a>
 
@@ -141,7 +155,9 @@
         });
 
         function calcularTotais() {
-            let totalCompra = 0, totalVenda = 0, totalPontos = 0;
+            let totalCompra = 0,
+                totalVenda = 0,
+                totalPontos = 0;
 
             document.querySelectorAll('#tbody-itens tr').forEach(linha => {
                 const qtd = parseFloat(linha.querySelector('.quantidade').value) || 0;

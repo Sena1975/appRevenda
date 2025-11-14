@@ -1,9 +1,31 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-700">Novo Pedido de Compra</h2>
+        <h2 class="text-xl font-semibold text-gray-700">
+            Novo Pedido de Compra
+        </h2>
     </x-slot>
 
     <div class="bg-white shadow rounded-lg p-6 max-w-6xl mx-auto">
+
+        {{-- Mensagens de erro --}}
+        @if ($errors->any())
+            <div class="mb-4 p-3 rounded bg-red-100 text-red-700 text-sm">
+                <strong>Ops! Verifique os erros abaixo:</strong>
+                <ul class="mt-2 list-disc list-inside">
+                    @foreach ($errors->all() as $erro)
+                        <li>{{ $erro }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        {{-- Mensagens de sucesso --}}
+        @if (session('success'))
+            <div class="mb-4 p-3 rounded bg-green-100 text-green-700 text-sm">
+                {{ session('success') }}
+            </div>
+        @endif
+
         <form action="{{ route('compras.store') }}" method="POST" id="formCompra">
             @csrf
 
@@ -14,385 +36,410 @@
                     <select name="fornecedor_id" class="w-full border-gray-300 rounded-md shadow-sm" required>
                         <option value="">Selecione...</option>
                         @foreach ($fornecedores as $fornecedor)
-                            <option value="{{ $fornecedor->id }}">{{ $fornecedor->nomefantasia }}</option>
+                            <option value="{{ $fornecedor->id }}" @selected(old('fornecedor_id') == $fornecedor->id)>
+                                {{ $fornecedor->razaosocial ?? ($fornecedor->nomefantasia ?? $fornecedor->nome) }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Número Pedido</label>
-                    <input type="text" name="numpedcompra" class="w-full border-gray-300 rounded-md shadow-sm">
+                    <label class="block text-sm font-medium text-gray-700">Data do Pedido</label>
+                    <input type="date"
+                           name="data_pedido"
+                           value="{{ old('data_pedido', now()->toDateString()) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm"
+                           required>
                 </div>
-            </div>
 
-            {{-- Cabeçalho da Tabela --}}
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-lg font-semibold text-gray-700">Itens da Compra</h3>
-                <button type="button" id="abrirImportacao"
-                    style="background-color: #4f46e5; color: white; padding: 6px 16px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
-                📥 Importar Itens por Código
-                </button>
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Observação</label>
+                    <textarea name="observacao"
+                              rows="2"
+                              class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
+                </div>
             </div>
 
             {{-- Itens --}}
-            <table class="min-w-full text-sm border border-gray-200" id="tabela-itens">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-2 border">Produto</th>
-                        <th class="p-2 border w-20 text-center">Qtde</th>
-                        <th class="p-2 border w-28 text-right">Preço Compra</th>
-                        <th class="p-2 border w-28 text-right">Preço Venda</th>
-                        <th class="p-2 border w-24 text-center">Pontos</th>
-                        <th class="p-2 border w-28 text-right">Total Compra</th>
-                        <th class="p-2 border w-28 text-right">Total Venda</th>
-                        <th class="p-2 border w-12"></th>
-                    </tr>
-                </thead>
-                <tbody id="tbody-itens">
-                    <tr>
-                        <td class="border p-2">
-                            <select name="itens[0][produto_id]" class="w-full border-gray-300 rounded-md shadow-sm produtoSelect" required>
-                                <option value="">Selecione...</option>
-                                @foreach ($produtos as $produto)
-                                    <option value="{{ $produto->id }}">{{ $produto->nome }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td class="border p-2">
-                            <input type="number" step="0.01" min="0" name="itens[0][quantidade]" 
-                                class="w-full text-center border-gray-300 rounded-md shadow-sm quantidade" required>
-                        </td>
-                        <td class="border p-2">
-                            <input type="number" step="0.01" min="0" name="itens[0][preco_unitario]" 
-                                class="w-full text-right border-gray-300 rounded-md shadow-sm preco-compra">
-                        </td>
-                        <td class="border p-2">
-                            <input type="number" step="0.01" min="0" name="itens[0][preco_venda_unitario]" 
-                                class="w-full text-right border-gray-300 rounded-md shadow-sm preco-venda">
-                        </td>
-                        <td class="border p-2 text-center">
-                            <input type="number" step="1" min="0" name="itens[0][pontos]" 
-                                class="w-full text-center border-gray-300 rounded-md shadow-sm pontos" value="0">
-                        </td>
-                        <td class="border p-2 text-right totalCompra">0.00</td>
-                        <td class="border p-2 text-right totalVenda">0.00</td>
-                        <td class="border p-2 text-center">
-                            <button type="button" class="text-red-600 removerItem">✖</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <h3 class="text-lg font-semibold mb-2">Itens do Pedido</h3>
 
-            <div class="mt-3">
-                <button type="button" id="addItem" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
-                    + Adicionar Produto
-                </button>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm border" id="tabela-itens">
+                    <thead>
+                        <tr class="bg-gray-100 text-left">
+                            <th class="px-2 py-1 border w-1/4">Código / Descrição</th>
+                            <th class="px-2 py-1 border text-right w-16">Qtd</th>
+                            <th class="px-2 py-1 border text-right w-20">Pontos</th>
+                            <th class="px-2 py-1 border text-right w-24">Preço Compra</th>
+                            <th class="px-2 py-1 border text-right w-24">Desconto</th>
+                            <th class="px-2 py-1 border text-right w-24">Preço Revenda</th>
+                            <th class="px-2 py-1 border text-right w-28">Total Custo</th>
+                            <th class="px-2 py-1 border text-right w-28">Total Revenda</th>
+                            <th class="px-2 py-1 border text-right w-24">Lucro</th>
+                            <th class="px-2 py-1 border text-center w-20">Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tbody-itens">
+                        {{-- Linha modelo (index 0) --}}
+                        <tr class="linha-item" data-index="0">
+                            {{-- Código / Descrição --}}
+                            <td class="px-2 py-1 border w-1/4">
+                                <select class="produto-select w-full" data-index="0" style="width: 100%;"></select>
+                                <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
+                                <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
+                            </td>
+
+                            {{-- Qtd --}}
+                            <td class="px-2 py-1 border text-right w-16">
+                                <input type="number"
+                                       min="1"
+                                       value="1"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-quantidade"
+                                       name="itens[0][quantidade]">
+                            </td>
+
+                            {{-- Pontos --}}
+                            <td class="px-2 py-1 border text-right w-20">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
+                                       readonly>
+                            </td>
+
+                            {{-- Preço Compra --}}
+                            <td class="px-2 py-1 border text-right w-24">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-compra"
+                                       readonly>
+                            </td>
+
+                            {{-- Desconto (por item, R$) --}}
+                            <td class="px-2 py-1 border text-right w-24">
+                                <input type="number"
+                                       step="0.01"
+                                       min="0"
+                                       value="0"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-desconto"
+                                       name="itens[0][desconto]">
+                            </td>
+
+                            {{-- Preço Revenda --}}
+                            <td class="px-2 py-1 border text-right w-24">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-revenda"
+                                       readonly>
+                            </td>
+
+                            {{-- Total Custo (bruto) --}}
+                            <td class="px-2 py-1 border text-right w-28">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-custo"
+                                       readonly>
+                            </td>
+
+                            {{-- Total Revenda --}}
+                            <td class="px-2 py-1 border text-right w-28">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-revenda"
+                                       readonly>
+                            </td>
+
+                            {{-- Lucro --}}
+                            <td class="px-2 py-1 border text-right w-24">
+                                <input type="text"
+                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-lucro-linha"
+                                       readonly>
+                            </td>
+
+                            {{-- Ações --}}
+                            <td class="px-2 py-1 border text-center w-20">
+                                <button type="button"
+                                        class="px-2 py-1 text-xs bg-red-500 text-white rounded btn-remover-linha">
+                                    Excluir
+                                </button>
+                            </td>
+
+                            {{-- Total líquido (custo - desconto), só para cálculo geral --}}
+                            <input type="hidden" class="input-total-liquido">
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            {{-- Totais --}}
-            <div class="flex justify-end items-center mt-6 space-x-4">
-                <div>
-                    <label class="font-semibold text-gray-700">Total Compra:</label>
-                    <input type="text" id="valor_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
-                    <input type="hidden" id="valor_total" name="valor_total">
+            {{-- Botões + Totais --}}
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                {{-- Esquerda: botões --}}
+                <div class="flex items-center gap-3">
+                    <button
+                        type="button"
+                        id="btnAddItem"
+                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow"
+                    >
+                        + Adicionar item
+                    </button>
+
+                    <button
+                        type="button"
+                        id="btnImportar"
+                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow"
+                    >
+                        Importar Itens (CSV)
+                    </button>
+
+                    <input type="file" id="arquivoImportacao" accept=".csv,.txt" class="hidden">
+
+                    <span class="text-xs text-gray-500">
+                        Formato: CÓDIGO;QTD;PONTOS;PREÇOCOMPRA;PREÇOREVENDA
+                    </span>
                 </div>
-                <div>
-                    <label class="font-semibold text-gray-700">Total Venda:</label>
-                    <input type="text" id="preco_venda_total_display" class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
-                    <input type="hidden" id="preco_venda_total" name="preco_venda_total">
+
+                {{-- Direita: totais lado a lado (já considerando desconto) --}}
+                <div class="flex items-center gap-4 text-sm">
+                    <div>Custo Líquido: <span id="totalCustoSpan">0,00</span></div>
+                    <div>Revenda: <span id="totalRevendaSpan">0,00</span></div>
+                    <div class="font-semibold">
+                        Lucro: <span id="totalLucroSpan">0,00</span>
+                    </div>
                 </div>
             </div>
 
-            {{-- Botões --}}
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
-                <a href="{{ route('compras.index') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500">
+            <div class="mt-6 flex justify-end space-x-3">
+                <a href="{{ route('compras.index') }}"
+                   class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow text-sm">
                     Cancelar
                 </a>
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+
+                <button type="submit"
+                        class="px-4 py-2 bg-green-600 text-white rounded shadow text-sm">
                     Salvar Pedido
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Modal de Importação -->
-    <div id="modalImportacao" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-[420px]" style="font-family: Arial, sans-serif;">
-
-            <!-- Cabeçalho -->
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Importar Itens por Código</h3>
-            <p class="text-sm text-gray-600 mb-3" style="line-height: 1.5;">
-                Digite o <strong>código</strong>, <strong>quantidade</strong>, <strong>pontos</strong>,
-                <strong>preço compra</strong> e <strong>preço venda</strong>, separados por ponto e vírgula, um por linha.<br>
-                <span style="font-size: 12px; color: #888;">Exemplo: <code>12345;2;10;19.90;29.90</code></span>
-            </p>
-
-            <!-- Contador e limpar -->
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 6px;">
-                <span style="color: #444;">Linhas: <span id="contadorLinhas" style="font-weight: bold; color: #4f46e5;">0</span></span>
-                <button type="button" id="limparImport"
-                    style="color: #dc2626; font-size: 12px; cursor: pointer; text-decoration: underline;">Limpar</button>
-            </div>
-
-            <!-- Textarea -->
-            <textarea id="importText" rows="8"
-                class="w-full border border-gray-300 rounded-md shadow-sm text-sm p-2 mb-4 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 resize-none"
-                style="width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 8px; font-size: 13px; margin-bottom: 14px; resize: none;"
-                placeholder="237283;2;10;19.90;29.90&#10;126265;1;5;15.50;25.00"></textarea>
-
-            <!-- Indicador de progresso -->
-            <div id="importProgress" class="hidden" style="margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 6px; color: #555; font-size: 13px; margin-bottom: 5px;">
-                    <svg class="animate-spin" style="height: 18px; width: 18px; color: #4f46e5;" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                    <span id="progressText">Importando itens...</span>
-                </div>
-                <div style="width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                    <div id="progressBar" style="background-color: #4f46e5; height: 8px; width: 0%; border-radius: 4px; transition: width 0.3s;"></div>
-                </div>
-            </div>
-
-            <!-- Botões -->
-            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
-                <button type="button" id="cancelarImportacao"
-                    style="background-color: #6b7280; color: white; padding: 6px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
-                    Cancelar
-                </button>
-                <button type="button" id="btnImportar"
-                    style="background-color: #4f46e5; color: white; padding: 6px 16px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
-                    Importar
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-    {{-- 🧩 DEPENDÊNCIAS DO SELECT2 --}}
+    {{-- CSS/JS Select2 --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-    {{-- SCRIPT PRINCIPAL --}}
     <script>
-        const baseUrl = "{{ url('') }}";
-        let itemIndex = 1;
+        window.addEventListener('load', function () {
+            let indice = 0;
 
-        // ➕ Adicionar nova linha
-        document.getElementById('addItem').addEventListener('click', () => {
-            const tbody = document.getElementById('tbody-itens');
-            const newRow = tbody.rows[0].cloneNode(true);
-            newRow.querySelectorAll('input, select').forEach(el => {
-                el.value = '';
-                const name = el.getAttribute('name');
-                el.setAttribute('name', name.replace(/\[\d+\]/, `[${itemIndex}]`));
-            });
-            newRow.querySelector('.totalCompra').textContent = '0.00';
-            newRow.querySelector('.totalVenda').textContent = '0.00';
-            tbody.appendChild(newRow);
-            itemIndex++;
-            setTimeout(() => aplicarSelect2(), 100); // reaplica select2
-        });
-
-        // ❌ Remover linha
-        document.addEventListener('click', e => {
-            if (e.target.classList.contains('removerItem')) {
-                const rows = document.querySelectorAll('#tbody-itens tr');
-                if (rows.length > 1) e.target.closest('tr').remove();
-                calcularTotais();
-            }
-        });
-
-        // 🔁 Buscar preços automaticamente ao selecionar manualmente um produto
-        document.addEventListener('change', async e => {
-            if (e.target.classList.contains('produtoSelect')) {
-                const produtoId = e.target.value;
-                const linha = e.target.closest('tr');
-                if (produtoId) {
-                    const resp = await fetch(`${baseUrl}/produto/preco/${produtoId}`);
-                    const data = await resp.json();
-                    linha.querySelector('.preco-compra').value = parseFloat(data.preco_compra || 0).toFixed(2);
-                    linha.querySelector('.preco-venda').value = parseFloat(data.preco_venda || 0).toFixed(2);
-                    calcularTotais();
-                }
-            }
-        });
-
-        // 🧮 Calcular totais
-        function calcularTotais() {
-            let totalCompra = 0, totalVenda = 0;
-            document.querySelectorAll('#tbody-itens tr').forEach(linha => {
-                const qtd = parseFloat(linha.querySelector('.quantidade').value) || 0;
-                const precoCompra = parseFloat(linha.querySelector('.preco-compra').value) || 0;
-                const precoVenda = parseFloat(linha.querySelector('.preco-venda').value) || 0;
-                const totalC = qtd * precoCompra;
-                const totalV = qtd * precoVenda;
-                linha.querySelector('.totalCompra').textContent = totalC.toFixed(2);
-                linha.querySelector('.totalVenda').textContent = totalV.toFixed(2);
-                totalCompra += totalC;
-                totalVenda += totalV;
-            });
-            document.getElementById('valor_total_display').value = totalCompra.toFixed(2);
-            document.getElementById('preco_venda_total_display').value = totalVenda.toFixed(2);
-            document.getElementById('valor_total').value = totalCompra.toFixed(2);
-            document.getElementById('preco_venda_total').value = totalVenda.toFixed(2);
-        }
-
-        // 🟢 Abrir/fechar modal
-        const modal = document.getElementById('modalImportacao');
-        document.getElementById('abrirImportacao').addEventListener('click', () => modal.classList.remove('hidden'));
-        document.getElementById('cancelarImportacao').addEventListener('click', () => modal.classList.add('hidden'));
-
-        // 🧮 Contador de linhas no modal de importação
-        const importText = document.getElementById('importText');
-        const contadorLinhas = document.getElementById('contadorLinhas');
-        const limparImport = document.getElementById('limparImport');
-
-        if (importText) {
-            importText.addEventListener('input', () => {
-                const linhas = importText.value.trim().split('\n').filter(l => l.trim() !== '').length;
-                contadorLinhas.textContent = linhas;
-            });
-        }
-
-        if (limparImport) {
-            limparImport.addEventListener('click', () => {
-                importText.value = '';
-                contadorLinhas.textContent = '0';
-                importText.focus();
-            });
-        }
-
-        // 🟢 Importar produtos via código e quantidade (SEM timer extra, só percentual)
-        document.getElementById('btnImportar').addEventListener('click', async () => {
-            const texto = importText.value.trim();
-            const progressContainer = document.getElementById('importProgress');
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-
-            if (!texto) {
-                alert('Informe pelo menos um produto.');
-                return;
+            function toNumber(val) {
+                return parseFloat((val || '0').toString().replace(',', '.')) || 0;
             }
 
-            const linhas = texto.split('\n').filter(l => l.trim() !== '');
-            const totalLinhas = linhas.length;
-            const tbody = document.getElementById('tbody-itens');
-            let idx = tbody.querySelectorAll('tr').length;
-            const produtosNaoEncontrados = [];
+            function initSelect2(row) {
+                let $select = $(row).find('.produto-select');
 
-            // mostra barra de progresso
-            progressContainer.classList.remove('hidden');
-            progressBar.style.width = '0%';
-            progressText.textContent = `Importando (0/${totalLinhas})...`;
-
-            for (let i = 0; i < totalLinhas; i++) {
-                const linha = linhas[i];
-                const [codfabnumero, qtdStr, pontosStr, precoCompraStr, precoVendaStr] =
-                    linha.split(';').map(s => s.trim());
-
-                const qtd = parseFloat(qtdStr || 0);
-                const precoCompraArquivo = parseFloat(precoCompraStr || 0);
-                const precoVendaArquivo = parseFloat(precoVendaStr || 0);
-                const pontos = parseFloat(pontosStr || 0);
-
-                if (!codfabnumero || qtd <= 0) continue;
-
-                try {
-                    const resp = await fetch(`${baseUrl}/produto/bycod/${codfabnumero}`);
-                    const data = await resp.json();
-
-                    if (data && data.id) {
-                        const newRow = tbody.rows[0].cloneNode(true);
-
-                        // renomeia os campos com novo índice
-                        newRow.querySelectorAll('input, select').forEach(el => {
-                            const name = el.getAttribute('name');
-                            if (name) el.setAttribute('name', name.replace(/\[\d+\]/, `[${idx}]`));
-                        });
-
-                        // produto
-                        newRow.querySelector('.produtoSelect').value = data.id;
-                        // quantidade
-                        newRow.querySelector('.quantidade').value = qtd;
-
-                        // pontos
-                        const inputPontos = newRow.querySelector('.pontos');
-                        if (inputPontos) inputPontos.value = isNaN(pontos) ? 0 : pontos;
-
-                        // preços: se vier no arquivo usa, senão cai pro da tabela
-                        const precoCompra = precoCompraArquivo > 0
-                            ? precoCompraArquivo
-                            : parseFloat(data.preco_compra || 0);
-
-                        const precoVenda = precoVendaArquivo > 0
-                            ? precoVendaArquivo
-                            : parseFloat(data.preco_venda || 0);
-
-                        newRow.querySelector('.preco-compra').value = precoCompra.toFixed(2);
-                        newRow.querySelector('.preco-venda').value = precoVenda.toFixed(2);
-
-                        const totalCompra = qtd * precoCompra;
-                        const totalVenda = qtd * precoVenda;
-                        newRow.querySelector('.totalCompra').textContent = totalCompra.toFixed(2);
-                        newRow.querySelector('.totalVenda').textContent = totalVenda.toFixed(2);
-
-                        tbody.appendChild(newRow);
-                        idx++;
-                    } else {
-                        produtosNaoEncontrados.push(codfabnumero);
+                $select.select2({
+                    placeholder: 'Buscar produto...',
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: '{{ route('produtos.lookup') }}',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function (params) {
+                            return { q: params.term };
+                        },
+                        processResults: function (data) {
+                            return { results: data };
+                        }
                     }
-                } catch (error) {
-                    produtosNaoEncontrados.push(codfabnumero);
-                }
+                });
 
-                const progresso = Math.round(((i + 1) / totalLinhas) * 100);
-                progressBar.style.width = progresso + '%';
-                progressText.textContent = `Importando (${i + 1}/${totalLinhas})...`;
+                $select.on('select2:select', function (e) {
+                    const dados = e.params.data;
 
-                // pequena pausa só pra animação ficar visível
-                await new Promise(r => setTimeout(r, 30));
+                    row.querySelector('.input-codfab').value     = dados.codigo_fabrica || '';
+                    row.querySelector('.input-produto-id').value = dados.produto_id || '';
+
+                    row.querySelector('.input-preco-compra').value  = (dados.preco_compra ?? 0).toFixed(2);
+                    row.querySelector('.input-preco-revenda').value = (dados.preco_revenda ?? 0).toFixed(2);
+                    row.querySelector('.input-pontos').value        = dados.pontos ?? 0;
+
+                    recalcularLinha(row);
+                    recalcularTotalGeral();
+                });
+
+                // Eventos que recalculam a linha
+                $(row).find('.input-quantidade, .input-desconto').on('input', function () {
+                    recalcularLinha(row);
+                    recalcularTotalGeral();
+                });
             }
 
-            calcularTotais();
+            function recalcularLinha(row) {
+                const qty        = toNumber(row.querySelector('.input-quantidade').value);
+                const pcomp      = toNumber(row.querySelector('.input-preco-compra').value);
+                const prev       = toNumber(row.querySelector('.input-preco-revenda').value);
+                const descLinha  = toNumber(row.querySelector('.input-desconto').value);
 
-            // hide barra e fechar modal
-            progressBar.style.width = '100%';
-            progressText.textContent = 'Importação concluída!';
+                const totalCustoBruto = qty * pcomp;
+                const totalRevenda    = qty * prev;
+                const totalLiquido    = Math.max(0, totalCustoBruto - descLinha);
+                const lucro           = totalRevenda - totalLiquido;
 
-            // TXT de não encontrados
-            if (produtosNaoEncontrados.length > 0) {
-                const blob = new Blob([produtosNaoEncontrados.join('\n')], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'produtos_nao_encontrados.txt';
-                link.click();
-                URL.revokeObjectURL(url);
-                alert(`Importação concluída com ${produtosNaoEncontrados.length} código(s) não encontrado(s).`);
-            } else {
-                alert('Importação concluída com sucesso!');
+                row.querySelector('.input-total-custo').value    = totalCustoBruto.toFixed(2);
+                row.querySelector('.input-total-revenda').value  = totalRevenda.toFixed(2);
+                row.querySelector('.input-lucro-linha').value    = lucro.toFixed(2);
+                row.querySelector('.input-total-liquido').value  = totalLiquido.toFixed(2);
             }
 
-            progressContainer.classList.add('hidden');
-            document.getElementById('modalImportacao').classList.add('hidden');
-        });
+            function recalcularTotalGeral() {
+                let totalLiquido = 0;
+                let totalRevenda = 0;
 
-        // 🧩 Ativar Select2
-        function aplicarSelect2() {
-            $('.produtoSelect').select2({
-                width: '100%',
-                placeholder: 'Selecione um produto...',
-                allowClear: true,
-                language: {
-                    noResults: () => "Nenhum produto encontrado",
-                    searching: () => "Buscando..."
+                document.querySelectorAll('.input-total-liquido').forEach(function (inp) {
+                    totalLiquido += toNumber(inp.value);
+                });
+
+                document.querySelectorAll('.input-total-revenda').forEach(function (inp) {
+                    totalRevenda += toNumber(inp.value);
+                });
+
+                const totalLucro = totalRevenda - totalLiquido;
+
+                document.getElementById('totalCustoSpan').innerText   = totalLiquido.toFixed(2).replace('.', ',');
+                document.getElementById('totalRevendaSpan').innerText = totalRevenda.toFixed(2).replace('.', ',');
+                document.getElementById('totalLucroSpan').innerText   = totalLucro.toFixed(2).replace('.', ',');
+            }
+
+            function adicionarLinha() {
+                const tbody  = document.getElementById('tbody-itens');
+                const modelo = tbody.querySelector('.linha-item');
+
+                indice++;
+
+                const novaLinha = modelo.cloneNode(true);
+                novaLinha.dataset.index = indice;
+
+                // limpa inputs
+                novaLinha.querySelectorAll('input').forEach(function (inp) {
+                    inp.value = '';
+                });
+                novaLinha.querySelector('.input-quantidade').value = 1;
+                novaLinha.querySelector('.input-desconto').value   = 0;
+
+                // ajusta names
+                novaLinha.querySelector('.input-codfab')
+                    .setAttribute('name', 'itens[' + indice + '][codfabnumero]');
+                novaLinha.querySelector('.input-produto-id')
+                    .setAttribute('name', 'itens[' + indice + '][produto_id]');
+                novaLinha.querySelector('.input-quantidade')
+                    .setAttribute('name', 'itens[' + indice + '][quantidade]');
+                novaLinha.querySelector('.input-desconto')
+                    .setAttribute('name', 'itens[' + indice + '][desconto]');
+
+                // recria select
+                let selectTd = novaLinha.querySelector('.produto-select').parentElement;
+                selectTd.innerHTML =
+                    '<select class="produto-select w-full" data-index="' + indice + '" style="width:100%;"></select>' +
+                    '<input type="hidden" name="itens[' + indice + '][codfabnumero]" class="input-codfab">' +
+                    '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">';
+
+                // botão remover
+                novaLinha.querySelector('.btn-remover-linha').addEventListener('click', function () {
+                    novaLinha.remove();
+                    recalcularTotalGeral();
+                });
+
+                tbody.appendChild(novaLinha);
+                initSelect2(novaLinha);
+
+                return novaLinha;
+            }
+
+            // botão adicionar item
+            document.getElementById('btnAddItem').addEventListener('click', function () {
+                adicionarLinha();
+            });
+
+            // primeira linha
+            const linha0 = document.querySelector('.linha-item');
+            initSelect2(linha0);
+            linha0.querySelector('.btn-remover-linha').addEventListener('click', function () {
+                const linhas = document.querySelectorAll('.linha-item');
+                if (linhas.length > 1) {
+                    this.closest('tr').remove();
+                    recalcularTotalGeral();
                 }
             });
-        }
-        document.addEventListener("DOMContentLoaded", aplicarSelect2);
-    </script>
 
+            // Importador CSV – ainda sem desconto (usuario pode ajustar depois)
+            const inputArquivo = document.getElementById('arquivoImportacao');
+            document.getElementById('btnImportar').addEventListener('click', function () {
+                inputArquivo.click();
+            });
+
+            inputArquivo.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    const texto  = ev.target.result;
+                    const linhas = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+
+                    linhas.forEach(function (linha) {
+                        const partes = linha.split(';');
+                        if (partes.length < 2) return;
+
+                        const codigo       = (partes[0] || '').trim();
+                        const qtd          = toNumber(partes[1] || '0');
+                        const pontos       = partes[2] ? toNumber(partes[2]) : null;
+                        const precoCompra  = partes[3] ? toNumber(partes[3]) : null;
+                        const precoRevenda = partes[4] ? toNumber(partes[4]) : null;
+
+                        if (!codigo) return;
+
+                        const novaLinha = adicionarLinha();
+                        const $select   = $(novaLinha).find('.produto-select');
+
+                        $.ajax({
+                            url: '{{ route('produtos.lookup') }}',
+                            dataType: 'json',
+                            data: { q: codigo },
+                            success: function (data) {
+                                if (!data || !data.length) {
+                                    console.warn('Produto não encontrado na view para código', codigo);
+                                    return;
+                                }
+
+                                let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
+
+                                const option = new Option(prod.text, prod.id, true, true);
+                                $select.append(option).trigger('change');
+
+                                $select.trigger({
+                                    type: 'select2:select',
+                                    params: { data: prod }
+                                });
+
+                                if (qtd > 0) {
+                                    novaLinha.querySelector('.input-quantidade').value = qtd;
+                                }
+                                if (pontos !== null && !isNaN(pontos)) {
+                                    novaLinha.querySelector('.input-pontos').value = pontos;
+                                }
+                                if (precoCompra !== null && !isNaN(precoCompra)) {
+                                    novaLinha.querySelector('.input-preco-compra').value = precoCompra.toFixed(2);
+                                }
+                                if (precoRevenda !== null && !isNaN(precoRevenda)) {
+                                    novaLinha.querySelector('.input-preco-revenda').value = precoRevenda.toFixed(2);
+                                }
+
+                                recalcularLinha(novaLinha);
+                                recalcularTotalGeral();
+                            }
+                        });
+                    });
+                };
+
+                reader.readAsText(file, 'UTF-8');
+            });
+        });
+    </script>
 </x-app-layout>
