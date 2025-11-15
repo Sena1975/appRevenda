@@ -59,6 +59,7 @@
                               class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
                 </div>
             </div>
+
             {{-- Condições de Pagamento --}}
             <div class="grid grid-cols-3 gap-4 mb-6">
                 <div>
@@ -126,7 +127,7 @@
                             <td class="px-2 py-1 border w-1/4">
                                 <select class="produto-select w-full" data-index="0" style="width: 100%;"></select>
                                 <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
-                                <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
+                                <input type="hidden" name="itens[0][produto_id]"    class="input-produto-id">
                             </td>
 
                             {{-- Qtd --}}
@@ -141,6 +142,7 @@
                             {{-- Pontos --}}
                             <td class="px-2 py-1 border text-right w-20">
                                 <input type="text"
+                                       name="itens[0][pontos]"
                                        class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
                                        readonly>
                             </td>
@@ -148,6 +150,7 @@
                             {{-- Preço Compra --}}
                             <td class="px-2 py-1 border text-right w-24">
                                 <input type="text"
+                                       name="itens[0][preco_compra]"
                                        class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-compra"
                                        readonly>
                             </td>
@@ -165,6 +168,7 @@
                             {{-- Preço Revenda --}}
                             <td class="px-2 py-1 border text-right w-24">
                                 <input type="text"
+                                       name="itens[0][preco_revenda]"
                                        class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-revenda"
                                        readonly>
                             </td>
@@ -172,6 +176,7 @@
                             {{-- Total Custo (bruto) --}}
                             <td class="px-2 py-1 border text-right w-28">
                                 <input type="text"
+                                       name="itens[0][total_custo]"
                                        class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-custo"
                                        readonly>
                             </td>
@@ -179,6 +184,7 @@
                             {{-- Total Revenda --}}
                             <td class="px-2 py-1 border text-right w-28">
                                 <input type="text"
+                                       name="itens[0][total_revenda]"
                                        class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-revenda"
                                        readonly>
                             </td>
@@ -199,7 +205,9 @@
                             </td>
 
                             {{-- Total líquido (custo - desconto), só para cálculo geral --}}
-                            <input type="hidden" class="input-total-liquido">
+                            <input type="hidden"
+                                   name="itens[0][total_liquido]"
+                                   class="input-total-liquido">
                         </tr>
                     </tbody>
                 </table>
@@ -207,7 +215,6 @@
 
             {{-- Botões + Totais --}}
             <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                {{-- Esquerda: botões --}}
                 <div class="flex items-center gap-3">
                     <button
                         type="button"
@@ -232,7 +239,7 @@
                     </span>
                 </div>
 
-                {{-- Direita: totais lado a lado (já considerando desconto) --}}
+                {{-- Direita: totais --}}
                 <div class="flex items-center gap-4 text-sm">
                     <div>Custo Líquido: <span id="totalCustoSpan">0,00</span></div>
                     <div>Revenda: <span id="totalRevendaSpan">0,00</span></div>
@@ -258,7 +265,6 @@
 
     {{-- CSS/JS Select2 --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
@@ -303,7 +309,7 @@
                     recalcularTotalGeral();
                 });
 
-                // Eventos que recalculam a linha
+                // eventos de recálculo
                 $(row).find('.input-quantidade, .input-desconto').on('input', function () {
                     recalcularLinha(row);
                     recalcularTotalGeral();
@@ -321,10 +327,10 @@
                 const totalLiquido    = Math.max(0, totalCustoBruto - descLinha);
                 const lucro           = totalRevenda - totalLiquido;
 
-                row.querySelector('.input-total-custo').value    = totalCustoBruto.toFixed(2);
-                row.querySelector('.input-total-revenda').value  = totalRevenda.toFixed(2);
-                row.querySelector('.input-lucro-linha').value    = lucro.toFixed(2);
-                row.querySelector('.input-total-liquido').value  = totalLiquido.toFixed(2);
+                row.querySelector('.input-total-custo').value   = totalCustoBruto.toFixed(2);
+                row.querySelector('.input-total-revenda').value = totalRevenda.toFixed(2);
+                row.querySelector('.input-lucro-linha').value   = lucro.toFixed(2);
+                row.querySelector('.input-total-liquido').value = totalLiquido.toFixed(2);
             }
 
             function recalcularTotalGeral() {
@@ -369,8 +375,20 @@
                     .setAttribute('name', 'itens[' + indice + '][produto_id]');
                 novaLinha.querySelector('.input-quantidade')
                     .setAttribute('name', 'itens[' + indice + '][quantidade]');
+                novaLinha.querySelector('.input-pontos')
+                    .setAttribute('name', 'itens[' + indice + '][pontos]');
+                novaLinha.querySelector('.input-preco-compra')
+                    .setAttribute('name', 'itens[' + indice + '][preco_compra]');
                 novaLinha.querySelector('.input-desconto')
                     .setAttribute('name', 'itens[' + indice + '][desconto]');
+                novaLinha.querySelector('.input-preco-revenda')
+                    .setAttribute('name', 'itens[' + indice + '][preco_revenda]');
+                novaLinha.querySelector('.input-total-custo')
+                    .setAttribute('name', 'itens[' + indice + '][total_custo]');
+                novaLinha.querySelector('.input-total-revenda')
+                    .setAttribute('name', 'itens[' + indice + '][total_revenda]');
+                novaLinha.querySelector('.input-total-liquido')
+                    .setAttribute('name', 'itens[' + indice + '][total_liquido]');
 
                 // recria select
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
@@ -391,7 +409,6 @@
                 return novaLinha;
             }
 
-            // botão adicionar item
             document.getElementById('btnAddItem').addEventListener('click', function () {
                 adicionarLinha();
             });
@@ -407,7 +424,7 @@
                 }
             });
 
-            // Importador CSV – ainda sem desconto (usuario pode ajustar depois)
+            // Importação CSV
             const inputArquivo = document.getElementById('arquivoImportacao');
             document.getElementById('btnImportar').addEventListener('click', function () {
                 inputArquivo.click();

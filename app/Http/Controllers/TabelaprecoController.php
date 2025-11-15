@@ -81,13 +81,19 @@ class TabelaprecoController extends Controller
         return view('tabelapreco.index', compact('tabelas', 'produtos'));
     }
 
-    public function create()
-    {
-        $produtos = Produto::select('id','nome','codfab','codfabnumero')
-            ->orderBy('nome')->limit(500)->get();
+public function create()
+{
+    // 🔹 Sem filtros escondidos (status, relacionamentos, etc.)
+    // 🔹 Ordena por nome, mas coloca quem tem CODFAB primeiro
+    // 🔹 Só seleciona os campos usados na view
+    $produtos = \App\Models\Produto::query()
+        ->select('id', 'nome', 'codfabnumero')   
+        ->orderByRaw("CASE WHEN (codfabnumero IS NULL OR codfabnumero='') THEN 1 ELSE 0 END, nome ASC")
+        ->get();
 
-        return view('tabelapreco.create', compact('produtos'));
-    }
+    return view('tabelapreco.create', compact('produtos'));
+}
+
 
     public function store(TabelaPrecoRequest $request)
     {
