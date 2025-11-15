@@ -21,14 +21,13 @@ use App\Http\Controllers\TabelaprecoController;
 use App\Http\Controllers\PedidoCompraController;
 use App\Http\Controllers\PedidoVendaController;
 use App\Http\Controllers\ContasReceberController;
+use App\Http\Controllers\ContasPagarController;
 use App\Http\Controllers\PlanoPagamentoController;
 use App\Http\Controllers\FormaPagamentoController;
 use App\Http\Controllers\CampanhaController;
 use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -134,8 +133,25 @@ Route::middleware(['auth'])->group(function () {
     Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
         ->name('contasreceber.recibo');
 
+    /*
+    |--------------------------------------------------------------------------
+    | FINANCEIRO – CONTAS A PAGAR
+    |--------------------------------------------------------------------------
+    */
 
+    // Listar + editar dados da conta
+    Route::resource('contaspagar', ContasPagarController::class)
+        ->only(['index', 'edit', 'update']);
 
+    // Tela de baixa (GET) + ação de baixa (POST)
+    Route::get('contaspagar/{conta}/baixar', [ContasPagarController::class, 'formBaixa'])
+        ->name('contaspagar.formBaixa');
+
+    Route::post('contaspagar/{conta}/baixar', [ContasPagarController::class, 'baixar'])
+        ->name('contaspagar.baixar');
+
+    Route::post('contaspagar/{conta}/estornar', [ContasPagarController::class, 'estornar'])
+    ->name('contaspagar.estornar');     
     /*
     |--------------------------------------------------------------------------
     | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)

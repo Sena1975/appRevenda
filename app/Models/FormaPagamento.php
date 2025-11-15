@@ -24,7 +24,7 @@ class FormaPagamento extends Model
         'max_parcelas' => 'integer',
         'ativo'        => 'boolean',
         'criado_em'    => 'datetime',
-        'atualizado_em'=> 'datetime',
+        'atualizado_em' => 'datetime',
     ];
 
     /* Relacionamentos */
@@ -32,7 +32,14 @@ class FormaPagamento extends Model
     {
         return $this->hasMany(PlanoPagamento::class, 'formapagamento_id', 'id');
     }
+    public function contasPagar()
+    {
+        return $this->hasMany(ContasPagar::class, 'forma_pagamento_id');
+    }
 
     /* Scopes úteis */
-    public function scopeAtivo($q) { return $q->where('ativo', 1); }
+    public function scopeAtivo($q)
+    {
+        return $q->where('ativo', 1);
+    }
 }

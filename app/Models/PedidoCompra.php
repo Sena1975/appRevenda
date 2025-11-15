@@ -12,19 +12,31 @@ class PedidoCompra extends Model
     protected $table = 'appcompra'; // nome real da tabela no banco
 
     protected $fillable = [
-        'fornecedor_id',
-        'data_compra',
-        'data_emissao',
-        'numpedcompra',
-        'numero_nota',
-        'valor_total',
-        'preco_venda_total', 
-        'pontostotal',
-        'qtditens',
-        'formapgto',
-        'qt_parcelas',
-        'status',
+    'fornecedor_id',
+    'data_compra',
+    'data_emissao',
+    'numpedcompra',
+    'numero_nota',
+    'valor_total',
+    'valor_desconto',
+    'valor_liquido',
+    'preco_venda_total',
+    'pontostotal',
+    'qtditens',
+    'formapgto',
+    'forma_pagamento_id',
+    'plano_pagamento_id',
+    'qt_parcelas',
+    'observacao',
+    'status',
     ];
+    protected $casts = [
+        'data_compra'  => 'date',
+        'data_emissao' => 'date',
+        'valor_total'  => 'decimal:2',
+        'valor_liquido' => 'decimal:2',
+    ];
+
 
     // 🔗 Relacionamento com o fornecedor
     public function fornecedor()
@@ -36,5 +48,10 @@ class PedidoCompra extends Model
     public function itens()
     {
         return $this->hasMany(ItensCompra::class, 'compra_id');
+    }
+
+    public function contasPagar()
+    {
+        return $this->hasMany(ContasPagar::class, 'compra_id');
     }
 }

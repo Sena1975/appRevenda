@@ -26,4 +26,8 @@ class Fornecedor extends Model
     protected $casts = [
         'status' => 'boolean',
     ];
+    public function contasPagar()
+    {
+        return $this->hasMany(ContasPagar::class, 'fornecedor_id');
+    }
 }

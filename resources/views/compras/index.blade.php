@@ -1,3 +1,32 @@
+@if (session('error'))
+    <div class="mb-4 p-3 rounded bg-red-100 text-red-800 text-sm">
+        <strong>{{ session('error') }}</strong>
+
+        @if (session('parcelas_pagas'))
+            <ul class="mt-2 list-disc list-inside">
+                @foreach (session('parcelas_pagas') as $linha)
+                    <li>{!! $linha !!}</li>
+                @endforeach
+            </ul>
+        @endif
+
+        @if (session('itens_estoque_negativo'))
+            <p class="mt-2 font-semibold">Itens que ficariam com estoque negativo:</p>
+            <ul class="mt-1 list-disc list-inside">
+                @foreach (session('itens_estoque_negativo') as $item)
+                    <li>
+                        {{ $item['produto'] }}
+                        (Cód: {{ $item['codigo_fabrica'] ?? '-' }}) -
+                        Estoque atual: {{ $item['estoque_atual'] }},
+                        Estornar: {{ $item['qtd_estornar'] }},
+                        Saldo após estorno: {{ $item['saldo_pos_estorno'] }}
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+    </div>
+@endif
+
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-700">Pedidos de Compra</h2>

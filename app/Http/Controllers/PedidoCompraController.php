@@ -7,10 +7,17 @@ use App\Models\Fornecedor;
 use App\Models\Produto;
 use App\Models\ItensCompra;
 use App\Models\ViewProduto;
+use App\Models\FormaPagamento;
+use App\Models\PlanoPagamento;
+use App\Models\ContasPagar;
+use App\Models\BaixaPagar;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\EstoqueService;
+use App\Services\Financeiro\GerarContasPagarDaCompra;
+
+
 use Illuminate\Support\Facades\Log;
 
 
@@ -76,11 +83,19 @@ class PedidoCompraController extends Controller
      */
     public function create()
     {
-        $fornecedores = Fornecedor::orderBy('razaosocial')->get();
-        $produtos = Produto::orderBy('nome')->get();
+        $fornecedores      = Fornecedor::orderBy('razaosocial')->get();
+        $produtos          = Produto::orderBy('nome')->get();
+        $formasPagamento   = FormaPagamento::orderBy('nome')->get();
+        $planosPagamento   = PlanoPagamento::orderBy('descricao')->get();
 
-        return view('compras.create', compact('fornecedores', 'produtos'));
+        return view('compras.create', compact(
+            'fornecedores',
+            'produtos',
+            'formasPagamento',
+            'planosPagamento'
+        ));
     }
+
 
     /**
      * Grava o pedido de compra e seus itens
@@ -91,6 +106,10 @@ class PedidoCompraController extends Controller
             'fornecedor_id'        => 'required|integer',
             'data_pedido'          => 'required|date',
             'observacao'           => 'nullable|string|max:1000',
+
+            'forma_pagamento_id'   => 'nullable|integer',
+            'plano_pagamento_id'   => 'nullable|integer',
+            'qt_parcelas'          => 'nullable|integer|min:1',
 
             'itens'                => 'required|array|min:1',
             'itens.*.produto_id'   => 'required|integer',
@@ -159,30 +178,36 @@ class PedidoCompraController extends Controller
             }
 
             // ==== CABEÇALHO: tabela appcompra ====
-            $compraId = DB::table('appcompra')->insertGetId([
-                'fornecedor_id'      => $data['fornecedor_id'],
-                'data_compra'        => $data['data_pedido'],
-                'data_emissao'       => $data['data_pedido'],
-                'numpedcompra'       => null,
-                'numero_nota'        => null,
+$compraId = DB::table('appcompra')->insertGetId([
+    'fornecedor_id'      => $data['fornecedor_id'],
+    'data_compra'        => $data['data_pedido'],
+    'data_emissao'       => $data['data_pedido'],
+    'numpedcompra'       => null,
+    'numero_nota'        => null,
 
-                'valor_total'        => $totalBrutoCusto,
-                'valor_desconto'     => $totalDesconto,
-                'valor_liquido'      => $totalLiquido,
+    'valor_total'        => $totalBrutoCusto,
+    'valor_desconto'     => $totalDesconto,
+    'valor_liquido'      => $totalLiquido,
 
-                'preco_venda_total'  => $totalRevenda,
-                'pontostotal'        => $totalPontosGeral,
-                'qtditens'           => $qtditens,
+    'preco_venda_total'  => $totalRevenda,
+    'pontostotal'        => $totalPontosGeral,
+    'qtditens'           => $qtditens,
 
-                'formapgto'          => null,
-                'qt_parcelas'        => null,
+    // guarda IDs
+    'forma_pagamento_id' => $data['forma_pagamento_id'] ?? null,
+    'plano_pagamento_id' => $data['plano_pagamento_id'] ?? null,
+    'qt_parcelas'        => $data['qt_parcelas'] ?? null,
 
-                'observacao'         => $data['observacao'] ?? null,
-                'status'             => 'PENDENTE',
+    // se quiser, pode depois alimentar 'formapgto' com a descrição
+    'formapgto'          => null,
 
-                'created_at'         => now(),
-                'updated_at'         => now(),
-            ]);
+    'observacao'         => $data['observacao'] ?? null,
+    'status'             => 'PENDENTE',
+
+    'created_at'         => now(),
+    'updated_at'         => now(),
+]);
+
 
             // ==== ITENS: tabela appcompraproduto ====
             foreach ($itensCalc as $it) {
@@ -255,6 +280,9 @@ class PedidoCompraController extends Controller
         try {
             $pedido = PedidoCompra::with(['itens.produto'])->findOrFail($id);
 
+            // Guarda status antigo pra evitar duplicar processos
+            $jaRecebidaAntes = ($pedido->status === 'RECEBIDA');
+
             // Atualiza cabeçalho
             $pedido->update([
                 'numpedcompra'      => $request->numpedcompra,
@@ -262,6 +290,8 @@ class PedidoCompraController extends Controller
                 'valor_total'       => $request->valor_total,
                 'preco_venda_total' => $request->preco_venda_total,
                 'status'            => $request->acao === 'confirmar' ? 'RECEBIDA' : 'PENDENTE',
+                'formapgto'         => $request->formapgto ?? $pedido->formapgto,
+                'qt_parcelas'       => $request->qt_parcelas ?? $pedido->qt_parcelas,
             ]);
 
             // Atualiza os itens (usando produto_id como referência)
@@ -279,15 +309,20 @@ class PedidoCompraController extends Controller
             }
 
             // Se confirmar recebimento, registra movimentação no estoque
-            if ($request->acao === 'confirmar') {
-                $service = new \App\Services\EstoqueService();
-                $service->registrarEntradaCompra($pedido);
+            if ($request->acao === 'confirmar' && ! $jaRecebidaAntes) {
+                // 1) Atualiza estoque
+                $estoqueService = new EstoqueService();
+                $estoqueService->registrarEntradaCompra($pedido);
+
+                // 2) Gera contas a pagar
+                $financeiroService = new GerarContasPagarDaCompra();
+                $financeiroService->executar($pedido);
             }
 
             DB::commit();
 
             $msg = $request->acao === 'confirmar'
-                ? 'Recebimento confirmado e estoque atualizado!'
+                ? 'Recebimento confirmado, estoque atualizado e contas a pagar geradas!'
                 : 'Pedido salvo com sucesso!';
 
             return redirect()->route('compras.index')->with('success', $msg);
@@ -405,35 +440,138 @@ class PedidoCompraController extends Controller
      * Remove um pedido
      */
 
-    public function destroy(Request $request, $id)
-    {
-        DB::beginTransaction();
+public function destroy(Request $request, $id)
+{
+    DB::beginTransaction();
 
-        try {
-            $pedido = PedidoCompra::with('itens.produto')->findOrFail($id);
-            $motivo = $request->motivo_cancelamento ?? 'Sem motivo informado';
+    try {
+        $pedido = PedidoCompra::with([
+                'itens.produto',
+                'contasPagar.baixas',
+            ])->findOrFail($id);
 
-            // Se o pedido foi recebido, faz o estorno
-            if ($pedido->status === 'RECEBIDA') {
-                $service = new \App\Services\EstoqueService();
-                $service->estornarEntradaCompra($pedido, $motivo);
-            }
+        $motivo = $request->motivo_cancelamento ?? 'Sem motivo informado';
 
-            // Exclui itens e o pedido
-            foreach ($pedido->itens as $item) {
-                $item->delete();
-            }
+        /**
+         * REGRA 2 – Se tiver qualquer parcela com baixa (paga), não pode cancelar
+         */
+        $parcelasComBaixa = $pedido->contasPagar
+            ->filter(fn ($c) => $c->baixas->isNotEmpty());
 
-            $pedido->delete();
+        if ($parcelasComBaixa->isNotEmpty()) {
+            $listaParcelas = $parcelasComBaixa->map(function ($c) {
+                return sprintf(
+                    'Parcela %d/%d - Nota %s - Venc.: %s - Valor: R$ %s',
+                    $c->parcela,
+                    $c->total_parcelas,
+                    $c->numero_nota ?? '-',
+                    optional($c->data_vencimento)->format('d/m/Y'),
+                    number_format($c->valor, 2, ',', '.')
+                );
+            })->toArray();
 
-            DB::commit();
-
-            return redirect()
-                ->route('compras.index')
-                ->with('success', 'Pedido cancelado e estoque estornado com sucesso.');
-        } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Erro ao cancelar pedido: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Cancelamento não permitido: existem parcelas desta compra que já possuem baixa (pagas).')
+                ->with('parcelas_pagas', $listaParcelas);
         }
+
+        /**
+         * REGRA 1 – Verificar se o estorno do estoque deixaria algum item negativo
+         * (só faz sentido se a compra foi RECEBIDA)
+         */
+        $itensComEstoqueNegativo = [];
+
+        if ($pedido->status === 'RECEBIDA') {
+            foreach ($pedido->itens as $item) {
+                $produto = $item->produto;
+
+                // usa a view de produtos pra pegar estoque atual
+                $viewProd = null;
+                if ($produto && $produto->codfabnumero) {
+                    $viewProd = \App\Models\ViewProduto::where('codigo_fabrica', $produto->codfabnumero)->first();
+                }
+
+                $estoqueAtual = $viewProd->qtd_estoque ?? 0; // ajuste pro nome da coluna da sua view
+                $qtdEstornar  = (float) $item->quantidade;
+
+                $saldoPosEstorno = $estoqueAtual - $qtdEstornar;
+
+                if ($saldoPosEstorno < 0) {
+                    $itensComEstoqueNegativo[] = [
+                        'produto'          => $produto->nome ?? ('ID ' . $produto->id),
+                        'codigo_fabrica'   => $produto->codfabnumero ?? null,
+                        'estoque_atual'    => $estoqueAtual,
+                        'qtd_estornar'     => $qtdEstornar,
+                        'saldo_pos_estorno'=> $saldoPosEstorno,
+                    ];
+                }
+            }
+        }
+
+        if (!empty($itensComEstoqueNegativo)) {
+            DB::rollBack();
+
+            return back()
+                ->with('error', 'Cancelamento não permitido: o estorno deixaria o estoque negativo para um ou mais itens.')
+                ->with('itens_estoque_negativo', $itensComEstoqueNegativo);
+        }
+
+        /**
+         * REGRA 3 – Se passou pelas regras 1 e 2, o cancelamento é permitido
+         * - Estorna estoque (se RECEBIDA)
+         * - Estorna/cancela parcelas de Contas a Pagar
+         * - NÃO exclui o pedido nem os itens — apenas marca como CANCELADA
+         */
+
+        // 3.1 Estorna estoque (se foi recebida)
+        if ($pedido->status === 'RECEBIDA') {
+            $service = new \App\Services\EstoqueService();
+            $service->estornarEntradaCompra($pedido, $motivo);
+        }
+
+        // 3.2 Cancelar/estornar parcelas de Contas a Pagar
+        foreach ($pedido->contasPagar as $conta) {
+
+            // Por segurança, remove qualquer baixa pendente (em teoria não deveria ter, por causa da Regra 2)
+            foreach ($conta->baixas as $baixa) {
+                $baixa->delete();
+            }
+
+            $textoObs = trim(
+                ($conta->observacao ? $conta->observacao . "\n" : '') .
+                'Parcela cancelada ao cancelar o pedido de compra #' . $pedido->id .
+                ' | Motivo: ' . $motivo
+            );
+
+            $conta->status         = 'CANCELADO';
+            $conta->valor_pago     = null;
+            $conta->data_pagamento = null;
+            $conta->observacao     = $textoObs;
+            $conta->save();
+        }
+
+        // 3.3 Atualiza o pedido para CANCELADA (sem excluir)
+        $textoObsPedido = trim(
+            ($pedido->observacao ? $pedido->observacao . "\n" : '') .
+            'Pedido cancelado. Motivo: ' . $motivo
+        );
+
+        $pedido->status     = 'CANCELADA';
+        $pedido->observacao = $textoObsPedido;
+        $pedido->save(); // 👈 NÃO exclui, só salva com status cancelado
+
+        DB::commit();
+
+        return redirect()
+            ->route('compras.index')
+            ->with('success', 'Pedido cancelado com sucesso. Estoque e parcelas de Contas a Pagar foram estornados.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return back()->with('error', 'Erro ao cancelar pedido: ' . $e->getMessage());
     }
+}
+
 }

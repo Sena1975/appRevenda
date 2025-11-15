@@ -59,6 +59,45 @@
                               class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
                 </div>
             </div>
+            {{-- Condições de Pagamento --}}
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Forma de Pagamento</label>
+                    <select name="forma_pagamento_id"
+                            class="w-full border-gray-300 rounded-md shadow-sm">
+                        <option value="">Selecione...</option>
+                        @foreach ($formasPagamento as $forma)
+                            <option value="{{ $forma->id }}"
+                                @selected(old('forma_pagamento_id') == $forma->id)>
+                                {{ $forma->descricao ?? $forma->nome ?? 'ID ' . $forma->id }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Plano de Pagamento</label>
+                    <select name="plano_pagamento_id"
+                            class="w-full border-gray-300 rounded-md shadow-sm">
+                        <option value="">Selecione...</option>
+                        @foreach ($planosPagamento as $plano)
+                            <option value="{{ $plano->id }}"
+                                @selected(old('plano_pagamento_id') == $plano->id)>
+                                {{ $plano->descricao ?? $plano->nome ?? 'ID ' . $plano->id }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Qtde de Parcelas</label>
+                    <input type="number"
+                           name="qt_parcelas"
+                           min="1"
+                           value="{{ old('qt_parcelas', 1) }}"
+                           class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+            </div>
 
             {{-- Itens --}}
             <h3 class="text-lg font-semibold mb-2">Itens do Pedido</h3>

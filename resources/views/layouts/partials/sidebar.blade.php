@@ -4,10 +4,10 @@
 
     // Contadores dinâmicos (opcional)
     $qtdPedidosPendentes = DB::table('apppedidovenda')->where('status', 'PENDENTE')->count();
-    $qtdContasAbertas    = DB::table('appcontasreceber')->where('status', 'ABERTO')->count();
+    $qtdContasAbertas = DB::table('appcontasreceber')->where('status', 'ABERTO')->count();
 
     // Helpers para saber se a rota atual pertence a um grupo
-    $isCadastro   = request()->routeIs(
+    $isCadastro = request()->routeIs(
         'clientes.*',
         'revendedoras.*',
         'equiperevenda.*',
@@ -18,22 +18,21 @@
         'produtos.*',
         'tabelapreco.*',
     );
-    $isPedidos    = request()->routeIs('compras.*', 'vendas.*');
-    $isEstoque    = request()->routeIs('estoque.*', 'movestoque.*');
-    $isFinanceiro = request()->routeIs('formapagamento.*', 'planopagamento.*', 'contasreceber.*');
-    $isCampanhas  = request()->routeIs('campanhas.*', 'campanhas.restricoes*', 'participacoes.*');
+    $isPedidos = request()->routeIs('compras.*', 'vendas.*');
+    $isEstoque = request()->routeIs('estoque.*', 'movestoque.*');
+    $isFinanceiro = request()->routeIs('formapagamento.*', 'planopagamento.*', 'contasreceber.*', 'contaspagar.*');
+    $isCampanhas = request()->routeIs('campanhas.*', 'campanhas.restricoes*', 'participacoes.*');
 @endphp
 
-<div x-data="{ openSidebar: true }"
-     class="flex flex-col h-full border-r bg-white shadow-sm transition-all duration-300"
-     :class="openSidebar ? 'w-64' : 'w-20'">
+<div x-data="{ openSidebar: true }" class="flex flex-col h-full border-r bg-white shadow-sm transition-all duration-300"
+    :class="openSidebar ? 'w-64' : 'w-20'">
 
     <!-- Topo com logo e botão -->
     <div class="h-16 flex items-center justify-between px-4 border-b">
         <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
             <template x-if="openSidebar">
                 <img src="{{ asset('images/logo.png') }}" alt="Logo" class="h-10 w-auto"
-                     onerror="this.style.display='none'">
+                    onerror="this.style.display='none'">
             </template>
             <span x-show="openSidebar" class="font-semibold text-gray-800">
                 {{ config('app.name', 'appRevenda') }}
@@ -42,7 +41,7 @@
 
         <button @click="openSidebar = !openSidebar" class="p-2 rounded hover:bg-blue-100" title="Recolher/Expandir">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor">
+                stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
         </button>
@@ -53,11 +52,11 @@
 
         <!-- INÍCIO -->
         <a href="{{ route('dashboard') }}"
-           class="flex items-center px-3 py-2 rounded hover:bg-blue-50 transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700' }}">
+            class="flex items-center px-3 py-2 rounded hover:bg-blue-50 transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700' }}">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor">
+                stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 12l2-2m0 0l7-7 7 7m-9 2v8" />
+                    d="M3 12l2-2m0 0l7-7 7 7m-9 2v8" />
             </svg>
             <span x-show="openSidebar" class="ml-3">Início</span>
         </a>
@@ -65,15 +64,15 @@
         <!-- CADASTROS -->
         <div x-data="{ open: {{ $isCadastro ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Cadastros</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -104,9 +103,9 @@
                 @foreach ($cadastros as [$titulo, $rota, $svg])
                     @if (Route::has($rota))
                         <a href="{{ route($rota) }}"
-                           class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all duration-150 {{ request()->routeIs(Str::before($rota, '.') . '.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                            class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all duration-150 {{ request()->routeIs(Str::before($rota, '.') . '.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                                 viewBox="0 0 24 24" stroke="currentColor">{!! $svg !!}</svg>
+                                viewBox="0 0 24 24" stroke="currentColor">{!! $svg !!}</svg>
                             <span x-show="openSidebar" class="ml-2">{{ $titulo }}</span>
                         </a>
                     @endif
@@ -117,20 +116,20 @@
         {{-- PEDIDOS --}}
         @php
             $pedidosAbertosCompra = \App\Models\PedidoCompra::where('status', 'ABERTO')->count();
-            $qtdPendentesVenda   = \App\Models\PedidoVenda::whereIn('status', ['PENDENTE', 'ABERTO'])->count();
+            $qtdPendentesVenda = \App\Models\PedidoVenda::whereIn('status', ['PENDENTE', 'ABERTO'])->count();
         @endphp
 
         <div x-data="{ open: {{ $isPedidos ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h18l-2 13H5L3 3z" />
                 </svg>
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Pedidos</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -140,30 +139,31 @@
                 {{-- Pedido de Compra --}}
                 <div class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all">
                     <a href="{{ route('compras.index') }}"
-                       class="flex items-center {{ request()->routeIs('compras.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        class="flex items-center {{ request()->routeIs('compras.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M3 3h18l-2 13H5L3 3z" />
+                                d="M3 3h18l-2 13H5L3 3z" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Pedido de Compra</span>
                     </a>
                     @if ($pedidosAbertosCompra > 0)
                         <span x-show="openSidebar"
-                              class="text-[11px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                            class="text-[11px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
                             {{ $pedidosAbertosCompra }}
                         </span>
                     @endif
                 </div>
 
                 {{-- Pedido de Venda --}}
-                <div class="flex w-full items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all">
+                <div
+                    class="flex w-full items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all">
                     <a href="{{ route('vendas.index') }}"
-                       class="flex min-w-0 items-center {{ request()->routeIs('vendas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        class="flex min-w-0 items-center {{ request()->routeIs('vendas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v8m-4-4h8" />
+                                d="M12 8v8m-4-4h8" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2 truncate">Pedido de Venda</span>
                     </a>
@@ -171,8 +171,8 @@
                 <div class="flex items-center">
                     @if ($qtdPendentesVenda > 0)
                         <a x-show="openSidebar" href="{{ route('vendas.index', ['status' => 'PENDENTES']) }}"
-                           class="ml-2 shrink-0 whitespace-nowrap text-[11px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 hover:bg-orange-200"
-                           title="Ver pedidos pendentes (PENDENTE + ABERTO)">
+                            class="ml-2 shrink-0 whitespace-nowrap text-[11px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 hover:bg-orange-200"
+                            title="Ver pedidos pendentes (PENDENTE + ABERTO)">
                             Pendentes
                             <span
                                 class="ml-1 align-middle text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
@@ -187,37 +187,37 @@
         <!-- ESTOQUE -->
         <div x-data="{ open: {{ $isEstoque ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
+                        d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
                 </svg>
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Estoque</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
 
             <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
                 <a href="{{ route('estoque.index') }}"
-                   class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('estoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('estoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor">
+                        viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M3 7h18M3 12h18M3 17h18" />
+                            d="M3 7h18M3 12h18M3 17h18" />
                     </svg>
                     <span x-show="openSidebar" class="ml-2">Estoque</span>
                 </a>
 
                 <a href="{{ route('movestoque.index') }}"
-                   class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('movestoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('movestoque.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor">
+                        viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M4 4v5h.582a2 2 0 011.789 1.106L9 14l2-4 2 6 1-3h6" />
+                            d="M4 4v5h.582a2 2 0 011.789 1.106L9 14l2-4 2 6 1-3h6" />
                     </svg>
                     <span x-show="openSidebar" class="ml-2">Movimentações</span>
                 </a>
@@ -227,16 +227,16 @@
         <!-- FINANCEIRO -->
         <div x-data="{ open: {{ $isFinanceiro ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor">
+                    viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 9V7a5 5 0 00-10 0v2H5v12h14V9h-2z" />
+                        d="M17 9V7a5 5 0 00-10 0v2H5v12h14V9h-2z" />
                 </svg>
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Financeiro</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -252,70 +252,89 @@
                     $qtdReceber = class_exists(\App\Models\ContasReceber::class)
                         ? \App\Models\ContasReceber::where('status', 'ABERTO')->count()
                         : 0;
+                    $qtdPagar = class_exists(\App\Models\ContasPagar::class)
+                        ? \App\Models\ContasPagar::where('status', 'ABERTO')->count()
+                        : 0;
                 @endphp
 
                 <a href="{{ route('formapagamento.index') }}"
-                   class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('formapagamento.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('formapagamento.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <div class="flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v8m-4-4h8" />
+                                d="M12 8v8m-4-4h8" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Formas de Pagamento</span>
                     </div>
                     @if ($qtdFormas > 0)
                         <span x-show="openSidebar"
-                              class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{{ $qtdFormas }}</span>
+                            class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{{ $qtdFormas }}</span>
                     @endif
                 </a>
 
                 <a href="{{ route('planopagamento.index') }}"
-                   class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('planopagamento.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('planopagamento.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <div class="flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M3 7h18M3 12h18M3 17h18" />
+                                d="M3 7h18M3 12h18M3 17h18" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Planos de Pagamento</span>
                     </div>
                     @if ($qtdPlanos > 0)
                         <span x-show="openSidebar"
-                              class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{{ $qtdPlanos }}</span>
+                            class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">{{ $qtdPlanos }}</span>
                     @endif
                 </a>
 
                 <a href="{{ route('contasreceber.index') }}"
-                   class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('contasreceber.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('contasreceber.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <div class="flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v8m-4-4h8" />
+                                d="M12 8v8m-4-4h8" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Contas a Receber</span>
                     </div>
                     @if ($qtdReceber > 0)
                         <span x-show="openSidebar"
-                              class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{{ $qtdReceber }}</span>
+                            class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{{ $qtdReceber }}</span>
                     @endif
                 </a>
+                <a href="{{ route('contaspagar.index') }}"
+                    class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('contaspagar.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v8m-4-4h8" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2">Contas a Pagar</span>
+                    </div>
+                    @if ($qtdPagar > 0)
+                        <span x-show="openSidebar"
+                            class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{{ $qtdPagar }}</span>
+                    @endif
+                </a>
+
             </div>
         </div>
 
         <!-- CAMPANHAS -->
         <div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor">
+                    viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
                 </svg>
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Campanhas</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -323,11 +342,11 @@
             <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
                 @if (Route::has('campanhas.index'))
                     <a href="{{ route('campanhas.index') }}"
-                       class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('campanhas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('campanhas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
+                            viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4 6h16M4 10h16M4 14h16" />
+                                d="M4 6h16M4 10h16M4 14h16" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Gerenciar Campanhas</span>
                     </a>
@@ -335,11 +354,10 @@
 
                 @if (Route::has('participacoes.index'))
                     <a href="{{ route('participacoes.index') }}"
-                       class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('participacoes.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('participacoes.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v4l3 3" />
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2">Participações</span>
                     </a>
@@ -354,9 +372,9 @@
             @csrf
             <button type="submit" class="flex items-center text-sm text-gray-600 hover:text-red-600 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor">
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h6a2 2 0 012 2v1" />
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h6a2 2 0 012 2v1" />
                 </svg>
                 Sair
             </button>
