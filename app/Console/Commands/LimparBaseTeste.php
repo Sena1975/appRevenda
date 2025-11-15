@@ -102,6 +102,7 @@ class LimparBaseTeste extends Command
             return Command::FAILURE;
         }
     }
+    
 }
 //COMANDO PRA EXECUTAR ESSE SCRIPT
 //php artisan app:limpar-base-teste --force
