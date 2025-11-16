@@ -1,0 +1,30 @@
+[33m5ae88dd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Ajustes compras: importação, descontos automáticos e validações
+[33mabbf315[m[33m ([m[1;33mtag: [m[1;33mv1.0.4[m[33m)[m docs: guia de deploy por TAG (v1.0.4)
+[33mcc8c8b2[m Contas a Pagar
+[33m2c41642[m Preparar appRevenda para produção (contas a pagar, baixas, limpeza base)
+[33mcb7a6aa[m Menu Estoque, filtros de movimentação e ajustes em vendas/menus
+[33m7a6b199[m Ajustes compras e vendas (telas, totais, formas de pagamento)
+[33m57f0d93[m Ajustes compras e vendas (telas, totais, formas de pagamento)
+[33me2c669d[m Importação de itens no pedido de compra + estoque gerencial
+[33m00d8a61[m Atualização Compras
+[33m9271599[m Atualização Compras
+[33mfd4175c[m[33m ([m[1;33mtag: [m[1;33mv1.0.2[m[33m)[m feat: suas alterações aqui
+[33md46ce47[m docs: guia de deploy por TAG (v1.0.1)
+[33m9bc8a03[m[33m ([m[1;33mtag: [m[1;33mv1.0.1[m[33m)[m docs: guia de deploy por TAG (v1.0.1)
+[33m0d1b414[m chore(tooling): add release scripts + ignore local backups
+[33m8eddef9[m Versão 1.2
+[33m7495238[m versão 1.2
+[33m785db6a[m docs: adiciona guia de deploy por TAG
+[33mbc86df7[m Update README.md
+[33m6eca0c4[m[33m ([m[1;33mtag: [m[1;33mv1.0.0[m[33m)[m Formatação
+[33mf4fd9ae[m Formatação
+[33m75f2dd0[m Update deploy.yml sem variavel
+[33m2d24fbc[m Update deploy.yml como master
+[33med0d955[m Update deploy.yml robusto
+[33m017462e[m Create ssh-test.yml
+[33mf1d7876[m Update deploy.yml minimo
+[33m747de47[m Merge branch 'main' of https://github.com/Sena1975/appRevenda
+[33m3c0ed8b[m Teste: acionando deploy GitHub Actions
+[33m04511cb[m Update README.md
+[33m4accdfc[m Update deploy.yml para VPS
+[33m3085a53[m Responsividade Financeiro
