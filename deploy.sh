@@ -9,7 +9,7 @@ php artisan down || true
 composer install --no-dev --optimize-autoloader
 
 # Build dos assets (Vite)
-npm ci --omit=dev
+npm ci          # instala TUDO, incluindo devDependencies (onde está o vite)
 npm run build
 
 # Migrações e caches
