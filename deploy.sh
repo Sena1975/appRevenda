@@ -8,7 +8,7 @@ php artisan down || true
 # Dependências PHP
 composer install --no-dev --optimize-autoloader
 
-# (opcional) Build dos assets – se ficar pesado, depois a gente tira
+# Build dos assets (Vite)
 npm ci --omit=dev
 npm run build
 
