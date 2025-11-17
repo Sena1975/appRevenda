@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold text-gray-700">
-            Novo Pedido de Vendas
+            Novo Pedido de Venda
         </h2>
     </x-slot>
 

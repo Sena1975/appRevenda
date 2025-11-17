@@ -3,7 +3,7 @@
 
 @section('content')
 <div class="max-w-6xl mx-auto p-6">
-    <h1 class="text-2xl font-bold mb-4">Editar Pedidos #{{ $pedido->id }}</h1>
+    <h1 class="text-2xl font-bold mb-4">Editar Pedido #{{ $pedido->id }}</h1>
 
     @if(session('error'))
       <div class="mb-3 p-3 bg-red-100 text-red-800 rounded">{{ session('error') }}</div>
