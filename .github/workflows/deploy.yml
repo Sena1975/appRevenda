@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ main ]   # troque para master se seu padrão for 'master'
+    branches: [ main ]   
 
 jobs:
   deploy:
@@ -21,7 +21,7 @@ jobs:
           debug: true
           script: |
             set -euo pipefail
-            BRANCH="main"   # <— troque para "master" se for o seu caso
+            BRANCH="main"   
             cd /var/www/appRevenda
             git fetch --all
             git reset --hard origin/$BRANCH

@@ -34,6 +34,10 @@ use App\Http\Controllers\DashboardController;
 | Web Routes
 |--------------------------------------------------------------------------
 */
+// DEBUG: descobrir de onde está rodando o app
+Route::get('/whoami', function () {
+    return base_path();
+});
 
 Route::get('/', function () {
     return view('welcome');

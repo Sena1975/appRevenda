@@ -4,7 +4,7 @@
 @section('content')
     <div class="max-w-6xl mx-auto p-6">
         <div class="flex items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold text-gray-700">Pedidos de Venda</h1>
+            <h1 class="text-2xl font-bold text-gray-700">Pedidos de Vendas</h1>
             <a href="{{ route('vendas.create') }}"
                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium shadow">
                 Novo Pedido

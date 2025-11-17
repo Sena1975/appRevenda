@@ -184,7 +184,7 @@
             </div>
         </div>
 
-        {{-- <!-- ESTOQUE -->
+        <!-- ESTOQUE -->
         <div x-data="{ open: {{ $isEstoque ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
                 class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
@@ -222,30 +222,7 @@
                     <span x-show="openSidebar" class="ml-2">Movimentações</span>
                 </a>
             </div>
-        </div> --}}
-{{-- ESTOQUE --}}
-<div x-data="{ openEstoque: true }" class="mt-2">
-    <button type="button"
-            class="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-blue-50 rounded"
-            @click="openEstoque = !openEstoque">
-        <span class="flex items-center">
-            📦
-            <span class="ml-2">Estoque</span>
-        </span>
-        <span x-text="openEstoque ? '▾' : '▸'"></span>
-    </button>
-
-    <div x-show="openEstoque" class="mt-1 space-y-1 pl-6" x-cloak>
-        <a href="{{ route('estoque.index') }}"
-           class="block px-2 py-1 text-sm rounded hover:bg-blue-50 {{ request()->routeIs('estoque.*') ? 'text-blue-700 font-semibold bg-blue-50' : 'text-gray-700' }}">
-            📋 Estoque
-        </a>
-        <a href="{{ route('movestoque.index') }}"
-           class="block px-2 py-1 text-sm rounded hover:bg-blue-50 {{ request()->routeIs('movestoque.*') ? 'text-blue-700 font-semibold bg-blue-50' : 'text-gray-700' }}">
-            🔄 Movimentações
-        </a>
-    </div>
-</div>
+        </div>
 
         <!-- FINANCEIRO -->
         <div x-data="{ open: {{ $isFinanceiro ? 'true' : 'false' }} }" class="mt-2">
