@@ -1,4 +1,5 @@
 #!/bin/bash
+export COMPOSER_ALLOW_SUPERUSER=1
 
 echo "🚀 Iniciando deploy: $(date)"
 
@@ -9,12 +10,12 @@ USER="www-data"
 cd "$PROJECT_DIR" || { echo "❌ Pasta não encontrada: $PROJECT_DIR"; exit 1; }
 
 # Resetando mudanças locais
-echo "🔁 Resetando alterações locais..."
-git reset --hard
+# echo "🔁 Resetando alterações locais..."
+# git reset --hard
 
 # Atualizando código
-echo "📥 Puxando últimas alterações do GitHub..."
-git pull origin main
+# echo "📥 Puxando últimas alterações do GitHub..."
+# git pull origin main
 
 # Permissões
 echo "🔒 Corrigindo permissões de pasta..."
