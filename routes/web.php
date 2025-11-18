@@ -28,6 +28,8 @@ use App\Http\Controllers\CampanhaController;
 use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RelatorioFinanceiroController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -44,6 +46,21 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::prefix('relatorios')->name('relatorios.')->group(function () {
+
+        // Previsão de recebimentos (Contas a Receber)
+        Route::get('/recebimentos/previsao', [RelatorioFinanceiroController::class, 'previsaoRecebimentos'])
+            ->name('recebimentos.previsao');
+
+        // Previsão de pagamentos (Contas a Pagar)
+        Route::get('/pagamentos/previsao', [RelatorioFinanceiroController::class, 'previsaoPagamentos'])
+            ->name('pagamentos.previsao');
+
+        // Inadimplência (contas a receber vencidas)
+        Route::get('/recebimentos/inadimplencia', [RelatorioFinanceiroController::class, 'inadimplenciaReceber'])
+            ->name('recebimentos.inadimplencia');
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -155,7 +172,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('contaspagar.baixar');
 
     Route::post('contaspagar/{conta}/estornar', [ContasPagarController::class, 'estornar'])
-    ->name('contaspagar.estornar');     
+        ->name('contaspagar.estornar');
     /*
     |--------------------------------------------------------------------------
     | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)

@@ -1,22 +1,50 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
 
-cd /var/www/appRevenda
+echo "🚀 Iniciando deploy: $(date)"
 
-php artisan down || true
+PROJECT_DIR="/var/www/appRevenda"
+PHP_FPM_SERVICE="php8.3-fpm"
+USER="www-data"
 
-# Dependências PHP
+cd "$PROJECT_DIR" || { echo "❌ Pasta não encontrada: $PROJECT_DIR"; exit 1; }
+
+# Resetando mudanças locais
+echo "🔁 Resetando alterações locais..."
+git reset --hard
+
+# Atualizando código
+echo "📥 Puxando últimas alterações do GitHub..."
+git pull origin main
+
+# Permissões
+echo "🔒 Corrigindo permissões de pasta..."
+chown -R $USER:$USER "$PROJECT_DIR"
+find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
+find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
+
+# Instalando dependências do Laravel
+echo "📦 Instalando dependências do PHP..."
 composer install --no-dev --optimize-autoloader
 
-# Build dos assets (Vite)
-npm ci          # instala TUDO, incluindo devDependencies (onde está o vite)
-npm run build
-
-# Migrações e caches
-php artisan migrate --force
-php artisan optimize:clear
+# Limpando e cacheando configs Laravel
+echo "🧹 Limpando e gerando cache Laravel..."
+php artisan config:clear
+php artisan cache:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-php artisan up
+# Migrando banco de dados
+echo "📂 Rodando migrations..."
+php artisan migrate --force
+
+# Build frontend com Vite
+echo "🛠️ Compilando assets com Vite..."
+npm install
+./node_modules/.bin/vite build
+
+# Reiniciando PHP-FPM
+echo "♻️ Reiniciando PHP-FPM ($PHP_FPM_SERVICE)..."
+systemctl restart "$PHP_FPM_SERVICE"
+
+echo "✅ Deploy finalizado com sucesso em $(date)"

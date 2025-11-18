@@ -20,7 +20,16 @@
     );
     $isPedidos = request()->routeIs('compras.*', 'vendas.*');
     $isEstoque = request()->routeIs('estoque.*', 'movestoque.*');
-    $isFinanceiro = request()->routeIs('formapagamento.*', 'planopagamento.*', 'contasreceber.*', 'contaspagar.*');
+    $isFinanceiro = request()->routeIs(
+        'formapagamento.*',
+        'planopagamento.*',
+        'contasreceber.*',
+        'contaspagar.*',
+        'relatorios.recebimentos.*',
+        'relatorios.pagamentos.*',
+        'relatorios.recebimentos.inadimplencia',
+    );
+
     $isCampanhas = request()->routeIs('campanhas.*', 'campanhas.restricoes*', 'participacoes.*');
 @endphp
 
@@ -257,6 +266,7 @@
                         : 0;
                 @endphp
 
+                {{-- Cadastros Financeiros --}}
                 <a href="{{ route('formapagamento.index') }}"
                     class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('formapagamento.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <div class="flex items-center">
@@ -304,6 +314,7 @@
                             class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{{ $qtdReceber }}</span>
                     @endif
                 </a>
+
                 <a href="{{ route('contaspagar.index') }}"
                     class="flex items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('contaspagar.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                     <div class="flex items-center">
@@ -320,8 +331,61 @@
                     @endif
                 </a>
 
+                {{-- Separador visual --}}
+                <div x-show="openSidebar" class="border-t border-gray-200 my-2"></div>
+
+                {{-- RELATÓRIOS FINANCEIROS --}}
+                <p x-show="openSidebar" class="text-[11px] uppercase text-gray-500 mt-1 mb-1">
+                    Relatórios
+                </p>
+
+                {{-- Previsão de Recebimentos --}}
+                @if (Route::has('relatorios.recebimentos.previsao'))
+                    <a href="{{ route('relatorios.recebimentos.previsao') }}"
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                            {{ request()->routeIs('relatorios.recebimentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h4l3 8 4-16 3 8h4" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2">Previsão Recebimentos</span>
+                    </a>
+                @endif
+
+                {{-- Previsão de Pagamentos --}}
+                @if (Route::has('relatorios.pagamentos.previsao'))
+                    <a href="{{ route('relatorios.pagamentos.previsao') }}"
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                            {{ request()->routeIs('relatorios.pagamentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2">Previsão Pagamentos</span>
+                    </a>
+                @endif
+
+                {{-- Inadimplência Contas a Receber --}}
+                @if (Route::has('relatorios.recebimentos.inadimplencia'))
+                    <a href="{{ route('relatorios.recebimentos.inadimplencia') }}"
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                            {{ request()->routeIs('relatorios.recebimentos.inadimplencia') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 1.343-3 3v2h6v-2c0-1.657-1.343-3-3-3z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5 21h14a2 2 0 002-2v-5H3v5a2 2 0 002 2z" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2">Inadimplência Receber</span>
+                    </a>
+                @endif
+
             </div>
         </div>
+
 
         <!-- CAMPANHAS -->
         <div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
