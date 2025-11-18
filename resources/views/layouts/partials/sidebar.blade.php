@@ -385,8 +385,6 @@
 
             </div>
         </div>
-
-
         <!-- CAMPANHAS -->
         <div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
