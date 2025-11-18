@@ -87,7 +87,8 @@ cd /var/www/appRevenda && ./deploy.sh
 systemctl status nginx --no-pager
 systemctl status php8.3-fpm --no-pager
 tail -n 100 storage/logs/laravel.log
-\\\
+\\\
+
 
 ## 🚀 Deploy por TAG (VPS + Nginx + PHP-FPM 8.3)
 
@@ -113,7 +114,8 @@ cd /var/www/appRevenda && ./deploy.sh
 systemctl status nginx --no-pager
 systemctl status php8.3-fpm --no-pager
 tail -n 100 storage/logs/laravel.log
-\\\
+\\\
+
 
 ## 🚀 Deploy por TAG (VPS + Nginx + PHP-FPM 8.3)
 
@@ -139,4 +141,6 @@ cd /var/www/appRevenda && ./deploy.sh
 systemctl status nginx --no-pager
 systemctl status php8.3-fpm --no-pager
 tail -n 100 storage/logs/laravel.log
-\\\
+\\\
+
+Atualizado em produção via GitHub Actions.
