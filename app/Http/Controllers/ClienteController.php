@@ -7,12 +7,40 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Database\QueryException;
 
 class ClienteController extends Controller
 {
     public function index()
     {
-        $clientes = Cliente::orderBy('nome')->paginate(10);
+        // Subquery com estatísticas por cliente
+        $statsSub = DB::table('apppedidovenda as p')
+            ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
+            ->selectRaw('
+            p.cliente_id                                   as cliente_id,
+            COUNT(DISTINCT i.produto_id)                  as mix,
+            COALESCE(SUM(p.valor_liquido), 0)             as total_compras,
+            COUNT(DISTINCT p.id)                          as qtd_pedidos,
+            COALESCE(
+                SUM(p.valor_liquido) / NULLIF(COUNT(DISTINCT p.id), 0),
+                0
+            )                                             as ticket_medio
+        ')
+            ->whereNotNull('p.cliente_id')
+           
+            ->groupBy('p.cliente_id');
+
+        $clientes = DB::table('appcliente as c')
+            ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
+            ->selectRaw('
+            c.*,
+            COALESCE(s.mix, 0)            as mix,
+            COALESCE(s.total_compras, 0)  as total_compras,
+            COALESCE(s.ticket_medio, 0)   as ticket_medio
+        ')
+            ->orderBy('c.nome')
+            ->paginate(15);
+
         return view('clientes.index', compact('clientes'));
     }
 
@@ -209,7 +237,7 @@ class ClienteController extends Controller
             'instagram'       => $request->instagram,
             'facebook'        => $request->facebook,
             'cpf'             => $request->cpf,
-            'data_nascimento' => $dn, 
+            'data_nascimento' => $dn,
             'sexo'            => $request->sexo,
             'filhos'          => $request->filhos,
             'timecoracao'     => $request->timecoracao,
@@ -229,15 +257,30 @@ class ClienteController extends Controller
         return redirect()->route('clientes.index')->with('success', 'Cliente atualizado com sucesso!');
     }
 
-
-    public function destroy(Cliente $cliente)
+    public function destroy(\App\Models\Cliente $cliente)
     {
-        if ($cliente->foto && Storage::exists('public/' . $cliente->foto)) {
-            Storage::delete('public/' . $cliente->foto);
+        try {
+            // Remove foto, se houver
+            if ($cliente->foto && Storage::exists('public/' . $cliente->foto)) {
+                Storage::delete('public/' . $cliente->foto);
+            }
+
+            $cliente->delete();
+
+            return redirect()
+                ->route('clientes.index')
+                ->with('success', 'Cliente excluído com sucesso!');
+        } catch (QueryException $e) {
+
+            // Código MySQL 1451 = violação de chave estrangeira (registro filho existente)
+            if (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1451) {
+                return redirect()
+                    ->route('clientes.index')
+                    ->with('error', 'Não é possível excluir este cliente, pois existem registros financeiros ou pedidos vinculados a ele.');
+            }
+
+            // Outros erros: se quiser, pode tratar diferente, mas por enquanto só relança
+            throw $e;
         }
-
-        $cliente->delete();
-
-        return redirect()->route('clientes.index')->with('success', 'Cliente excluído com sucesso!');
     }
 }

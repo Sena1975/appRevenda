@@ -27,6 +27,10 @@ class ProdutoLookupController extends Controller
             'data_ultima_entrada',
         ]);
 
+        if ($request->boolean('only_in_stock')) {
+            $query->where('qtd_estoque', '>', 0);
+        }
+        
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
                 $w->where('descricao_produto', 'like', "%{$q}%")

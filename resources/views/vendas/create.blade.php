@@ -31,18 +31,39 @@
 
             {{-- Cabeçalho --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
                 {{-- Cliente --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Cliente</label>
-                    <select name="cliente_id" class="w-full border-gray-300 rounded-md shadow-sm" required>
-                        <option value="">Selecione...</option>
-                        @foreach ($clientes ?? [] as $cliente)
-                            <option value="{{ $cliente->id }}" @selected(old('cliente_id') == $cliente->id)>
-                                {{ $cliente->nome ?? ($cliente->nomecompleto ?? $cliente->razaosocial) }}
-                            </option>
-                        @endforeach
-                    </select>
+
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <select id="cliente_id" name="cliente_id"
+                                class="w-full border-gray-300 rounded-md shadow-sm cliente-select" required>
+                                <option value="">Selecione...</option>
+                                @foreach ($clientes ?? [] as $cliente)
+                                    <option value="{{ $cliente->id }}" @selected(old('cliente_id') == $cliente->id)>
+                                        {{ $cliente->nome ?? ($cliente->nomecompleto ?? $cliente->razaosocial) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- Botão Novo Cliente --}}
+                        <div>
+                            <a href="{{ route('clientes.create') }}" target="_blank"
+                                class="px-3 py-2 bg-emerald-600 text-white text-xs rounded shadow hover:bg-emerald-700">
+                                + Novo
+                            </a>
+                        </div>
+                    </div>
+
+                    <p class="mt-1 text-xs text-gray-500">
+                        Não achou o cliente? Clique em <strong>+ Novo</strong> para cadastrar em outra aba e depois
+                        pesquise o nome aqui.
+                    </p>
                 </div>
+
 
                 {{-- Revendedora --}}
                 <div>
@@ -50,12 +71,13 @@
                     <select name="revendedora_id" class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Selecione...</option>
                         @foreach ($revendedoras ?? [] as $rev)
-                            <option value="{{ $rev->id }}" @selected(old('revendedora_id') == $rev->id)>
+                            <option value="{{ $rev->id }}" @selected(old('revendedora_id', $revendedoraPadraoId) == $rev->id)>
                                 {{ $rev->nome }}
                             </option>
                         @endforeach
                     </select>
                 </div>
+
 
                 {{-- Data Venda --}}
                 <div>
@@ -67,10 +89,11 @@
                 {{-- Previsão de entrega --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Previsão de Entrega</label>
-                    <input type="date" name="data_prevista_entrega"
-                        value="{{ old('data_prevista_entrega', now()->toDateString()) }}"
+                    <input type="date" name="previsao_entrega"
+                        value="{{ old('previsao_entrega', now()->toDateString()) }}"
                         class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
+
 
                 {{-- Forma de pagamento --}}
                 <div>
@@ -105,6 +128,14 @@
             {{-- Itens --}}
             <h3 class="text-lg font-semibold mb-2">Itens da Venda</h3>
 
+            <div class="mb-2">
+                <label class="inline-flex items-center text-sm text-gray-700">
+                    <input type="checkbox" id="somenteEstoque" class="rounded border-gray-300 mr-2">
+                    Somente produtos com estoque disponível
+                </label>
+            </div>
+
+
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm border" id="tabela-itens">
                     <thead>
@@ -114,7 +145,7 @@
                             <th class="px-2 py-1 border text-right w-20">Pontos</th>
                             <th class="px-2 py-1 border text-right w-24">Preço Compra</th>
                             <th class="px-2 py-1 border text-right w-24">Preço Venda</th>
-                            <th class="px-2 py-1 border text-right w-24">Desconto</th>
+                            <th class="px-2 py-1 border text-right w-24 hidden">Desconto</th>
                             <th class="px-2 py-1 border text-right w-28">Total</th>
                             <th class="px-2 py-1 border text-right w-28">Lucro</th>
                             <th class="px-2 py-1 border text-center w-20">Ações</th>
@@ -160,7 +191,7 @@
                             </td>
 
                             {{-- Desconto (R$ na linha) --}}
-                            <td class="px-2 py-1 border text-right w-24">
+                            <td class="px-2 py-1 border text-right w-24" hidden>
                                 <input type="number" step="0.01" min="0" value="0"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-desconto"
                                     name="itens[0][desconto]">
@@ -221,7 +252,7 @@
                     Cancelar
                 </a>
 
-            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded shadow text-sm">
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded shadow text-sm">
                     Salvar Venda
                 </button>
             </div>
@@ -238,6 +269,12 @@
             // ------------------- Itens da venda -------------------
             let indice = 0;
 
+            // -------- Cliente: Select2 com busca por nome --------
+            $('.cliente-select').select2({
+                placeholder: 'Selecione ou digite o nome do cliente...',
+                width: '100%'
+            });
+
             function toNumber(val) {
                 return parseFloat((val || '0').toString().replace(',', '.')) || 0;
             }
@@ -253,24 +290,30 @@
                         dataType: 'json',
                         delay: 300,
                         data: function(params) {
-                            return { q: params.term };
+                            return {
+                                q: params.term,
+                                only_in_stock: $('#somenteEstoque').is(':checked') ? 1 : 0
+                            };
                         },
                         processResults: function(data) {
-                            return { results: data };
+                            return {
+                                results: data
+                            };
                         }
                     }
+
                 });
 
                 $select.on('select2:select', function(e) {
                     const dados = e.params.data;
 
-                    row.querySelector('.input-codfab').value     = dados.codigo_fabrica || '';
-                    row.querySelector('.input-produto-id').value = dados.produto_id     || '';
+                    row.querySelector('.input-codfab').value = dados.codigo_fabrica || '';
+                    row.querySelector('.input-produto-id').value = dados.produto_id || '';
 
                     // Preço compra (último custo) e preço venda da view
-                    row.querySelector('.input-preco-compra').value = (dados.preco_compra  ?? 0).toFixed(2);
-                    row.querySelector('.input-preco-venda').value  = (dados.preco_revenda ?? 0).toFixed(2);
-                    row.querySelector('.input-pontos').value       = dados.pontos ?? 0;
+                    row.querySelector('.input-preco-compra').value = (dados.preco_compra ?? 0).toFixed(2);
+                    row.querySelector('.input-preco-venda').value = (dados.preco_revenda ?? 0).toFixed(2);
+                    row.querySelector('.input-pontos').value = dados.pontos ?? 0;
 
                     recalcularLinha(row);
                     recalcularTotais();
@@ -283,54 +326,54 @@
             }
 
             function recalcularLinha(row) {
-                const qtd      = toNumber(row.querySelector('.input-quantidade').value);
-                const pCompra  = toNumber(row.querySelector('.input-preco-compra').value);
-                const pVenda   = toNumber(row.querySelector('.input-preco-venda').value);
+                const qtd = toNumber(row.querySelector('.input-quantidade').value);
+                const pCompra = toNumber(row.querySelector('.input-preco-compra').value);
+                const pVenda = toNumber(row.querySelector('.input-preco-venda').value);
                 const desconto = toNumber(row.querySelector('.input-desconto').value);
 
                 const totalBruto = qtd * pVenda;
-                const total      = Math.max(0, totalBruto - desconto);
+                const total = Math.max(0, totalBruto - desconto);
 
                 const custoTotal = qtd * pCompra;
-                const lucro      = total - custoTotal;
+                const lucro = total - custoTotal;
 
                 row.querySelector('.input-total-linha').value = total.toFixed(2);
                 row.querySelector('.input-lucro-linha').value = lucro.toFixed(2);
             }
 
             function recalcularTotais() {
-                let totalVenda  = 0;
+                let totalVenda = 0;
                 let totalPontos = 0;
-                let totalLucro  = 0;
+                let totalLucro = 0;
 
                 document.querySelectorAll('#tbody-itens tr').forEach(function(linha) {
-                    const qtd      = toNumber(linha.querySelector('.input-quantidade').value);
-                    const pVenda   = toNumber(linha.querySelector('.input-preco-venda').value);
-                    const pCompra  = toNumber(linha.querySelector('.input-preco-compra').value);
+                    const qtd = toNumber(linha.querySelector('.input-quantidade').value);
+                    const pVenda = toNumber(linha.querySelector('.input-preco-venda').value);
+                    const pCompra = toNumber(linha.querySelector('.input-preco-compra').value);
                     const desconto = toNumber(linha.querySelector('.input-desconto').value);
-                    const pontos   = toNumber(linha.querySelector('.input-pontos').value);
+                    const pontos = toNumber(linha.querySelector('.input-pontos').value);
 
                     const totalBruto = qtd * pVenda;
                     const totalLinha = Math.max(0, totalBruto - desconto);
                     const custoTotal = qtd * pCompra;
                     const lucroLinha = totalLinha - custoTotal;
 
-                    totalVenda  += totalLinha;
+                    totalVenda += totalLinha;
                     totalPontos += (qtd * pontos);
-                    totalLucro  += lucroLinha;
+                    totalLucro += lucroLinha;
                 });
 
-                document.getElementById('totalVendaSpan').innerText  = totalVenda.toFixed(2).replace('.', ',');
+                document.getElementById('totalVendaSpan').innerText = totalVenda.toFixed(2).replace('.', ',');
                 document.getElementById('totalPontosSpan').innerText = totalPontos.toFixed(0);
-                document.getElementById('totalLucroSpan').innerText  = totalLucro.toFixed(2).replace('.', ',');
+                document.getElementById('totalLucroSpan').innerText = totalLucro.toFixed(2).replace('.', ',');
 
-                document.getElementById('total_venda').value  = totalVenda.toFixed(2);
+                document.getElementById('total_venda').value = totalVenda.toFixed(2);
                 document.getElementById('total_pontos').value = totalPontos.toFixed(0);
-                document.getElementById('total_lucro').value  = totalLucro.toFixed(2);
+                document.getElementById('total_lucro').value = totalLucro.toFixed(2);
             }
 
             function adicionarLinha() {
-                const tbody  = document.getElementById('tbody-itens');
+                const tbody = document.getElementById('tbody-itens');
                 const modelo = tbody.querySelector('.linha-item');
 
                 indice++;
@@ -343,7 +386,7 @@
                     inp.value = '';
                 });
                 novaLinha.querySelector('.input-quantidade').value = 1;
-                novaLinha.querySelector('.input-desconto').value   = 0;
+                novaLinha.querySelector('.input-desconto').value = 0;
 
                 // ajusta names
                 novaLinha.querySelector('.input-codfab')
@@ -358,7 +401,8 @@
                 // recria select
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
                 selectTd.innerHTML =
-                    '<select class="produto-select w-full" data-index="' + indice + '" style="width:100%;"></select>' +
+                    '<select class="produto-select w-full" data-index="' + indice +
+                    '" style="width:100%;"></select>' +
                     '<input type="hidden" name="itens[' + indice + '][codfabnumero]" class="input-codfab">' +
                     '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">';
 
@@ -370,6 +414,10 @@
 
                 tbody.appendChild(novaLinha);
                 initSelect2(novaLinha);
+                // Quando marcar/desmarcar "Somente com estoque", limpar selects para forçar nova busca
+                $('#somenteEstoque').on('change', function() {
+                    $('.produto-select').val(null).trigger('change');
+                });
 
                 return novaLinha;
             }
@@ -413,7 +461,9 @@
 
                 try {
                     const res = await fetch(`/planos-por-forma/${encodeURIComponent(formaId)}`, {
-                        headers: { 'Accept': 'application/json' }
+                        headers: {
+                            'Accept': 'application/json'
+                        }
                     });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
 
@@ -423,14 +473,14 @@
                     planos.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p.id;
-                        opt.textContent = p.parcelas > 0
-                            ? `${p.descricao} (${p.parcelas}x)`
-                            : p.descricao;
-                        opt.dataset.codigo  = p.codigo  ?? '';
+                        opt.textContent = p.parcelas > 0 ?
+                            `${p.descricao} (${p.parcelas}x)` :
+                            p.descricao;
+                        opt.dataset.codigo = p.codigo ?? '';
                         opt.dataset.parcelas = p.parcelas ?? 0;
-                        opt.dataset.prazo1   = p.prazo1   ?? 0;
-                        opt.dataset.prazo2   = p.prazo2   ?? 0;
-                        opt.dataset.prazo3   = p.prazo3   ?? 0;
+                        opt.dataset.prazo1 = p.prazo1 ?? 0;
+                        opt.dataset.prazo2 = p.prazo2 ?? 0;
+                        opt.dataset.prazo3 = p.prazo3 ?? 0;
                         planoSel.appendChild(opt);
                     });
 

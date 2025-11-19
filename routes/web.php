@@ -48,18 +48,26 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
 
     Route::prefix('relatorios')->name('relatorios.')->group(function () {
-
-        // Previsão de recebimentos (Contas a Receber)
+        // (já existiam)
         Route::get('/recebimentos/previsao', [RelatorioFinanceiroController::class, 'previsaoRecebimentos'])
             ->name('recebimentos.previsao');
 
-        // Previsão de pagamentos (Contas a Pagar)
         Route::get('/pagamentos/previsao', [RelatorioFinanceiroController::class, 'previsaoPagamentos'])
             ->name('pagamentos.previsao');
 
-        // Inadimplência (contas a receber vencidas)
         Route::get('/recebimentos/inadimplencia', [RelatorioFinanceiroController::class, 'inadimplenciaReceber'])
             ->name('recebimentos.inadimplencia');
+
+        // ✅ Extrato Financeiro do Cliente (já criamos antes)
+        Route::get('/recebimentos/extrato-cliente', [RelatorioFinanceiroController::class, 'extratoCliente'])
+            ->name('recebimentos.extrato_cliente');
+
+        // ✅ Novos (podem ser stubs por enquanto)
+        Route::get('/clientes/{cliente}/extrato-pedidos', [RelatorioFinanceiroController::class, 'extratoPedidosCliente'])
+            ->name('clientes.extrato_pedidos');
+
+        Route::get('/clientes/{cliente}/extrato-produtos', [RelatorioFinanceiroController::class, 'extratoProdutosCliente'])
+            ->name('clientes.extrato_produtos');
     });
 
     /*

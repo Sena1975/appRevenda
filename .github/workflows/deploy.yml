@@ -26,4 +26,5 @@ jobs:
             git fetch --all
             git reset --hard origin/$BRANCH
             export COMPOSER_ALLOW_SUPERUSER=1
+            chmod +x deploy.sh          # 👈 garante permissão sempre
             ./deploy.sh

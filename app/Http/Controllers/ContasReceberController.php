@@ -10,74 +10,106 @@ class ContasReceberController extends Controller
 {
     public function index(Request $request)
     {
-        $q = DB::table('appcontasreceber as cr')
-            ->leftJoin('appcliente as cli', 'cli.id', '=', 'cr.cliente_id')
-            ->leftJoin('apprevendedora as rev', 'rev.id', '=', 'cr.revendedora_id')
-            ->selectRaw('cr.*, cli.nome as cliente_nome, rev.nome as revendedora_nome')
-            ->orderByDesc('cr.id');
+        // base: VIEW, não mais tabela bruta
+        $q = DB::table('view_app_contasreceber as v')
+            ->orderByDesc('v.conta_id');
 
-        // Filtros
-        $clienteId  = $request->input('cliente_id');
-        $clienteTxt = trim((string)$request->input('cliente', ''));
+        // ---------------- Filtros ----------------
 
-        if ($clienteId) {
-            $q->where('cr.cliente_id', (int) $clienteId);
-        } elseif ($clienteTxt !== '') {
+        // Cliente (texto ou ID numérico)
+        $clienteTxt = trim((string) $request->input('cliente', ''));
+
+        if ($clienteTxt !== '') {
             if (is_numeric($clienteTxt)) {
-                $q->where('cr.cliente_id', (int) $clienteTxt);
+                $q->where('v.cliente_id', (int) $clienteTxt);
             } else {
-                $q->where('cli.nome', 'like', "%{$clienteTxt}%");
+                $q->where('v.cliente_nome', 'like', "%{$clienteTxt}%");
             }
         }
 
-        $status = strtoupper((string)$request->input('status', 'TODOS'));
+        // Status (ABERTO, PAGO, CANCELADO, TODOS)
+        $status = strtoupper((string) $request->input('status', 'TODOS'));
         if ($status !== '' && $status !== 'TODOS') {
-            $q->whereRaw('UPPER(cr.status) = ?', [$status]);
+            $q->whereRaw('UPPER(v.status_titulo) = ?', [$status]);
         }
 
-        $dataDe  = $request->input('data_de',  $request->input('data_ini'));
-        $dataAte = $request->input('data_ate', $request->input('data_fim'));
+        // Período de vencimento (nome igual ao do form: dt_ini / dt_fim)
+        $dataIni = $request->input('dt_ini');
+        $dataFim = $request->input('dt_fim');
 
-        if (!empty($dataDe))  $q->whereDate('cr.data_vencimento', '>=', $dataDe);
-        if (!empty($dataAte)) $q->whereDate('cr.data_vencimento', '<=', $dataAte);
+        if (!empty($dataIni)) {
+            $q->whereDate('v.data_vencimento', '>=', $dataIni);
+        }
+        if (!empty($dataFim)) {
+            $q->whereDate('v.data_vencimento', '<=', $dataFim);
+        }
 
-        $contas = $q->paginate(15)->appends($request->query());
+        // ---------------- Select / paginação ----------------
+        $contas = $q->select([
+            'v.conta_id         as id',
+            'v.cliente_nome',
+            'v.parcela',
+            'v.total_parcelas',
+            'v.data_vencimento',
+            'v.status_titulo    as status',
+            'v.valor_titulo     as valor',
+            'v.forma_pagamento',
+            'v.plano_pagamento',
+        ])
+            ->paginate(15)
+            ->appends($request->query());
 
-        // Compat p/ views
+        // Compat com a view (usa $c->vencimento)
         $contas->getCollection()->transform(function ($c) {
             $c->vencimento = $c->data_vencimento;
-            $c->pago_em    = $c->data_pagamento;
-            if (strtoupper((string)$c->status) === 'PAGO') {
-                $c->status = 'PAGO';
-            }
             return $c;
         });
 
-        $filtros = [
-            'cliente'    => $clienteTxt,
-            'cliente_id' => $clienteId,
-            'status'     => $status ?: 'TODOS',
-            'data_de'    => $dataDe ?? '',
-            'data_ate'   => $dataAte ?? '',
+        // Array de filtros esperado pela Blade (usa $filtro, não $filtros)
+        $filtro = [
+            'cliente' => $clienteTxt,
+            'status'  => $status ?: 'TODOS',
+            'dt_ini'  => $dataIni ?? '',
+            'dt_fim'  => $dataFim ?? '',
         ];
 
-        $clientes = DB::table('appcliente')->orderBy('nome')->get(['id','nome']);
+        // (Se quiser aproveitar lista de clientes depois, já deixo aqui)
+        $clientes = DB::table('appcliente')->orderBy('nome')->get(['id', 'nome']);
 
-        return view('financeiro.index', compact('contas', 'filtros', 'clientes'));
+        return view('contasreceber.index', compact('contas', 'filtro', 'clientes'));
     }
-
     public function show($id)
     {
-        $c = DB::table('appcontasreceber as cr')
-            ->leftJoin('appcliente as cli', 'cli.id', '=', 'cr.cliente_id')
-            ->leftJoin('apprevendedora as rev', 'rev.id', '=', 'cr.revendedora_id')
-            ->selectRaw('cr.*, cli.nome as cliente_nome, rev.nome as revendedora_nome')
-            ->where('cr.id', $id)
+        $c = DB::table('view_app_contasreceber as v')
+            ->where('v.conta_id', (int) $id)
+            ->select([
+                'v.conta_id           as id',
+                'v.pedido_id',
+                'v.cliente_id',
+                'v.cliente_nome',
+                'v.revendedora_id',
+                'v.revendedora_nome',
+                'v.parcela',
+                'v.total_parcelas',
+                'v.forma_pagamento',
+                'v.plano_pagamento',
+                'v.data_emissao',
+                'v.data_vencimento',
+                'v.valor_titulo       as valor',
+                'v.status_titulo      as status',
+                'v.data_pagamento',
+                'v.valor_pago',
+                'v.saldo',
+                'v.situacao',
+            ])
             ->first();
 
         abort_if(!$c, 404);
 
-        return view('Financeiro.show', compact('c'));
+        // compat com nomes usados na view
+        $c->vencimento = $c->data_vencimento;
+
+        return view('contasreceber.show', compact('c'));
     }
 
     /** GET: editar (campos básicos; baixa NÃO é aqui) */
@@ -86,8 +118,8 @@ class ContasReceberController extends Controller
         $c = DB::table('appcontasreceber')->where('id', $id)->first();
         abort_if(!$c, 404);
 
-        $clientes = DB::table('appcliente')->orderBy('nome')->get(['id','nome']);
-        $formas   = DB::table('appformapagamento')->orderBy('nome')->get(['id','nome']);
+        $clientes = DB::table('appcliente')->orderBy('nome')->get(['id', 'nome']);
+        $formas   = DB::table('appformapagamento')->orderBy('nome')->get(['id', 'nome']);
 
         return view('Financeiro.edit', compact('c', 'clientes', 'formas'));
     }
@@ -101,7 +133,7 @@ class ContasReceberController extends Controller
             'data_vencimento'    => 'required|date',
             'valor'              => 'required',
             'observacao'         => 'nullable|string',
-        ],[
+        ], [
             'cliente_id.required' => 'Selecione o cliente.',
             'forma_pagamento_id.required' => 'Selecione a forma de pagamento.',
             'data_vencimento.required' => 'Informe a data de vencimento.',
@@ -127,19 +159,41 @@ class ContasReceberController extends Controller
             ->with('success', 'Parcela atualizada com sucesso.');
     }
 
-    /** GET: form de baixa */
-    public function baixar($id)
-    {
-        $c = DB::table('appcontasreceber')->where('id', $id)->first();
-        abort_if(!$c, 404);
+public function baixar($id)
+{
+    // Carrega pela VIEW para ter cliente_nome, forma, etc.
+    $c = DB::table('view_app_contasreceber as v')
+        ->where('v.conta_id', (int)$id)
+        ->select([
+            'v.conta_id        as id',
+            'v.pedido_id',
+            'v.cliente_id',
+            'v.cliente_nome',
+            'v.revendedora_id',
+            'v.revendedora_nome',
+            'v.forma_pagamento',
+            'v.plano_pagamento',
+            'v.data_emissao',
+            'v.data_vencimento',
+            'v.valor_titulo    as valor',
+            'v.status_titulo   as status',
+            'v.data_pagamento',
+            'v.valor_pago',
+            'v.saldo',
+            'v.situacao',
+        ])
+        ->first();
 
-        if (strtoupper((string)$c->status) === 'PAGO') {
-            return redirect()->route('contasreceber.index')
-                ->with('info', 'Esta parcela já está baixada.');
-        }
+    abort_if(!$c, 404);
 
-        return view('Financeiro.baixa', ['conta' => $c]);
+    if (strtoupper((string)$c->status) === 'PAGO') {
+        return redirect()
+            ->route('contasreceber.index')
+            ->with('info', 'Esta parcela já está baixada.');
     }
+
+    return view('financeiro.baixa', ['conta' => $c]);
+}
 
     /** POST: efetiva a baixa */
     public function baixarStore(Request $request, $id)
@@ -187,48 +241,81 @@ class ContasReceberController extends Controller
     }
 
     /** Recibo */
- public function recibo(Request $request, string $id)
+public function recibo(Request $request, int $id)
 {
-    // carrega a parcela com joins úteis para o recibo
-    $c = DB::table('appcontasreceber as cr')
-        ->leftJoin('appcliente as cli', 'cli.id', '=', 'cr.cliente_id')
-        ->leftJoin('appformapagamento as f', 'f.id', '=', 'cr.forma_pagamento_id')
-        ->selectRaw("
-            cr.*,
-            cli.nome  as cliente_nome,
-            f.nome    as forma_nome
-        ")
-        ->where('cr.id', (int)$id)
+    // 1) Carrega a parcela pela VIEW consolidada
+    $c = DB::table('view_app_contasreceber as v')
+        ->where('v.conta_id', $id)
+        ->select([
+            'v.conta_id        as id',
+            'v.pedido_id',
+            'v.cliente_id',
+            'v.cliente_nome',
+            'v.revendedora_id',
+            'v.revendedora_nome',
+            'v.parcela',
+            'v.total_parcelas',
+            'v.forma_pagamento',
+            'v.plano_pagamento',
+            'v.data_emissao',
+            'v.data_vencimento',
+            'v.valor_titulo    as valor_titulo',
+            'v.status_titulo   as status_titulo',
+            'v.data_pagamento',
+            'v.valor_pago',
+            'v.saldo',
+            'v.situacao',
+        ])
         ->first();
 
     if (!$c) {
-        return redirect()->route('contasreceber.index')->with('error', 'Conta não encontrada.');
+        return redirect()
+            ->route('contasreceber.index')
+            ->with('error', 'Conta não encontrada.');
     }
 
-    // variáveis usadas na view
-    $recibo_numero = str_pad((string)$c->id, 6, '0', STR_PAD_LEFT); // ex.: 000123
-    $statusUpper   = strtoupper((string)($c->status ?? ''));
+    // Normaliza campos usados na view
+    $c->status = $c->status_titulo ?? '';
+    $c->valor  = $c->valor_titulo ?? 0.0;
 
-    $data = compact('c', 'recibo_numero', 'statusUpper');
+    $recibo_numero = str_pad((string)$c->id, 6, '0', STR_PAD_LEFT);
+    $statusUpper   = strtoupper((string)$c->status);
 
-    // Se pediu PDF (?pdf=1), tenta gerar com DomPDF
+    // 2) Itens do pedido (produtos comprados)
+    $itens = collect();
+    if (!empty($c->pedido_id)) {
+        $itens = DB::table('appitemvenda as iv')
+            ->join('appproduto as p', 'p.id', '=', 'iv.produto_id')
+            ->where('iv.pedido_id', $c->pedido_id)
+            ->select([
+                'iv.codfabnumero',
+                'p.nome as produto_nome',
+                'iv.quantidade',
+                'iv.preco_unitario',
+                'iv.preco_total',
+            ])
+            ->orderBy('p.nome')
+            ->get();
+    }
+
+    $data = compact('c', 'recibo_numero', 'statusUpper', 'itens');
+
+    // 3) Se pediu PDF (?pdf=1), usa DomPDF
     if ($request->boolean('pdf')) {
         if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('Financeiro.recibo', $data)
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('financeiro.recibo', $data)
                 ->setPaper('a4', 'portrait');
 
-            return $pdf->stream("recibo_{$recibo_numero}.pdf"); // abre no navegador
-            // ->download("recibo_{$recibo_numero}.pdf"); // se preferir forçar download
+            return $pdf->stream("recibo_{$recibo_numero}.pdf");
         }
 
-        // Pacote não instalado
         return redirect()
             ->route('contasreceber.recibo', ['id' => $id])
             ->with('info', 'Pacote de PDF não encontrado. Exibindo recibo em HTML.');
     }
 
-    // HTML normal
-    return view('Financeiro.recibo', $data);
+    // 4) HTML normal
+    return view('financeiro.recibo', $data);
 }
 
     /* Helpers */

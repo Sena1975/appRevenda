@@ -32,7 +32,20 @@ class ContasReceberService
         $valorBase = (float) $pedido->valor_liquido;
         $valorParc = round($valorBase / $parcelas, 2);
         $acum      = 0.00;
-        $emissao   = Carbon::now();
+
+        // 🔹 BASE PARA VENCIMENTO: data de entrega (previsão)
+        // tenta na ordem: previsao_entrega, data_prevista_entrega, data_pedido, hoje
+        $baseDateRaw = $pedido->previsao_entrega
+            ?? $pedido->data_prevista_entrega
+            ?? $pedido->data_pedido
+            ?? now();
+
+        $emissao = $baseDateRaw instanceof \Carbon\Carbon
+            ? $baseDateRaw->copy()
+            : \Carbon\Carbon::parse($baseDateRaw);
+
+        // garante início do dia
+        $emissao = $emissao->startOfDay();
 
         for ($i = 1; $i <= $parcelas; $i++) {
             // prazos (suporte padrão 3; ajuste se tiver mais)
@@ -41,7 +54,8 @@ class ContasReceberService
             elseif ($i === 2)  $diasPrazo = (int)($plano->prazo2 ?? 0);
             elseif ($i === 3)  $diasPrazo = (int)($plano->prazo3 ?? 0);
 
-            $venc  = (clone $emissao)->startOfDay()->addDays($diasPrazo);
+            // 🔹 vencimento = data de entrega (previsão) + prazo
+            $venc  = (clone $emissao)->addDays($diasPrazo);
             $valor = ($i < $parcelas) ? $valorParc : round($valorBase - $acum, 2);
             $acum += $valor;
 
@@ -50,9 +64,11 @@ class ContasReceberService
                 'cliente_id'         => $pedido->cliente_id,
                 'revendedora_id'     => $pedido->revendedora_id,
                 'forma_pagamento_id' => $pedido->forma_pagamento_id,
+                'plano_pagamento_id' => $pedido->plano_pagamento_id,
+
                 'parcela'            => $i,
                 'total_parcelas'     => $parcelas,
-                'data_emissao'       => $emissao,
+                'data_emissao'       => $emissao,   // aqui você decide se quer emissão = entrega ou hoje
                 'data_vencimento'    => $venc,
                 'valor'              => $valor,
                 'status'             => 'ABERTO',

@@ -343,7 +343,7 @@
                 @if (Route::has('relatorios.recebimentos.previsao'))
                     <a href="{{ route('relatorios.recebimentos.previsao') }}"
                         class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
-                            {{ request()->routeIs('relatorios.recebimentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    {{ request()->routeIs('relatorios.recebimentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -357,7 +357,7 @@
                 @if (Route::has('relatorios.pagamentos.previsao'))
                     <a href="{{ route('relatorios.pagamentos.previsao') }}"
                         class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
-                            {{ request()->routeIs('relatorios.pagamentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    {{ request()->routeIs('relatorios.pagamentos.previsao') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -371,7 +371,7 @@
                 @if (Route::has('relatorios.recebimentos.inadimplencia'))
                     <a href="{{ route('relatorios.recebimentos.inadimplencia') }}"
                         class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
-                            {{ request()->routeIs('relatorios.recebimentos.inadimplencia') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                    {{ request()->routeIs('relatorios.recebimentos.inadimplencia') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -383,8 +383,23 @@
                     </a>
                 @endif
 
+                {{-- Extrato de Cliente --}}
+                @if (Route::has('relatorios.recebimentos.extrato_cliente'))
+                    <a href="{{ route('relatorios.recebimentos.extrato_cliente') }}"
+                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                    {{ request()->routeIs('relatorios.recebimentos.extrato_cliente') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17v-6h10M5 7h14M5 11h4M5 15h4" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2">Extrato de Cliente</span>
+                    </a>
+                @endif
+
             </div>
         </div>
+
         <!-- CAMPANHAS -->
         <div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
