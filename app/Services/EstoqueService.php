@@ -10,6 +10,10 @@ class EstoqueService
 {
     /**
      * 🔹 Registrar movimentação de entrada (compra confirmada)
+     *  - Atualiza estoque_gerencial
+     *  - Atualiza ultimo_preco_compra em appestoque
+     *  - Atualiza preco_compra em appproduto
+     *  - Registra movimento em appmovestoque
      */
     public function registrarEntradaCompra(PedidoCompra $pedido): void
     {
@@ -22,18 +26,35 @@ class EstoqueService
 
             $codfab = $item->produto->codfabnumero ?? $item->codfabnumero ?? null;
 
+            // Custo unitário: se tiver total_liquido (já com encargos rateados) usa ele
+            $totalLinhaLiquido = (float)($item->total_liquido ?? 0);
+            if ($totalLinhaLiquido > 0 && $quantidade > 0) {
+                $custoUnitario = $totalLinhaLiquido / $quantidade;
+            } else {
+                $custoUnitario = (float)($item->preco_unitario ?? 0);
+            }
+
             // Garante linha no estoque e soma
             DB::table('appestoque')->updateOrInsert(
                 ['produto_id' => $produtoId],
                 [
-                    'codfabnumero'      => $codfab,
-                    'estoque_gerencial' => DB::raw("COALESCE(estoque_gerencial,0) + {$quantidade}"),
-                    'reservado'         => DB::raw("COALESCE(reservado,0)"),
-                    'avaria'            => DB::raw("COALESCE(avaria,0)"),
-                    'updated_at'        => now(),
-                    'created_at'        => now(),
+                    'codfabnumero'        => $codfab,
+                    'estoque_gerencial'   => DB::raw("COALESCE(estoque_gerencial,0) + {$quantidade}"),
+                    'reservado'           => DB::raw("COALESCE(reservado,0)"),
+                    'avaria'              => DB::raw("COALESCE(avaria,0)"),
+                    'ultimo_preco_compra' => $custoUnitario,
+                    'updated_at'          => now(),
+                    'created_at'          => now(),
                 ]
             );
+
+            // Atualiza preço de compra do produto
+            DB::table('appproduto')
+                ->where('id', $produtoId)
+                ->update([
+                    'preco_compra' => $custoUnitario,
+                    'updated_at'   => now(),
+                ]);
 
             // Movimentação de ENTRADA - COMPRA
             DB::table('appmovestoque')->insert([
@@ -44,7 +65,7 @@ class EstoqueService
                 'origem_id'      => $pedido->id,
                 'data_mov'       => now(),
                 'quantidade'     => $quantidade,
-                'preco_unitario' => (float)($item->preco_unitario ?? 0),
+                'preco_unitario' => $custoUnitario,
                 'observacao'     => 'Entrada por recebimento da compra',
                 'status'         => 'CONFIRMADO',
                 'created_at'     => now(),
@@ -117,132 +138,128 @@ class EstoqueService
      *  - registra saída CONFIRMADA
      *  - marca reservas PENDENTES do pedido como CONFIRMADO
      */
-public function confirmarSaidaVenda($pedido): void
-{
-    if (!$pedido || !$pedido->itens) return;
+    public function confirmarSaidaVenda($pedido): void
+    {
+        if (!$pedido || !$pedido->itens) return;
 
-    foreach ($pedido->itens as $item) {
-        $produtoId = (int) $item->produto_id;
-        $qtd       = (int) ($item->quantidade ?? 0);
-        if ($produtoId <= 0 || $qtd <= 0) {
-            continue;
-        }
+        foreach ($pedido->itens as $item) {
+            $produtoId = (int) $item->produto_id;
+            $qtd       = (int) ($item->quantidade ?? 0);
+            if ($produtoId <= 0 || $qtd <= 0) {
+                continue;
+            }
 
-        $codfab    = $item->codfabnumero ?? ($item->produto->codfabnumero ?? null);
-        $nomeProd  = $item->produto->nome ?? $codfab ?? ('ID ' . $produtoId);
+            $codfab    = $item->codfabnumero ?? ($item->produto->codfabnumero ?? null);
+            $nomeProd  = $item->produto->nome ?? $codfab ?? ('ID ' . $produtoId);
 
-        // 🔒 Busca o registro de estoque com LOCK (mesma transação da confirmação)
-        $estq = DB::table('appestoque')
-            ->lockForUpdate()
-            ->where('produto_id', $produtoId)
-            ->first();
+            // 🔒 Busca o registro de estoque com LOCK (mesma transação da confirmação)
+            $estq = DB::table('appestoque')
+                ->lockForUpdate()
+                ->where('produto_id', $produtoId)
+                ->first();
 
-        if (!$estq) {
-            // Não existe linha de estoque → não deixa confirmar
-            throw new \RuntimeException(
-                "Não há registro de estoque para {$nomeProd}. Não é possível confirmar a entrega."
-            );
-        }
+            if (!$estq) {
+                // Não existe linha de estoque → não deixa confirmar
+                throw new \RuntimeException(
+                    "Não há registro de estoque para {$nomeProd}. Não é possível confirmar a entrega."
+                );
+            }
 
-        $estoqueAtual = (int) ($estq->estoque_gerencial ?? 0);
+            $estoqueAtual = (int) ($estq->estoque_gerencial ?? 0);
 
-        // 🚫 Regra: não pode confirmar se não tiver estoque gerencial suficiente
-        if ($estoqueAtual < $qtd) {
-            throw new \RuntimeException(
-                "Estoque insuficiente para {$nomeProd} (disp: {$estoqueAtual}, necessário: {$qtd})."
-            );
-        }
+            // 🚫 Regra: não pode confirmar se não tiver estoque gerencial suficiente
+            if ($estoqueAtual < $qtd) {
+                throw new \RuntimeException(
+                    "Estoque insuficiente para {$nomeProd} (disp: {$estoqueAtual}, necessário: {$qtd})."
+                );
+            }
 
-        // ✅ Aqui já sabemos que tem estoque → podemos baixar sem medo
-        DB::table('appestoque')
-            ->where('produto_id', $produtoId)
-            ->update([
-                // Pode subtrair direto, pois já validamos que não vai ficar negativo
-                'estoque_gerencial' => DB::raw("estoque_gerencial - {$qtd}"),
-                // Reserva nunca pode ficar negativa
-                'reservado'         => DB::raw("GREATEST(COALESCE(reservado,0) - {$qtd}, 0)"),
-                'updated_at'        => now(),
+            // ✅ Aqui já sabemos que tem estoque → podemos baixar sem medo
+            DB::table('appestoque')
+                ->where('produto_id', $produtoId)
+                ->update([
+                    'estoque_gerencial' => DB::raw("estoque_gerencial - {$qtd}"),
+                    'reservado'         => DB::raw("GREATEST(COALESCE(reservado,0) - {$qtd}, 0)"),
+                    'updated_at'        => now(),
+                ]);
+
+            // Registra saída CONFIRMADA
+            DB::table('appmovestoque')->insert([
+                'produto_id'     => $produtoId,
+                'codfabnumero'   => $codfab,
+                'tipo_mov'       => 'SAIDA',
+                'origem'         => 'VENDA',
+                'origem_id'      => $pedido->id,
+                'data_mov'       => now(),
+                'quantidade'     => -$qtd,
+                'preco_unitario' => (float) ($item->preco_unitario ?? 0),
+                'observacao'     => 'Baixa de estoque por venda confirmada',
+                'status'         => 'CONFIRMADO',
+                'created_at'     => now(),
+                'updated_at'     => now(),
             ]);
+        }
 
-        // Registra saída CONFIRMADA
-        DB::table('appmovestoque')->insert([
-            'produto_id'     => $produtoId,
-            'codfabnumero'   => $codfab,
-            'tipo_mov'       => 'SAIDA',
-            'origem'         => 'VENDA',
-            'origem_id'      => $pedido->id,
-            'data_mov'       => now(),
-            'quantidade'     => -$qtd,
-            'preco_unitario' => (float) ($item->preco_unitario ?? 0),
-            'observacao'     => 'Baixa de estoque por venda confirmada',
-            'status'         => 'CONFIRMADO',
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
+        // Movimentos de reserva PENDENTES → CONFIRMADO
+        DB::table('appmovestoque')
+            ->where('origem', 'VENDA')
+            ->where('origem_id', $pedido->id)
+            ->where('status', 'PENDENTE')
+            ->update([
+                'status'     => 'CONFIRMADO',
+                'updated_at' => now(),
+            ]);
     }
-
-    // Movimentos de reserva PENDENTES → CONFIRMADO
-    DB::table('appmovestoque')
-        ->where('origem', 'VENDA')
-        ->where('origem_id', $pedido->id)
-        ->where('status', 'PENDENTE')
-        ->update([
-            'status'     => 'CONFIRMADO',
-            'updated_at' => now(),
-        ]);
-}
 
     /**
      * 🔹 Cancelamento do pedido PENDENTE: libera reserva e marca movimentos PENDENTES como CANCELADO
      */
-public function cancelarReservaVenda($pedido): void
-{
-    if (!$pedido || !$pedido->itens) return;
+    public function cancelarReservaVenda($pedido): void
+    {
+        if (!$pedido || !$pedido->itens) return;
 
-    foreach ($pedido->itens as $item) {
-        $produtoId = (int)$item->produto_id;
-        $qtd       = (int)($item->quantidade ?? 0);
-        if ($produtoId <= 0 || $qtd <= 0) continue;
+        foreach ($pedido->itens as $item) {
+            $produtoId = (int)$item->produto_id;
+            $qtd       = (int)($item->quantidade ?? 0);
+            if ($produtoId <= 0 || $qtd <= 0) continue;
 
-        $codfab = $item->codfabnumero ?? ($item->produto->codfabnumero ?? null);
+            $codfab = $item->codfabnumero ?? ($item->produto->codfabnumero ?? null);
 
-        // 1) Libera a reserva no saldo (reservado -= qtd)
-        DB::table('appestoque')
-            ->where('produto_id', $produtoId)
+            // 1) Libera a reserva no saldo (reservado -= qtd)
+            DB::table('appestoque')
+                ->where('produto_id', $produtoId)
+                ->update([
+                    'reservado'  => DB::raw("GREATEST(COALESCE(reservado,0) - {$qtd}, 0)"),
+                    'updated_at' => now(),
+                ]);
+
+            // 2) Insere uma movimentação de "retorno da reserva"
+            DB::table('appmovestoque')->insert([
+                'produto_id'     => $produtoId,
+                'codfabnumero'   => $codfab,
+                'tipo_mov'       => 'ENTRADA',
+                'origem'         => 'VENDA',
+                'origem_id'      => $pedido->id,
+                'data_mov'       => now(),
+                'quantidade'     => $qtd,
+                'preco_unitario' => (float)($item->preco_unitario ?? 0),
+                'observacao'     => 'Estorno de reserva (pedido cancelado)',
+                'status'         => 'CONFIRMADO',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+        }
+
+        // 3) Marcar as "reservas" PENDENTES desse pedido como CANCELADO (histórico)
+        DB::table('appmovestoque')
+            ->where('origem', 'VENDA')
+            ->where('origem_id', $pedido->id)
+            ->where('status', 'PENDENTE')
             ->update([
-                'reservado'  => DB::raw("GREATEST(COALESCE(reservado,0) - {$qtd}, 0)"),
+                'status'     => 'CANCELADO',
                 'updated_at' => now(),
             ]);
-
-        // 2) Insere uma movimentação de "retorno da reserva"
-        //    Tecnicamente é uma ENTRADA (+qtd), pois estamos revertendo a saída reservada.
-        DB::table('appmovestoque')->insert([
-            'produto_id'     => $produtoId,
-            'codfabnumero'   => $codfab,
-            'tipo_mov'       => 'ENTRADA',
-            'origem'         => 'VENDA',
-            'origem_id'      => $pedido->id,
-            'data_mov'       => now(),
-            'quantidade'     => $qtd, // positivo
-            'preco_unitario' => (float)($item->preco_unitario ?? 0),
-            'observacao'     => 'Estorno de reserva (pedido cancelado)',
-            'status'         => 'CONFIRMADO',
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
     }
-
-    // 3) Marcar as "reservas" PENDENTES desse pedido como CANCELADO (histórico)
-    DB::table('appmovestoque')
-        ->where('origem', 'VENDA')
-        ->where('origem_id', $pedido->id)
-        ->where('status', 'PENDENTE')
-        ->update([
-            'status'     => 'CANCELADO',
-            'updated_at' => now(),
-        ]);
-}
-
 
     /**
      * 🔹 Registrar movimentação de saída (venda direta - legado)

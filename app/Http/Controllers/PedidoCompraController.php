@@ -16,10 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\EstoqueService;
 use App\Services\Financeiro\GerarContasPagarDaCompra;
-
-
 use Illuminate\Support\Facades\Log;
-
 
 class PedidoCompraController extends Controller
 {
@@ -96,7 +93,6 @@ class PedidoCompraController extends Controller
         ));
     }
 
-
     /**
      * Grava o pedido de compra e seus itens
      */
@@ -106,6 +102,7 @@ class PedidoCompraController extends Controller
             'fornecedor_id'        => 'required|integer',
             'data_pedido'          => 'required|date',
             'data_entrega'         => 'nullable|date',
+            'encargos'             => 'nullable|numeric|min:0',
             'observacao'           => 'nullable|string|max:1000',
 
             'forma_pagamento_id'   => 'nullable|integer',
@@ -118,7 +115,7 @@ class PedidoCompraController extends Controller
             'itens.*.quantidade'       => 'required|numeric|min:1',
             'itens.*.desconto'         => 'nullable|numeric|min:0',
 
-            // NOVOS CAMPOS vindos da tela / importação
+            // CAMPOS vindos da tela / importação
             'itens.*.preco_compra'     => 'nullable|numeric|min:0',
             'itens.*.preco_revenda'    => 'nullable|numeric|min:0',
             'itens.*.pontos'           => 'nullable|numeric|min:0',
@@ -128,12 +125,15 @@ class PedidoCompraController extends Controller
 
             $totalBrutoCusto   = 0.0; // soma dos custos brutos (preço tabela)
             $totalDesconto     = 0.0; // soma dos descontos dos itens (manual + automático)
-            $totalLiquido      = 0.0; // soma dos custos líquidos (como se fosse “valor importado”)
+            $totalLiquido      = 0.0; // soma dos custos líquidos (sem encargos)
             $totalRevenda      = 0.0; // soma dos valores de revenda
             $totalPontosGeral  = 0.0; // soma de pontos
             $qtditens          = 0;   // quantidade de linhas
 
-            $itensCalc = [];
+            $itensCalc         = [];
+
+            // Encargos financeiros informados no cabeçalho
+            $encargosCompra    = isset($data['encargos']) ? (float) $data['encargos'] : 0.0;
 
             foreach ($data['itens'] as $idx => $item) {
 
@@ -178,13 +178,7 @@ class PedidoCompraController extends Controller
                     ? $pontosInformados
                     : $pontosTabela;
 
-                // === DESCONTO/Acréscimo AUTOMÁTICO (diferença entre tabela e importado) ===
-                // Sempre que houver preço importado > 0, calcula a diferença:
-                //
-                //  - Se importado < tabela  → descontoAuto > 0  (desconto)
-                //  - Se importado > tabela  → descontoAuto < 0  (acréscimo)
-                //
-                // Isso garante que o TOTAL LÍQUIDO reflita o valor importado (ajustado com desconto manual).
+                // DESCONTO/Acréscimo AUTOMÁTICO (diferença entre tabela e importado)
                 $descontoAuto = 0.0;
 
                 if ($precoImportadoCompra && $precoImportadoCompra > 0) {
@@ -201,32 +195,66 @@ class PedidoCompraController extends Controller
 
                 // CÁLCULOS DE TOTAIS
                 $totalItemCustoBruto = $qtd * $precoCompra;                      // preço tabela * qtd
-                $totalItemLiquido    = max(0, $totalItemCustoBruto - $valorDescontoLinha); // custo final
+                $totalItemLiquido    = max(0, $totalItemCustoBruto - $valorDescontoLinha); // custo final sem encargo
                 $totalItemRevenda    = $qtd * $precoRevenda;
                 $pontosLinha         = $qtd * $pontosUnit;
 
                 // ACUMULA PARA O CABEÇALHO
                 $totalBrutoCusto   += $totalItemCustoBruto;
                 $totalDesconto     += $valorDescontoLinha;
-                $totalLiquido      += $totalItemLiquido;
+                $totalLiquido      += $totalItemLiquido; // custo total sem encargos
                 $totalRevenda      += $totalItemRevenda;
                 $totalPontosGeral  += $pontosLinha;
                 $qtditens++;
 
-                // GUARDA PARA INSERIR EM appcompraproduto
+                // GUARDA PARA INSERIR EM appcompraproduto (sem encargos ainda)
                 $itensCalc[] = [
                     'produto_id'      => $produtoId,
                     'quantidade'      => $qtd,
                     'preco_compra'    => $precoCompra,        // sempre o da tabela
                     'preco_revenda'   => $precoRevenda,       // pode ser informado
                     'total_custo'     => $totalItemCustoBruto,
-                    'total_liquido'   => $totalItemLiquido,
+                    'total_liquido'   => $totalItemLiquido,   // custo sem encargo
                     'total_revenda'   => $totalItemRevenda,
                     'pontos_unit'     => $pontosUnit,
                     'pontos_total'    => $pontosLinha,
                     'valor_desconto'  => $valorDescontoLinha, // manual + automático
                 ];
             }
+
+            // ==== RATEIO DOS ENCARGOS POR ITEM ====
+            $valorCustoTotal = $totalLiquido; // custo total sem encargos
+
+            if ($encargosCompra > 0 && $valorCustoTotal > 0 && count($itensCalc) > 0) {
+                $restante   = $encargosCompra;
+                $totalLinhas = count($itensCalc);
+
+                foreach ($itensCalc as $i => &$it) {
+                    if ($i === $totalLinhas - 1) {
+                        // Última linha fica com o "resto" pra fechar centavos
+                        $encargoLinha = $restante;
+                    } else {
+                        $proporcao    = $it['total_liquido'] / $valorCustoTotal;
+                        $encargoLinha = round($encargosCompra * $proporcao, 2);
+                        $restante    -= $encargoLinha;
+                    }
+
+                    $it['encargos']   = $encargoLinha;
+                    $it['valorcusto'] = $it['total_liquido'];               // custo sem encargo
+                    $it['final_liq']  = $it['total_liquido'] + $encargoLinha; // custo com encargo
+                }
+                unset($it);
+            } else {
+                // Sem encargos: valorcusto = total_liquido e final = total_liquido
+                foreach ($itensCalc as &$it) {
+                    $it['encargos']   = 0.0;
+                    $it['valorcusto'] = $it['total_liquido'];
+                    $it['final_liq']  = $it['total_liquido'];
+                }
+                unset($it);
+            }
+
+            $valorComEncargos = $valorCustoTotal + $encargosCompra;
 
             // ==== CABEÇALHO: tabela appcompra ====
             $compraId = DB::table('appcompra')->insertGetId([
@@ -238,7 +266,10 @@ class PedidoCompraController extends Controller
 
                 'valor_total'        => $totalBrutoCusto,
                 'valor_desconto'     => $totalDesconto,
-                'valor_liquido'      => $totalLiquido,
+
+                'valorcusto'         => $valorCustoTotal,   // custo sem encargos
+                'encargos'           => $encargosCompra,    // encargos financeiros
+                'valor_liquido'      => $valorComEncargos,  // custo + encargos
 
                 'preco_venda_total'  => $totalRevenda,
                 'pontostotal'        => $totalPontosGeral,
@@ -265,7 +296,10 @@ class PedidoCompraController extends Controller
                     'preco_unitario'       => $it['preco_compra'],       // tabela
                     'valor_desconto'       => $it['valor_desconto'],     // total da linha
                     'total_item'           => $it['total_custo'],        // bruto
-                    'total_liquido'        => $it['total_liquido'],      // após desconto
+
+                    'valorcusto'           => $it['valorcusto'],         // custo sem encargos
+                    'encargos'             => $it['encargos'],           // encargo rateado
+                    'total_liquido'        => $it['final_liq'],          // custo + encargo (final)
 
                     'preco_venda_unitario' => $it['preco_revenda'],
                     'preco_venda_total'    => $it['total_revenda'],
@@ -282,7 +316,7 @@ class PedidoCompraController extends Controller
 
             return redirect()
                 ->route('compras.index')
-                ->with('success', 'Compra salva com sucesso (descontos automáticos aplicados).');
+                ->with('success', 'Compra salva com sucesso (encargos financeiros rateados nos itens).');
         });
     }
 
@@ -304,8 +338,8 @@ class PedidoCompraController extends Controller
 
         $fornecedores = Fornecedor::orderBy('nomefantasia')->get();
         $produtos = Produto::orderBy('nome')->get();
-        $formasPagamento  = FormaPagamento::orderBy('nome')->get();      // ou 'descricao'
-        $planosPagamento  = PlanoPagamento::orderBy('descricao')->get();      // ou 'descricao'
+        $formasPagamento  = FormaPagamento::orderBy('nome')->get();
+        $planosPagamento  = PlanoPagamento::orderBy('descricao')->get();
 
         return view('compras.edit', [
             'pedido' => $pedido,
@@ -317,13 +351,12 @@ class PedidoCompraController extends Controller
         ]);
     }
 
-
     /**
      * Atualiza a compra
      */
     public function update(Request $request, $id)
     {
-        // 🚫 Regra: não pode CONFIRMAR sem número do pedido e da nota
+        // Regra: não pode CONFIRMAR sem número do pedido e da nota
         if ($request->acao === 'confirmar') {
             $nroPedido = trim((string) $request->numpedcompra);
             $nroNota   = trim((string) $request->numero_nota);
@@ -341,7 +374,7 @@ class PedidoCompraController extends Controller
         DB::beginTransaction();
 
         try {
-            // Helper local pra converter "1.234,56" em 1234.56
+            // Helper pra converter "1.234,56" em 1234.56
             $toFloat = function ($v) {
                 if ($v === null || $v === '') {
                     return 0.0;
@@ -350,6 +383,8 @@ class PedidoCompraController extends Controller
                 $v = str_replace(',', '.', $v);  // decimal
                 return (float) $v;
             };
+
+            $encargosCompra = $toFloat($request->input('encargos'));
 
             /** @var \App\Models\PedidoCompra $pedido */
             $pedido = PedidoCompra::with(['itens.produto'])->findOrFail($id);
@@ -385,11 +420,13 @@ class PedidoCompraController extends Controller
             // Totais recalculados
             $valorTotalBruto  = 0;
             $valorDescontoTot = 0;
-            $valorLiquidoTot  = 0;
+            $valorLiquidoTot  = 0; // custo sem encargos
             $valorVendaTot    = 0;
             $pontosTot        = 0;
 
-            // Atualiza ITENS
+            $linhas = []; // vamos guardar para ratear os encargos depois
+
+            // Atualiza ITENS (primeiro passo: custo sem encargos)
             foreach ($itensRequest as $dados) {
 
                 $itemId    = $dados['id']         ?? null;
@@ -405,43 +442,110 @@ class PedidoCompraController extends Controller
                     continue;
                 }
 
-                $qtd           = $toFloat($dados['quantidade']   ?? $item->quantidade);
-                $pontos        = $toFloat($dados['pontos']       ?? $item->pontos);
-                $precoCompra   = $toFloat($dados['preco_compra'] ?? $item->preco_unitario);
+                $qtd           = $toFloat($dados['quantidade']    ?? $item->quantidade);
+                $pontos        = $toFloat($dados['pontos']        ?? $item->pontos);
+                $precoCompra   = $toFloat($dados['preco_compra']  ?? $item->preco_unitario);
                 $precoRevenda  = $toFloat($dados['preco_revenda'] ?? $item->preco_venda_unitario);
-                $descontoLinha = $toFloat($dados['desconto']     ?? ($item->valor_desconto ?? 0));
+                $descontoLinha = $toFloat($dados['desconto']      ?? ($item->valor_desconto ?? 0));
 
-                if ($descontoLinha < 0) $descontoLinha = 0;
+                if ($descontoLinha < 0) {
+                    $descontoLinha = 0;
+                }
 
                 $totalItemBruto   = $qtd * $precoCompra;
-                $totalItemLiquido = max(0, $totalItemBruto - $descontoLinha);
+                $totalItemLiquido = max(0, $totalItemBruto - $descontoLinha); // custo sem encargo
                 $totalItemVenda   = $qtd * $precoRevenda;
                 $pontosLinha      = $qtd * $pontos;
 
                 $valorTotalBruto  += $totalItemBruto;
                 $valorDescontoTot += $descontoLinha;
-                $valorLiquidoTot  += $totalItemLiquido;
+                $valorLiquidoTot  += $totalItemLiquido; // soma do custo sem encargos
                 $valorVendaTot    += $totalItemVenda;
                 $pontosTot        += $pontosLinha;
 
-                $item->update([
-                    'quantidade'           => $qtd,
-                    'qtd_disponivel'       => $qtd,
-                    'preco_unitario'       => $precoCompra,
-                    'valor_desconto'       => $descontoLinha,
-                    'total_item'           => $totalItemBruto,
-                    'total_liquido'        => $totalItemLiquido,
-                    'preco_venda_unitario' => $precoRevenda,
-                    'preco_venda_total'    => $totalItemVenda,
-                    'pontos'               => $pontos,
-                    'pontostotal'          => $pontosLinha,
-                ]);
+                $linhas[] = [
+                    'model'            => $item,
+                    'qtd'              => $qtd,
+                    'pontos'           => $pontos,
+                    'precoCompra'      => $precoCompra,
+                    'precoRevenda'     => $precoRevenda,
+                    'descontoLinha'    => $descontoLinha,
+                    'totalItemBruto'   => $totalItemBruto,
+                    'totalItemLiquido' => $totalItemLiquido,
+                    'totalItemVenda'   => $totalItemVenda,
+                    'pontosLinha'      => $pontosLinha,
+                ];
+            }
+
+            // ==== RATEIO DOS ENCARGOS NAS LINHAS ====
+            $valorCustoTotal = $valorLiquidoTot; // custo total sem encargos
+
+            if ($encargosCompra > 0 && $valorCustoTotal > 0 && count($linhas) > 0) {
+                $restante    = $encargosCompra;
+                $totalLinhas = count($linhas);
+
+                foreach ($linhas as $i => $linha) {
+                    /** @var \App\Models\ItensCompra $item */
+                    $item = $linha['model'];
+
+                    if ($i === $totalLinhas - 1) {
+                        $encargoLinha = $restante;
+                    } else {
+                        $proporcao    = $linha['totalItemLiquido'] / $valorCustoTotal;
+                        $encargoLinha = round($encargosCompra * $proporcao, 2);
+                        $restante    -= $encargoLinha;
+                    }
+
+                    $valorcusto = $linha['totalItemLiquido']; // sem encargo
+                    $finalLiq   = $valorcusto + $encargoLinha; // com encargo
+
+                    $item->update([
+                        'quantidade'           => $linha['qtd'],
+                        'qtd_disponivel'       => $linha['qtd'],
+                        'preco_unitario'       => $linha['precoCompra'],
+                        'valor_desconto'       => $linha['descontoLinha'],
+                        'total_item'           => $linha['totalItemBruto'],
+
+                        'valorcusto'           => $valorcusto,
+                        'encargos'             => $encargoLinha,
+                        'total_liquido'        => $finalLiq,
+
+                        'preco_venda_unitario' => $linha['precoRevenda'],
+                        'preco_venda_total'    => $linha['totalItemVenda'],
+                        'pontos'               => $linha['pontos'],
+                        'pontostotal'          => $linha['pontosLinha'],
+                    ]);
+                }
+            } else {
+                // Sem encargos: atualiza sem rateio
+                foreach ($linhas as $linha) {
+                    $item = $linha['model'];
+
+                    $item->update([
+                        'quantidade'           => $linha['qtd'],
+                        'qtd_disponivel'       => $linha['qtd'],
+                        'preco_unitario'       => $linha['precoCompra'],
+                        'valor_desconto'       => $linha['descontoLinha'],
+                        'total_item'           => $linha['totalItemBruto'],
+
+                        'valorcusto'           => $linha['totalItemLiquido'],
+                        'encargos'             => 0,
+                        'total_liquido'        => $linha['totalItemLiquido'],
+
+                        'preco_venda_unitario' => $linha['precoRevenda'],
+                        'preco_venda_total'    => $linha['totalItemVenda'],
+                        'pontos'               => $linha['pontos'],
+                        'pontostotal'          => $linha['pontosLinha'],
+                    ]);
+                }
             }
 
             // Totais no cabeçalho
             $pedido->valor_total       = $valorTotalBruto;
             $pedido->valor_desconto    = $valorDescontoTot;
-            $pedido->valor_liquido     = $valorLiquidoTot;
+            $pedido->valorcusto        = $valorCustoTotal;                    // custo sem encargos
+            $pedido->encargos          = $encargosCompra;                     // total de encargos
+            $pedido->valor_liquido     = $valorCustoTotal + $encargosCompra;  // custo + encargos
             $pedido->preco_venda_total = $valorVendaTot;
             $pedido->pontostotal       = $pontosTot;
 
@@ -479,8 +583,6 @@ class PedidoCompraController extends Controller
         }
     }
 
-
-
     /**
      * Exibe o formulário de importação de itens
      */
@@ -511,7 +613,6 @@ class PedidoCompraController extends Controller
         foreach ($linhas as $linha) {
             // Espera formato:
             // CODIGO;QUANTIDADE;PRECO_COMPRA;PONTOS;PRECO_REVENDA
-            // Ex.: 123456;10;19,90;5;29,90
 
             $codigo       = trim($linha[0] ?? '');
             $qtd          = (float) str_replace(',', '.', $linha[1] ?? 0);
@@ -523,8 +624,7 @@ class PedidoCompraController extends Controller
                 continue;
             }
 
-            // pode ajustar aqui: codfab ou codfabnumero
-            $produto = \App\Models\Produto::where('codfab', $codigo)
+            $produto = Produto::where('codfab', $codigo)
                 ->orWhere('codfabnumero', $codigo)
                 ->first();
 
@@ -532,7 +632,7 @@ class PedidoCompraController extends Controller
                 continue;
             }
 
-            \App\Models\ItensCompra::create([
+            ItensCompra::create([
                 'compra_id'            => $pedido->id,
                 'produto_id'           => $produto->id,
                 'quantidade'           => $qtd,
@@ -540,12 +640,14 @@ class PedidoCompraController extends Controller
                 'preco_unitario'       => $precoCompra,
                 'valor_desconto'       => 0,
                 'total_item'           => $qtd * $precoCompra,
-                'total_liquido'        => $qtd * $precoCompra,
+                'valorcusto'           => $qtd * $precoCompra, // sem encargo (import)
+                'encargos'             => 0,
+                'total_liquido'        => $qtd * $precoCompra, // custo final = sem encargo
                 'pontos'               => $pontos,
+                'pontostotal'          => $qtd * $pontos,
                 'preco_venda_unitario' => $precoRevenda,
                 'preco_venda_total'    => $qtd * $precoRevenda,
             ]);
-
 
             $importados++;
         }
@@ -583,9 +685,8 @@ class PedidoCompraController extends Controller
     }
 
     /**
-     * Remove um pedido
+     * Remove um pedido (na verdade cancela, não exclui)
      */
-
     public function destroy(Request $request, $id)
     {
         DB::beginTransaction();
@@ -598,9 +699,7 @@ class PedidoCompraController extends Controller
 
             $motivo = $request->motivo_cancelamento ?? 'Sem motivo informado';
 
-            /**
-             * REGRA 2 – Se tiver qualquer parcela com baixa (paga), não pode cancelar
-             */
+            // REGRA 2 – Se tiver qualquer parcela com baixa (paga), não pode cancelar
             $parcelasComBaixa = $pedido->contasPagar
                 ->filter(fn($c) => $c->baixas->isNotEmpty());
 
@@ -623,23 +722,19 @@ class PedidoCompraController extends Controller
                     ->with('parcelas_pagas', $listaParcelas);
             }
 
-            /**
-             * REGRA 1 – Verificar se o estorno do estoque deixaria algum item negativo
-             * (só faz sentido se a compra foi RECEBIDA)
-             */
+            // REGRA 1 – Verificar se o estorno do estoque deixaria algum item negativo (se compra RECEBIDA)
             $itensComEstoqueNegativo = [];
 
             if ($pedido->status === 'RECEBIDA') {
                 foreach ($pedido->itens as $item) {
                     $produto = $item->produto;
 
-                    // usa a view de produtos pra pegar estoque atual
                     $viewProd = null;
                     if ($produto && $produto->codfabnumero) {
-                        $viewProd = \App\Models\ViewProduto::where('codigo_fabrica', $produto->codfabnumero)->first();
+                        $viewProd = ViewProduto::where('codigo_fabrica', $produto->codfabnumero)->first();
                     }
 
-                    $estoqueAtual = $viewProd->qtd_estoque ?? 0; // ajuste pro nome da coluna da sua view
+                    $estoqueAtual = $viewProd->qtd_estoque ?? 0;
                     $qtdEstornar  = (float) $item->quantidade;
 
                     $saldoPosEstorno = $estoqueAtual - $qtdEstornar;
@@ -664,23 +759,19 @@ class PedidoCompraController extends Controller
                     ->with('itens_estoque_negativo', $itensComEstoqueNegativo);
             }
 
-            /**
-             * REGRA 3 – Se passou pelas regras 1 e 2, o cancelamento é permitido
-             * - Estorna estoque (se RECEBIDA)
-             * - Estorna/cancela parcelas de Contas a Pagar
-             * - NÃO exclui o pedido nem os itens — apenas marca como CANCELADA
-             */
+            // REGRA 3 – Cancelamento permitido
+            // - Estorna estoque (se RECEBIDA)
+            // - Estorna/cancela parcelas de Contas a Pagar
+            // - Não exclui o pedido nem os itens — apenas marca como CANCELADA
 
-            // 3.1 Estorna estoque (se foi recebida)
             if ($pedido->status === 'RECEBIDA') {
-                $service = new \App\Services\EstoqueService();
+                $service = new EstoqueService();
                 $service->estornarEntradaCompra($pedido, $motivo);
             }
 
-            // 3.2 Cancelar/estornar parcelas de Contas a Pagar
+            // Cancelar/estornar parcelas de Contas a Pagar
             foreach ($pedido->contasPagar as $conta) {
 
-                // Por segurança, remove qualquer baixa pendente (em teoria não deveria ter, por causa da Regra 2)
                 foreach ($conta->baixas as $baixa) {
                     $baixa->delete();
                 }
@@ -698,7 +789,7 @@ class PedidoCompraController extends Controller
                 $conta->save();
             }
 
-            // 3.3 Atualiza o pedido para CANCELADA (sem excluir)
+            // Atualiza o pedido para CANCELADA
             $textoObsPedido = trim(
                 ($pedido->observacao ? $pedido->observacao . "\n" : '') .
                     'Pedido cancelado. Motivo: ' . $motivo
@@ -706,7 +797,7 @@ class PedidoCompraController extends Controller
 
             $pedido->status     = 'CANCELADA';
             $pedido->observacao = $textoObsPedido;
-            $pedido->save(); // 👈 NÃO exclui, só salva com status cancelado
+            $pedido->save();
 
             DB::commit();
 
@@ -719,16 +810,40 @@ class PedidoCompraController extends Controller
             return back()->with('error', 'Erro ao cancelar pedido: ' . $e->getMessage());
         }
     }
+
     private function brToFloat($value): float
     {
         if ($value === null || $value === '') {
             return 0.0;
         }
 
-        // transforma "1.234,56" -> "1234.56"
-        $value = str_replace(['.', ' '], ['', ''], (string) $value);
-        $value = str_replace(',', '.', $value);
+        $value = trim((string) $value);
 
+        $hasComma = strpos($value, ',') !== false;
+        $hasDot   = strpos($value, '.') !== false;
+
+        // Caso 1: só vírgula  → formato BR: 1.234,56
+        if ($hasComma && ! $hasDot) {
+            // remove possíveis milhares e troca vírgula por ponto
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+            return (float) $value;
+        }
+
+        // Caso 2: só ponto → vamos assumir que o ponto é decimal (11.81)
+        if ($hasDot && ! $hasComma) {
+            return (float) $value;
+        }
+
+        // Caso 3: tem ponto e vírgula → típico "1.234,56"
+        if ($hasDot && $hasComma) {
+            // assume . como milhar e , como decimal
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+            return (float) $value;
+        }
+
+        // Caso 4: só dígitos (ex: "1181")
         return (float) $value;
     }
 }

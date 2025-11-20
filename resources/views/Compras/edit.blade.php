@@ -11,61 +11,51 @@
             @csrf
             @method('PUT')
 
-
             {{-- Cabeçalho --}}
-@php
-    // Funçãozinha pra sempre devolver no formato YYYY-MM-DD
-    if (!function_exists('dateForInput')) {
-        function dateForInput($value) {
-            if (!$value) {
-                return '';
-            }
+            @php
+                // Funçãozinha pra sempre devolver no formato YYYY-MM-DD
+                if (!function_exists('dateForInput')) {
+                    function dateForInput($value)
+                    {
+                        if (!$value) {
+                            return '';
+                        }
 
-            if ($value instanceof \Carbon\CarbonInterface) {
-                return $value->format('Y-m-d');
-            }
+                        if ($value instanceof \Carbon\CarbonInterface) {
+                            return $value->format('Y-m-d');
+                        }
 
-            $str = (string) $value;
+                        $str = (string) $value;
 
-            // Se já vier como 2025-11-19 ou 2025-11-19 00:00:00
-            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $str)) {
-                return substr($str, 0, 10);
-            }
+                        // Se já vier como 2025-11-19 ou 2025-11-19 00:00:00
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $str)) {
+                            return substr($str, 0, 10);
+                        }
 
-            try {
-                return \Carbon\Carbon::parse($str)->format('Y-m-d');
-            } catch (\Exception $e) {
-                return '';
-            }
-        }
-    }
+                        try {
+                            return \Carbon\Carbon::parse($str)->format('Y-m-d');
+                        } catch (\Exception $e) {
+                            return '';
+                        }
+                    }
+                }
 
-    // >>> ATENÇÃO AQUI: use os nomes que realmente existem no seu model <<<
+                // DATA DO PEDIDO
+                $dataPedido = old(
+                    'data_compra',
+                    dateForInput($pedido->data_compra ?? ($pedido->datapedido ?? ($pedido->dt_pedido ?? null))),
+                );
 
-    // DATA DO PEDIDO
-    $dataPedido = old(
-        'data_compra',
-        dateForInput(
-            $pedido->data_compra
-            ?? $pedido->datapedido
-            ?? $pedido->dt_pedido
-            ?? null
-        )
-    );
-
-    // DATA DE ENTREGA / PREVISÃO
-    $dataEntrega = old(
-        'data_emissao',
-        dateForInput(
-            $pedido->data_emissao
-            ?? $pedido->data_previsao
-            ?? $pedido->data_previsao_entrega
-            ?? $pedido->data_prevista_entrega
-            ?? null
-        )
-    );
-@endphp
-
+                // DATA DE ENTREGA / PREVISÃO
+                $dataEntrega = old(
+                    'data_emissao',
+                    dateForInput(
+                        $pedido->data_emissao ??
+                            ($pedido->data_previsao ??
+                                ($pedido->data_previsao_entrega ?? ($pedido->data_prevista_entrega ?? null))),
+                    ),
+                );
+            @endphp
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 {{-- Fornecedor --}}
@@ -116,7 +106,6 @@
                 </div>
             </div>
 
-
             {{-- Condições de Pagamento --}}
             <div class="grid grid-cols-3 gap-4 mb-6">
                 {{-- Forma de Pagamento --}}
@@ -153,6 +142,24 @@
                     <input type="number" name="qt_parcelas" min="1"
                         value="{{ old('qt_parcelas', $pedido->qt_parcelas ?? 1) }}"
                         class="w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+
+                {{-- Encargos financeiros --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Encargos financeiros (R$)
+                    </label>
+
+                    <div class="text-right">
+                        <label class="font-semibold text-gray-700 block">Encargos (R$)</label>
+                        <input type="text" name="encargos" id="encargos"
+                            value="{{ old('encargos', number_format($pedido->encargos ?? 0, 2, ',', '.')) }}"
+                            class="w-32 text-right border-gray-300 rounded-md shadow-sm">
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-1">
+                        Juros / taxas deste pedido. Será rateado proporcionalmente nos itens.
+                    </p>
                 </div>
             </div>
 
