@@ -29,6 +29,8 @@ use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatorioFinanceiroController;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
 
 
 /*
@@ -50,6 +52,9 @@ Route::get('/cadastro-cliente', [ClienteController::class, 'createPublic'])
 
 Route::post('/cadastro-cliente', [ClienteController::class, 'storePublic'])
     ->name('clientes.public.store');
+
+
+
 Route::middleware(['auth'])->group(function () {
 
     Route::prefix('relatorios')->name('relatorios.')->group(function () {
@@ -74,7 +79,19 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/clientes/{cliente}/extrato-produtos', [RelatorioFinanceiroController::class, 'extratoProdutosCliente'])
             ->name('clientes.extrato_produtos');
     });
+    Route::get('/clientes/qrcode', function () {
+        return view('clientes.qrcode');
+    })->name('clientes.qrcode');
+    Route::get('/clientes/qrcode.png', function () {
+        $png = QrCode::format('png')
+            ->size(600)
+            ->margin(2)
+            ->generate(route('clientes.public.create'));
 
+        return response($png)
+            ->header('Content-Type', 'image/png')
+            ->header('Content-Disposition', 'inline; filename="qrcode-cadastro-cliente.png"');
+    })->name('clientes.qrcode.png');
     /*
     |--------------------------------------------------------------------------
     | DASHBOARD

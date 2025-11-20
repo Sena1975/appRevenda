@@ -11,12 +11,16 @@ use Illuminate\Database\QueryException;
 
 class ClienteController extends Controller
 {
-    public function index()
-    {
-        // Subquery com estatísticas por cliente
-        $statsSub = DB::table('apppedidovenda as p')
-            ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
-            ->selectRaw('
+public function index(Request $request)
+{
+    // filtros vindos da tela (GET)
+    $filtroOrigem = $request->input('origem_cadastro');
+    $filtroStatus = $request->input('status');
+
+    // Subquery com estatísticas por cliente
+    $statsSub = DB::table('apppedidovenda as p')
+        ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
+        ->selectRaw('
             p.cliente_id                                   as cliente_id,
             COUNT(DISTINCT i.produto_id)                  as mix,
             COALESCE(SUM(p.valor_liquido), 0)             as total_compras,
@@ -26,23 +30,58 @@ class ClienteController extends Controller
                 0
             )                                             as ticket_medio
         ')
-            ->whereNotNull('p.cliente_id')
+        ->whereNotNull('p.cliente_id')
+        ->groupBy('p.cliente_id');
 
-            ->groupBy('p.cliente_id');
-
-        $clientes = DB::table('appcliente as c')
-            ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
-            ->selectRaw('
+    $clientesQuery = DB::table('appcliente as c')
+        ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
+        ->selectRaw('
             c.*,
             COALESCE(s.mix, 0)            as mix,
             COALESCE(s.total_compras, 0)  as total_compras,
             COALESCE(s.ticket_medio, 0)   as ticket_medio
-        ')
-            ->orderBy('c.nome')
-            ->paginate(15);
+        ');
 
-        return view('clientes.index', compact('clientes'));
+    // === aplica filtro por origem_cadastro, se informado ===
+    if (!empty($filtroOrigem)) {
+        $clientesQuery->where('c.origem_cadastro', $filtroOrigem);
     }
+
+    // === aplica filtro por status, se informado ===
+    if (!empty($filtroStatus)) {
+        $clientesQuery->where('c.status', $filtroStatus);
+    }
+
+    $clientes = $clientesQuery
+        ->orderBy('c.nome')
+        ->paginate(15)
+        ->appends($request->only('origem_cadastro', 'status'));
+
+    // ==========================
+    // ESTATÍSTICAS POR ORIGEM
+    // ==========================
+    $origensStats = DB::table('appcliente')
+        ->selectRaw("
+            COALESCE(origem_cadastro, 'Não informada') as origem_cadastro,
+            COUNT(*)                                    as total,
+            SUM(CASE WHEN status = 'Ativo' THEN 1 ELSE 0 END) as ativos
+        ")
+        ->groupBy(DB::raw("COALESCE(origem_cadastro, 'Não informada')"))
+        ->get();
+
+    $totalClientes = $origensStats->sum('total');
+    $totalAtivos   = $origensStats->sum('ativos');
+
+    return view('clientes.index', [
+        'clientes'      => $clientes,
+        'filtroOrigem'  => $filtroOrigem,
+        'filtroStatus'  => $filtroStatus,
+        'origensStats'  => $origensStats,
+        'totalClientes' => $totalClientes,
+        'totalAtivos'   => $totalAtivos,
+    ]);
+}
+
 
     public function create()
     {
@@ -58,115 +97,117 @@ class ClienteController extends Controller
         return view('clientes.cadastro-publico', compact('ufs'));
     }
 
-public function storePublic(Request $request)
-{
-    // Validação pública
-    $validated = $request->validate([
-        'nome'            => 'required|string|max:255',
+    public function storePublic(Request $request)
+    {
+        // Validação pública
+        $validated = $request->validate([
+            'nome'            => 'required|string|max:255',
 
-        // AGORA OBRIGATÓRIOS
-        'email'           => [
-            'required',
-            'string',
-            'lowercase',
-            'email:rfc,dns',
-            'max:255',
-            'unique:appcliente,email',
-        ],
-        'whatsapp'        => 'required|string|max:30',
+            // AGORA OBRIGATÓRIOS
+            'email'           => [
+                'required',
+                'string',
+                'lowercase',
+                'email:rfc,dns',
+                'max:255',
+                'unique:appcliente,email',
+            ],
+            'whatsapp'        => 'required|string|max:30',
 
-        'telefone'        => 'nullable|string|max:20',
+            'telefone'        => 'nullable|string|max:20',
 
-        'cep'             => 'nullable|string|max:9',
-        'endereco'        => 'nullable|string|max:255',
-        'uf_id'           => 'nullable|integer',
-        'cidade_id'       => 'nullable|integer',
-        'bairro_id'       => 'nullable',
-        'bairro_nome'     => 'nullable|string|max:100',
+            'cep'             => 'nullable|string|max:9',
+            'endereco'        => 'nullable|string|max:255',
+            'uf_id'           => 'nullable|integer',
+            'cidade_id'       => 'nullable|integer',
+            'bairro_id'       => 'nullable',
+            'bairro_nome'     => 'nullable|string|max:100',
 
-        'bairro'          => 'nullable|string|max:100',
-        'cidade'          => 'nullable|string|max:100',
-        'uf'              => 'nullable|string|max:2',
+            'bairro'          => 'nullable|string|max:100',
+            'cidade'          => 'nullable|string|max:100',
+            'uf'              => 'nullable|string|max:2',
 
-        'data_nascimento' => ['nullable', 'date', 'before:today'],
-        'sexo'            => 'nullable|string|max:20',
-        'filhos'          => 'nullable|integer|min:0',
+            'data_nascimento' => ['nullable', 'date', 'before:today'],
+            'sexo'            => 'nullable|string|max:20',
+            'filhos'          => 'nullable|integer|min:0',
 
-        // Time do coração
-        'timecoracao'     => 'nullable|string|max:60',
+            // Time do coração
+            'timecoracao'     => 'nullable|string|max:60',
 
-        // Foto
-        'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-    ]);
+            // Foto
+            'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'origem_cadastro' => 'nullable|string|max:50',
+        ]);
 
-    // --- Normaliza data de nascimento (mesma lógica do store) ---
-    $dn = $request->input('data_nascimento');
-    if ($dn) {
-        $dn = trim($dn);
-        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
-            try {
-                $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
-            } catch (\Throwable $e) {
+        // --- Normaliza data de nascimento (mesma lógica do store) ---
+        $dn = $request->input('data_nascimento');
+        if ($dn) {
+            $dn = trim($dn);
+            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
+                try {
+                    $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $dn = null;
+                }
+            } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
                 $dn = null;
             }
-        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
+        } else {
             $dn = null;
         }
-    } else {
-        $dn = null;
+
+        // --- UF/Cidade/Bairro por ID ---
+        $ufSigla = $request->filled('uf_id')
+            ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
+            : null;
+
+        $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
+            ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
+            : null;
+
+        $bairroNome = null;
+        $bairroId = $request->input('bairro_id');
+        if ($bairroId === 'custom') {
+            $bairroNome = $request->input('bairro_nome');
+        } elseif (is_numeric($bairroId)) {
+            $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
+        }
+
+        // --- Monta dados para gravar ---
+        $dados = [
+            'nome'            => $request->nome,
+            'email'           => $request->email,
+            'telefone'        => $request->telefone,
+            'cep'             => $request->cep,
+            'endereco'        => $request->endereco,
+            'uf'              => $ufSigla ?? $request->uf,
+            'cidade'          => $cidadeNome ?? $request->cidade,
+            'bairro'          => $bairroNome ?? $request->bairro,
+
+            'whatsapp'        => $request->whatsapp,
+            'telegram'        => null,
+            'instagram'       => null,
+            'facebook'        => null,
+            'cpf'             => null,
+            'data_nascimento' => $dn,
+            'sexo'            => $request->sexo,
+            'filhos'          => $request->filhos,
+            'timecoracao'     => $request->timecoracao,
+
+            // ⚠ status fixo para cadastros públicos
+            'status'          => 'Em Aprovação',
+            'origem_cadastro' => 'Público',
+        ];
+
+        // Foto (se enviada)
+        if ($request->hasFile('foto')) {
+            $dados['foto'] = $request->file('foto')->store('clientes', 'public');
+        }
+
+        Cliente::create($dados);
+
+        return view('clientes.cadastro-publico-ok');
     }
-
-    // --- UF/Cidade/Bairro por ID ---
-    $ufSigla = $request->filled('uf_id')
-        ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
-        : null;
-
-    $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
-        ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
-        : null;
-
-    $bairroNome = null;
-    $bairroId = $request->input('bairro_id');
-    if ($bairroId === 'custom') {
-        $bairroNome = $request->input('bairro_nome');
-    } elseif (is_numeric($bairroId)) {
-        $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
-    }
-
-    // --- Monta dados para gravar ---
-    $dados = [
-        'nome'            => $request->nome,
-        'email'           => $request->email,
-        'telefone'        => $request->telefone,
-        'cep'             => $request->cep,
-        'endereco'        => $request->endereco,
-        'uf'              => $ufSigla ?? $request->uf,
-        'cidade'          => $cidadeNome ?? $request->cidade,
-        'bairro'          => $bairroNome ?? $request->bairro,
-
-        'whatsapp'        => $request->whatsapp,
-        'telegram'        => null,
-        'instagram'       => null,
-        'facebook'        => null,
-        'cpf'             => null,
-        'data_nascimento' => $dn,
-        'sexo'            => $request->sexo,
-        'filhos'          => $request->filhos,
-        'timecoracao'     => $request->timecoracao,
-
-        // ⚠ status fixo para cadastros públicos
-        'status'          => 'Em Aprovação',
-    ];
-
-    // Foto (se enviada)
-    if ($request->hasFile('foto')) {
-        $dados['foto'] = $request->file('foto')->store('clientes', 'public');
-    }
-
-    Cliente::create($dados);
-
-    return view('clientes.cadastro-publico-ok');
-}
 
 
     public function edit(Cliente $cliente)
@@ -203,6 +244,7 @@ public function storePublic(Request $request)
             'timecoracao'     => 'nullable|string|max:60',
             'status'          => ['nullable', 'in:Ativo,Inativo'],
             'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'origem_cadastro' => 'nullable|string|max:50',
         ]);
 
         // Normaliza data para YYYY-MM-DD ou null
@@ -259,6 +301,7 @@ public function storePublic(Request $request)
             'filhos'          => $request->filhos,
             'timecoracao'     => $request->timecoracao,
             'status'          => $request->status,
+            'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
         ];
 
         if ($request->hasFile('foto')) {
@@ -305,6 +348,7 @@ public function storePublic(Request $request)
             'timecoracao'     => 'nullable|string|max:60',
             'status'          => ['nullable', 'in:Ativo,Inativo'],
             'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'origem_cadastro' => 'nullable|string|max:50',
         ]);
 
         // Normaliza data para YYYY-MM-DD ou null
@@ -360,6 +404,7 @@ public function storePublic(Request $request)
             'filhos'          => $request->filhos,
             'timecoracao'     => $request->timecoracao,
             'status'          => $request->status,
+            'origem_cadastro' => $request->input('origem_cadastro', $cliente->origem_cadastro ?? 'Interno'),
         ];
 
         // Foto (substitui a antiga)

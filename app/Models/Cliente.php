@@ -30,7 +30,8 @@ class Cliente extends Model
         'sexo',
         'filhos',
         'status',
-        'foto'
+        'origem_cadastro',
+        'foto',
     ];
 
 

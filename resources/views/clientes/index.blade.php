@@ -27,22 +27,88 @@
         @endif
 
         <div class="bg-white rounded-lg shadow overflow-hidden">
+            {{-- Filtros --}}
+            <form method="GET" action="{{ route('clientes.index') }}" class="mb-4 flex flex-wrap gap-4 items-end">
+
+                {{-- Filtro por Origem --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Origem do cadastro</label>
+                    <select name="origem_cadastro" class="mt-1 block w-52 border-gray-300 rounded-md shadow-sm">
+                        <option value="">Todas</option>
+                        @php
+                            $origemSelecionada = $filtroOrigem ?? '';
+                        @endphp
+                        <option value="Interno" @selected($origemSelecionada === 'Interno')>Interno</option>
+                        <option value="Cadastro Público" @selected($origemSelecionada === 'Cadastro Público')>Cadastro Público</option>
+                        <option value="Importação" @selected($origemSelecionada === 'Importação')>Importação</option>
+                        <option value="WhatsApp" @selected($origemSelecionada === 'WhatsApp')>WhatsApp</option>
+                        <option value="Instagram" @selected($origemSelecionada === 'Instagram')>Instagram</option>
+                    </select>
+                </div>
+
+                {{-- Filtro por Status --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <select name="status" class="mt-1 block w-40 border-gray-300 rounded-md shadow-sm">
+                        <option value="">Todos</option>
+                        @php
+                            $statusSelecionado = $filtroStatus ?? '';
+                        @endphp
+                        <option value="Ativo" @selected($statusSelecionado === 'Ativo')>Ativo</option>
+                        <option value="Inativo" @selected($statusSelecionado === 'Inativo')>Inativo</option>
+                        <option value="Em Aprovação" @selected($statusSelecionado === 'Em Aprovação')>Em Aprovação</option>
+                    </select>
+                </div>
+
+                <div>
+                    <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
+                        Filtrar
+                    </button>
+                </div>
+
+                {{-- Botão para limpar filtros, opcional --}}
+                @if (!empty($filtroOrigem) || !empty($filtroStatus))
+                    <div>
+                        <a href="{{ route('clientes.index') }}"
+                            class="inline-flex items-center px-3 py-2 bg-gray-200 rounded-md text-xs text-gray-700 hover:bg-gray-300">
+                            Limpar filtros
+                        </a>
+                    </div>
+                @endif
+
+            </form>
+
+            {{-- ⚠️ Legenda discreta para cadastros públicos --}}
+            <div class="px-4 py-2 text-xs text-gray-600 flex items-center gap-2 border-b bg-sky-50/40">
+                <span class="inline-block w-3 h-3 rounded-full bg-blue-500"></span>
+                <span>
+                    Linhas destacadas em azul indicam clientes cadastrados via <strong>link público</strong>
+                    (origem: <span class="font-semibold">Cadastro Público</span>).
+                </span>
+            </div>
+
             <table class="min-w-full text-sm">
                 <thead class="bg-gray-50 text-gray-600">
                     <tr>
                         <th class="px-3 py-2 text-left">Foto</th>
                         <th class="px-3 py-2 text-left">Nome</th>
                         <th class="px-3 py-2 text-left">E-mail</th>
-                        <th class="px-3 py-2 text-left">Telefone</th>
+                        <th class="px-3 py-2 text-left">WhatsApp</th>
                         <th class="px-3 py-2 text-right">MIX</th>
                         <th class="px-3 py-2 text-right">Compras (R$)</th>
                         <th class="px-3 py-2 text-right">Ticket Médio (R$)</th>
+                        <th class="px-3 py-2 text-right">Origem</th>
                         <th class="px-3 py-2 text-right">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($clientes as $cliente)
-                        <tr class="border-t hover:bg-gray-50">
+                        @php
+                            $isPublic = ($cliente->origem_cadastro === 'Cadastro Público');
+                        @endphp
+                        <tr
+                            class="border-t hover:bg-gray-50 {{ $isPublic ? 'bg-blue-50 border-l-4 border-blue-500' : '' }}">
                             <td class="px-3 py-2">
                                 @if ($cliente->foto && Storage::exists('public/' . $cliente->foto))
                                     <img src="{{ asset('storage/' . $cliente->foto) }}"
@@ -56,7 +122,8 @@
                             </td>
                             <td class="px-3 py-2 font-medium text-gray-800">{{ $cliente->nome }}</td>
                             <td class="px-3 py-2 text-gray-700">{{ $cliente->email ?? '—' }}</td>
-                            <td class="px-3 py-2 text-gray-700">{{ $cliente->telefone ?? '—' }}</td>
+                            {{-- corrigido: campo whatsapp minúsculo --}}
+                            <td class="px-3 py-2 text-gray-700">{{ $cliente->whatsapp ?? '—' }}</td>
 
                             {{-- MIX (qtde de itens diferentes comprados) --}}
                             <td class="px-3 py-2 text-right text-gray-800">
@@ -71,6 +138,11 @@
                             {{-- TICKET MÉDIO --}}
                             <td class="px-3 py-2 text-right text-emerald-700">
                                 R$ {{ number_format((float) ($cliente->ticket_medio ?? 0), 2, ',', '.') }}
+                            </td>
+
+                            {{-- Origem --}}
+                            <td class="px-4 py-2 text-right text-gray-700">
+                                {{ $cliente->origem_cadastro ?? '—' }}
                             </td>
 
                             {{-- bloco de ações (com ícones) --}}
@@ -89,7 +161,7 @@
                                         ✏️
                                     </a>
 
-                                    {{-- Dropdown de Extratos (ícone 📊, igual espírito do compras) --}}
+                                    {{-- Dropdown de Extratos (ícone 📊) --}}
                                     <div x-data="{ open: false }" class="relative inline-block text-left">
                                         <button type="button" @click="open = !open"
                                             class="text-purple-600 hover:text-purple-800 focus:outline-none"
@@ -120,10 +192,8 @@
                                                 </a>
                                             </div>
                                         </div>
-
-
-
                                     </div>
+
                                     {{-- Excluir Cliente (ícone lixeira) --}}
                                     <form action="{{ route('clientes.destroy', $cliente->id) }}" method="POST"
                                         onsubmit="return confirm('Confirma excluir o cliente {{ addslashes($cliente->nome) }}? Esta ação não poderá ser desfeita.');">
@@ -136,13 +206,10 @@
                                     </form>
                                 </div>
                             </td>
-
-
-
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-3 py-6 text-center text-gray-500">
+                            <td colspan="9" class="px-3 py-6 text-center text-gray-500">
                                 Nenhum cliente cadastrado.
                             </td>
                         </tr>

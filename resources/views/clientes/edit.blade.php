@@ -291,6 +291,19 @@
                         </div>
                     </div>
                 </div>
+<div>
+    <label class="block text-sm font-medium text-gray-700">Origem do cadastro</label>
+    <select name="origem_cadastro" class="w-full border-gray-300 rounded-md shadow-sm">
+        @php
+            $origemOld = old('origem_cadastro', $cliente->origem_cadastro ?? 'Interno');
+        @endphp
+        <option value="Interno" @selected($origemOld === 'Interno')>Interno</option>
+        <option value="Cadastro Público" @selected($origemOld === 'Cadastro Público')>Cadastro Público</option>
+        <option value="Importação" @selected($origemOld === 'Importação')>Importação</option>
+        <option value="WhatsApp" @selected($origemOld === 'WhatsApp')>WhatsApp</option>
+        <option value="Instagram" @selected($origemOld === 'Instagram')>Instagram</option>
+    </select>
+</div>
 
             </div>
 
