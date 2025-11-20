@@ -27,7 +27,7 @@ class ClienteController extends Controller
             )                                             as ticket_medio
         ')
             ->whereNotNull('p.cliente_id')
-           
+
             ->groupBy('p.cliente_id');
 
         $clientes = DB::table('appcliente as c')
@@ -49,6 +49,124 @@ class ClienteController extends Controller
         return view('clientes.create');
     }
 
+    public function createPublic()
+    {
+        // Se quiser simplificar, podemos mandar menos campos pra tela pública.
+        // Aqui vou reaproveitar UF/Cidade/Bairro igual seu create normal.
+        $ufs = DB::table('appuf')->orderBy('nome')->get();
+
+        return view('clientes.cadastro-publico', compact('ufs'));
+    }
+
+public function storePublic(Request $request)
+{
+    // Validação pública
+    $validated = $request->validate([
+        'nome'            => 'required|string|max:255',
+
+        // AGORA OBRIGATÓRIOS
+        'email'           => [
+            'required',
+            'string',
+            'lowercase',
+            'email:rfc,dns',
+            'max:255',
+            'unique:appcliente,email',
+        ],
+        'whatsapp'        => 'required|string|max:30',
+
+        'telefone'        => 'nullable|string|max:20',
+
+        'cep'             => 'nullable|string|max:9',
+        'endereco'        => 'nullable|string|max:255',
+        'uf_id'           => 'nullable|integer',
+        'cidade_id'       => 'nullable|integer',
+        'bairro_id'       => 'nullable',
+        'bairro_nome'     => 'nullable|string|max:100',
+
+        'bairro'          => 'nullable|string|max:100',
+        'cidade'          => 'nullable|string|max:100',
+        'uf'              => 'nullable|string|max:2',
+
+        'data_nascimento' => ['nullable', 'date', 'before:today'],
+        'sexo'            => 'nullable|string|max:20',
+        'filhos'          => 'nullable|integer|min:0',
+
+        // Time do coração
+        'timecoracao'     => 'nullable|string|max:60',
+
+        // Foto
+        'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    // --- Normaliza data de nascimento (mesma lógica do store) ---
+    $dn = $request->input('data_nascimento');
+    if ($dn) {
+        $dn = trim($dn);
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
+            try {
+                $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                $dn = null;
+            }
+        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
+            $dn = null;
+        }
+    } else {
+        $dn = null;
+    }
+
+    // --- UF/Cidade/Bairro por ID ---
+    $ufSigla = $request->filled('uf_id')
+        ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
+        : null;
+
+    $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
+        ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
+        : null;
+
+    $bairroNome = null;
+    $bairroId = $request->input('bairro_id');
+    if ($bairroId === 'custom') {
+        $bairroNome = $request->input('bairro_nome');
+    } elseif (is_numeric($bairroId)) {
+        $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
+    }
+
+    // --- Monta dados para gravar ---
+    $dados = [
+        'nome'            => $request->nome,
+        'email'           => $request->email,
+        'telefone'        => $request->telefone,
+        'cep'             => $request->cep,
+        'endereco'        => $request->endereco,
+        'uf'              => $ufSigla ?? $request->uf,
+        'cidade'          => $cidadeNome ?? $request->cidade,
+        'bairro'          => $bairroNome ?? $request->bairro,
+
+        'whatsapp'        => $request->whatsapp,
+        'telegram'        => null,
+        'instagram'       => null,
+        'facebook'        => null,
+        'cpf'             => null,
+        'data_nascimento' => $dn,
+        'sexo'            => $request->sexo,
+        'filhos'          => $request->filhos,
+        'timecoracao'     => $request->timecoracao,
+
+        // ⚠ status fixo para cadastros públicos
+        'status'          => 'Em Aprovação',
+    ];
+
+    // Foto (se enviada)
+    if ($request->hasFile('foto')) {
+        $dados['foto'] = $request->file('foto')->store('clientes', 'public');
+    }
+
+    Cliente::create($dados);
+
+    return view('clientes.cadastro-publico-ok');
+}
 
 
     public function edit(Cliente $cliente)

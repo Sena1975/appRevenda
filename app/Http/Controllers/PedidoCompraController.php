@@ -105,6 +105,7 @@ class PedidoCompraController extends Controller
         $data = $request->validate([
             'fornecedor_id'        => 'required|integer',
             'data_pedido'          => 'required|date',
+            'data_entrega'         => 'nullable|date',
             'observacao'           => 'nullable|string|max:1000',
 
             'forma_pagamento_id'   => 'nullable|integer',
@@ -231,7 +232,7 @@ class PedidoCompraController extends Controller
             $compraId = DB::table('appcompra')->insertGetId([
                 'fornecedor_id'      => $data['fornecedor_id'],
                 'data_compra'        => $data['data_pedido'],
-                'data_emissao'       => $data['data_pedido'],
+                'data_emissao'       => $data['data_entrega'] ?? null,
                 'numpedcompra'       => null,
                 'numero_nota'        => null,
 
@@ -303,10 +304,14 @@ class PedidoCompraController extends Controller
 
         $fornecedores = Fornecedor::orderBy('nomefantasia')->get();
         $produtos = Produto::orderBy('nome')->get();
+        $formasPagamento  = FormaPagamento::orderBy('nome')->get();      // ou 'descricao'
+        $planosPagamento  = PlanoPagamento::orderBy('descricao')->get();      // ou 'descricao'
 
         return view('compras.edit', [
             'pedido' => $pedido,
             'fornecedores' => $fornecedores,
+            'formasPagamento'  => $formasPagamento,
+            'planosPagamento'  => $planosPagamento,
             'produtos' => $produtos,
             'numeroPedido' => $pedido->numpedcompra ?? '(sem número)'
         ]);
@@ -341,46 +346,58 @@ class PedidoCompraController extends Controller
                 if ($v === null || $v === '') {
                     return 0.0;
                 }
-                // remove milhares
-                $v = str_replace('.', '', $v);
-                // troca vírgula por ponto
-                $v = str_replace(',', '.', $v);
+                $v = str_replace('.', '', $v);   // milhares
+                $v = str_replace(',', '.', $v);  // decimal
                 return (float) $v;
             };
 
             /** @var \App\Models\PedidoCompra $pedido */
             $pedido = PedidoCompra::with(['itens.produto'])->findOrFail($id);
 
-            // Guarda status antigo pra evitar duplicar processos
+            // guarda status antigo
             $jaRecebidaAntes = ($pedido->status === 'RECEBIDA');
+
+            // --------- ATUALIZA CABEÇALHO (incluindo datas) ----------
+            $pedido->fornecedor_id        = (int) $request->fornecedor_id;
+            $pedido->numpedcompra         = $request->numpedcompra;
+            $pedido->numero_nota          = $request->numero_nota;
+
+            // campos de data vindos dos inputs da tela
+            $pedido->data_compra          = $request->input('data_pedido')  ?: $pedido->data_compra;
+            $pedido->data_emissao         = $request->input('data_entrega') ?: $pedido->data_emissao;
+
+            // forma / plano / parcelas
+            $pedido->forma_pagamento_id   = $request->input('forma_pagamento_id') ?: null;
+            $pedido->plano_pagamento_id   = $request->input('plano_pagamento_id') ?: null;
+            $pedido->qt_parcelas          = $request->input('qt_parcelas') ?: $pedido->qt_parcelas;
+
+            // se ainda usa um campo texto "formapgto" antigo, mantém:
+            $pedido->formapgto            = $request->input('formapgto', $pedido->formapgto);
+
+            // observação
+            $pedido->observacao           = $request->input('observacao');
+
+            // ---------------------------------------------------------
 
             // pega itens do request
             $itensRequest = $request->input('itens', []);
 
-            // Totais que vamos recalcular
+            // Totais recalculados
             $valorTotalBruto  = 0;
             $valorDescontoTot = 0;
             $valorLiquidoTot  = 0;
             $valorVendaTot    = 0;
             $pontosTot        = 0;
 
-            // Atualiza dados de cabeçalho básicos
-            $pedido->numpedcompra = $request->numpedcompra;
-            $pedido->numero_nota  = $request->numero_nota;
-            $pedido->formapgto    = $request->formapgto ?? $pedido->formapgto;
-            $pedido->qt_parcelas  = $request->qt_parcelas ?? $pedido->qt_parcelas;
-
             // Atualiza ITENS
             foreach ($itensRequest as $dados) {
 
-                // ideal: sempre ter o ID do item no form
-                $itemId     = $dados['id']          ?? null;
-                $produtoId  = $dados['produto_id']  ?? null;
+                $itemId    = $dados['id']         ?? null;
+                $produtoId = $dados['produto_id'] ?? null;
 
                 if ($itemId) {
                     $item = $pedido->itens->where('id', $itemId)->first();
                 } else {
-                    // fallback: procura pelo produto_id
                     $item = $pedido->itens->where('produto_id', $produtoId)->first();
                 }
 
@@ -388,31 +405,25 @@ class PedidoCompraController extends Controller
                     continue;
                 }
 
-                // Lê valores da tela (formato BR) e converte
-                $qtd           = $toFloat($dados['quantidade']         ?? $item->quantidade);
-                $pontos        = $toFloat($dados['pontos']             ?? $item->pontos);
-                $precoCompra   = $toFloat($dados['preco_compra']       ?? $item->preco_unitario);
-                $precoRevenda  = $toFloat($dados['preco_revenda']      ?? $item->preco_venda_unitario);
-                $descontoLinha = $toFloat($dados['desconto']           ?? ($item->valor_desconto ?? 0));
+                $qtd           = $toFloat($dados['quantidade']   ?? $item->quantidade);
+                $pontos        = $toFloat($dados['pontos']       ?? $item->pontos);
+                $precoCompra   = $toFloat($dados['preco_compra'] ?? $item->preco_unitario);
+                $precoRevenda  = $toFloat($dados['preco_revenda'] ?? $item->preco_venda_unitario);
+                $descontoLinha = $toFloat($dados['desconto']     ?? ($item->valor_desconto ?? 0));
 
-                if ($descontoLinha < 0) {
-                    $descontoLinha = 0; // se quiser garantir que no editar não fique negativo
-                }
+                if ($descontoLinha < 0) $descontoLinha = 0;
 
-                // Recalcula totais da linha
                 $totalItemBruto   = $qtd * $precoCompra;
                 $totalItemLiquido = max(0, $totalItemBruto - $descontoLinha);
                 $totalItemVenda   = $qtd * $precoRevenda;
                 $pontosLinha      = $qtd * $pontos;
 
-                // Acumula para o cabeçalho
                 $valorTotalBruto  += $totalItemBruto;
                 $valorDescontoTot += $descontoLinha;
                 $valorLiquidoTot  += $totalItemLiquido;
                 $valorVendaTot    += $totalItemVenda;
                 $pontosTot        += $pontosLinha;
 
-                // Atualiza o item na tabela appcompraproduto
                 $item->update([
                     'quantidade'           => $qtd,
                     'qtd_disponivel'       => $qtd,
@@ -427,19 +438,19 @@ class PedidoCompraController extends Controller
                 ]);
             }
 
-            // Atualiza totais do cabeçalho com o que recalculamos
+            // Totais no cabeçalho
             $pedido->valor_total       = $valorTotalBruto;
             $pedido->valor_desconto    = $valorDescontoTot;
             $pedido->valor_liquido     = $valorLiquidoTot;
             $pedido->preco_venda_total = $valorVendaTot;
             $pedido->pontostotal       = $pontosTot;
 
-            // Status conforme ação
+            // Status
             $pedido->status = $request->acao === 'confirmar' ? 'RECEBIDA' : 'PENDENTE';
 
             $pedido->save();
 
-            // Se confirmar recebimento, registra movimentação no estoque e gera contas a pagar
+            // Se confirmar recebimento, movimenta estoque e gera contas a pagar
             if ($request->acao === 'confirmar' && ! $jaRecebidaAntes) {
                 $estoqueService = new EstoqueService();
                 $estoqueService->registrarEntradaCompra($pedido);

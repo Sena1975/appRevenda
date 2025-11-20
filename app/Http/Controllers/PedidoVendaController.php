@@ -141,11 +141,15 @@ class PedidoVendaController extends Controller
             'previsao_entrega'    => 'nullable|date',
             'observacao'          => 'nullable|string|max:1000',
             'desconto'            => 'nullable|numeric|min:0',
-            'itens'               => 'required|array|min:1',
-            'itens.*.produto_id'  => 'required|integer',
-            'itens.*.codfabnumero' => 'nullable|string',
-            'itens.*.quantidade'  => 'required|integer|min:1',
+
+            'itens'                        => 'required|array|min:1',
+            'itens.*.produto_id'           => 'required|integer',
+            'itens.*.codfabnumero'         => 'nullable|string',
+            'itens.*.quantidade'           => 'required|integer|min:1',
+            'itens.*.preco_unitario'       => 'required|numeric|min:0',
+            'itens.*.pontuacao'            => 'nullable|integer|min:0',
         ]);
+
 
         return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA) {
 
@@ -169,15 +173,19 @@ class PedidoVendaController extends Controller
                     abort(422, "Produto inválido na linha " . ($idx + 1) . " (código/ficha não encontrado).");
                 }
 
-                $qtd          = (int) $item['quantidade'];
-                $precoUnit    = (float) $vp->preco_revenda;   // VENDA
-                $pontosUnit   = (int) $vp->pontos;
-                $estoqueAtual = (int) $vp->qtd_estoque;
+                $qtd       = (int) $item['quantidade'];
+                $precoReq  = isset($item['preco_unitario']) ? (float) $item['preco_unitario'] : null;
+                $pontosReq = isset($item['pontuacao']) ? (int) $item['pontuacao'] : null;
 
-                // bloqueio: não vende acima do disponível (estoque livre = disponível)
-                if ($qtd > $estoqueAtual) {
-                    abort(422, "Estoque insuficiente para {$vp->descricao_produto} (disp: {$estoqueAtual}, solicitado: {$qtd}).");
-                }
+                // Usa o que veio da tela; se vier nulo, cai no valor padrão da view
+                $precoUnit  = $precoReq  !== null ? $precoReq  : (float) $vp->preco_revenda;
+                $pontosUnit = $pontosReq !== null ? $pontosReq : (int) $vp->pontos;
+
+                // Só informação, sem bloquear na criação
+                $estoqueAtual = (int) ($vp->qtd_estoque ?? 0);
+                // ⚠ Aqui NÃO tem mais abort(). A validação de estoque
+                // vai ser feita só na CONFIRMAÇÃO da entrega.
+
 
                 $totalLinha  = $qtd * $precoUnit;
                 $pontosLinha = $qtd * $pontosUnit;
@@ -249,11 +257,14 @@ class PedidoVendaController extends Controller
                     DB::table($TAB_ESTOQUE)->insert([
                         'produto_id'   => $it['produto_id'],
                         'codfabnumero' => $it['codfabnumero'],
-                        $COL_DISP      => 0,
+                        // NÃO enviar 'disponivel' porque é coluna gerada
                         $COL_RESERVA   => 0,
                     ]);
-                    $estq = (object)[$COL_DISP => 0, $COL_RESERVA => 0];
+
+                    // simulamos o objeto só com o campo que vamos usar (reservado)
+                    $estq = (object)[$COL_RESERVA => 0];
                 }
+
 
                 // aumenta a reserva
                 $novaReserva = ((int)($estq->{$COL_RESERVA} ?? 0)) + (int)$it['quantidade'];
@@ -735,97 +746,48 @@ class PedidoVendaController extends Controller
     }
     public function confirmarEntrega(int $id)
     {
-        // nomes das tabelas/colunas (ajuste se necessário)
-        $TAB_PEDIDO  = 'apppedidovenda';
-        $TAB_ITENS   = 'appitemvenda';      // se for apppedidovendaitem, troque
-        $TAB_ESTOQUE = 'appestoque';
-        $TAB_MOV     = 'appmovestoque';
-        $COL_RESERVA = 'reservado';        // se sua coluna for 'reserva', troque aqui
+        // Busca o pedido com itens e produtos
+        $pedido = PedidoVenda::with('itens.produto')->findOrFail($id);
 
-        DB::transaction(function () use ($id, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_RESERVA) {
-            // 1) Lock do pedido
-            $pedido = DB::table($TAB_PEDIDO)->lockForUpdate()->where('id', $id)->first();
-            if (!$pedido) abort(404, 'Pedido não encontrado.');
-
-            $statusAtual = strtoupper($pedido->status ?? '');
-            if (in_array($statusAtual, ['CANCELADO', 'ENTREGUE'])) {
-                abort(422, 'Este pedido já está finalizado (' . $statusAtual . ').');
-            }
-
-            // 2) Itens
-            $itens = DB::table($TAB_ITENS)->where('pedido_id', $id)->get();
-
-            // 3) Para cada item: baixa reserva e baixa físico (coluna base gravável)
-            foreach ($itens as $it) {
-                $qtd = (int) $it->quantidade;
-
-                // Lock do estoque do produto
-                $estq = DB::table($TAB_ESTOQUE)
-                    ->lockForUpdate()
-                    ->where('codfabnumero', $it->codfabnumero)
-                    ->first();
-
-                if (!$estq) continue;
-
-                // 3.1) Abate RESERVA
-                $reservaAtual = (int)($estq->{$COL_RESERVA} ?? 0);
-                $novaReserva  = max(0, $reservaAtual - $qtd);
-
-                DB::table($TAB_ESTOQUE)
-                    ->where('codfabnumero', $it->codfabnumero)
-                    ->update([$COL_RESERVA => $novaReserva]);
-
-                // 3.2) Baixa do físico (coluna base gravável) — NUNCA mexer em 'disponivel' se for gerada
-                $colBase = $this->firstWritableColumn($TAB_ESTOQUE, [
-                    'estoque_gerencial',
-                    'fisico',
-                    'qtd_fisica',
-                    'qtd_total',
-                    'quantidade',
-                    'qtd',
-                    'estoque'
-                ]);
-                if ($colBase) {
-                    DB::table($TAB_ESTOQUE)
-                        ->where('codfabnumero', $it->codfabnumero)
-                        ->decrement($colBase, $qtd);
-                }
-
-                // 3.3) Movimentação: SAÍDA / CONFIRMADO (origem VENDA)
-                $mov = [
-                    'produto_id'   => $it->produto_id,
-                    'codfabnumero' => $it->codfabnumero,
-                    'tipo_mov'     => 'SAIDA',
-                    'status'       => 'CONFIRMADO',
-                    'origem'       => 'VENDA',
-                    'quantidade'   => $qtd,
-                    'data_mov'     => now(),
-                    'observacao'   => 'Baixa por entrega confirmada',
-                ];
-                $this->safeInsertMov($TAB_MOV, $mov, $id);
-            }
-
-            // 4) Atualiza status do pedido para ENTREGUE
-            DB::table($TAB_PEDIDO)->where('id', $id)->update([
-                'status' => 'ENTREGUE',
-                // se tiver delivered_at/entregue_em, pode setar aqui:
-                // 'delivered_at' => now(),
-            ]);
-
-            // ⚠️ Removido: não vamos mudar status das contas aqui,
-            // porque elas serão criadas agora (se ainda não existirem).
-        });
-
-        // 5) FORA da transação: gerar Contas a Receber (apenas se ainda não existirem)
-        $temCr = DB::table('appcontasreceber')->where('pedido_id', $id)->exists();
-        if (!$temCr) {
-            $pedidoModel = PedidoVenda::find($id);
-            if ($pedidoModel) {
-                // Gera parcelas em status ABERTO
-                $this->cr->gerarParaPedido($pedidoModel);
-            }
+        // Só permite confirmar se ainda estiver pendente/aberto/reservado
+        $statusAtual = strtoupper($pedido->status ?? '');
+        if (!in_array($statusAtual, ['PENDENTE', 'ABERTO', 'RESERVADO'])) {
+            return back()->with('info', 'Este pedido não está pendente para confirmação.');
         }
 
-        return back()->with('success', 'Entrega confirmada com sucesso. Contas a receber geradas.');
+        DB::beginTransaction();
+        try {
+            // 1) Baixa de estoque usando o mesmo serviço que já funcionava
+            //    (ele já trata reserva → saída, etc.)
+            $this->estoque->confirmarSaidaVenda($pedido);
+
+            // 2) Atualiza status do pedido para ENTREGUE
+            $pedido->status = 'ENTREGUE';
+            $pedido->save();
+
+            // 3) Gera Contas a Receber se ainda não existirem para esse pedido
+            $temCr = DB::table('appcontasreceber')
+                ->where('pedido_id', $pedido->id)
+                ->exists();
+
+            if (!$temCr) {
+                $this->cr->gerarParaPedido($pedido);
+            }
+
+            // 4) Reavalia campanhas (mesmo padrão dos outros fluxos)
+            $pedido->load('itens');
+            $service   = app(CampaignEvaluatorService::class);
+            $campanhas = $service->reavaliarPedido($pedido);
+            session()->flash('campanhas', $campanhas);
+
+            DB::commit();
+
+            return redirect()
+                ->route('vendas.index')
+                ->with('success', 'Entrega confirmada, estoque baixado e contas a receber geradas.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Falha ao confirmar entrega: ' . $e->getMessage());
+        }
     }
 }

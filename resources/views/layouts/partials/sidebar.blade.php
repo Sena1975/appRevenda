@@ -169,10 +169,10 @@
                     class="flex w-full items-center justify-between px-2 py-1 rounded hover:bg-blue-100 transition-all">
                     <a href="{{ route('vendas.index') }}"
                         class="flex min-w-0 items-center {{ request()->routeIs('vendas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8v8m-4-4h8" />
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
                         </svg>
                         <span x-show="openSidebar" class="ml-2 truncate">Pedido de Venda</span>
                     </a>
@@ -237,11 +237,12 @@
         <div x-data="{ open: {{ $isFinanceiro ? 'true' : 'false' }} }" class="mt-2">
             <button @click="open = !open"
                 class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 9V7a5 5 0 00-10 0v2H5v12h14V9h-2z" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                    stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
+
                 <span x-show="openSidebar" class="ml-3 flex-1 text-left">Financeiro</span>
                 <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
@@ -335,9 +336,16 @@
                 <div x-show="openSidebar" class="border-t border-gray-200 my-2"></div>
 
                 {{-- RELATÓRIOS FINANCEIROS --}}
-                <p x-show="openSidebar" class="text-[11px] uppercase text-gray-500 mt-1 mb-1">
-                    Relatórios
-                </p>
+                <div x-show="openSidebar"
+                    class="flex items-center px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-4 h-4 text-blue-500">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+                    </svg>
+                    <span class="ml-2">Relatórios</span>
+                </div>
+
 
                 {{-- Previsão de Recebimentos --}}
                 @if (Route::has('relatorios.recebimentos.previsao'))

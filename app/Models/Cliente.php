@@ -15,8 +15,8 @@ class Cliente extends Model
         'nome',
         'cpf',
         'telefone',
-        'whatsapp',   // << ADICIONEI
-        'telegram',   // << ADICIONEI
+        'whatsapp',  
+        'telegram', 
         'cep',
         'endereco',
         'bairro',

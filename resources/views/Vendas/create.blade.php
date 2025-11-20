@@ -140,11 +140,20 @@
                 <table class="min-w-full text-sm border" id="tabela-itens">
                     <thead>
                         <tr class="bg-gray-100 text-left">
-                            <th class="px-2 py-1 border w-1/3">Código / Descrição</th>
-                            <th class="px-2 py-1 border text-right w-16">Qtd</th>
+                            {{-- descrição um pouco menor --}}
+                            <th class="px-2 py-1 border w-1/4">Código / Descrição</th>
+
+                            {{-- Qtd maior --}}
+                            <th class="px-2 py-1 border text-right w-24">Qtd</th>
+
                             <th class="px-2 py-1 border text-right w-20">Pontos</th>
-                            <th class="px-2 py-1 border text-right w-24">Preço Compra</th>
-                            <th class="px-2 py-1 border text-right w-24">Preço Venda</th>
+
+                            {{-- Preço compra continua oculto --}}
+                            <th class="px-2 py-1 border text-right w-24 hidden">Preço Compra</th>
+
+                            {{-- Preço venda maior --}}
+                            <th class="px-2 py-1 border text-right w-32">Preço Venda</th>
+
                             <th class="px-2 py-1 border text-right w-24 hidden">Desconto</th>
                             <th class="px-2 py-1 border text-right w-28">Total</th>
                             <th class="px-2 py-1 border text-right w-28">Lucro</th>
@@ -152,42 +161,37 @@
                         </tr>
                     </thead>
 
+
                     <tbody id="tbody-itens">
-                        {{-- Linha modelo (index 0) --}}
                         <tr class="linha-item" data-index="0">
                             {{-- Código / Descrição --}}
-                            <td class="px-2 py-1 border w-1/3">
+                            <td class="px-2 py-1 border w-1/4">
                                 <select class="produto-select w-full" data-index="0" style="width: 100%;"></select>
                                 <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
                                 <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
+                                {{-- Preço compra fica só em hidden, para cálculo de lucro --}}
+                                <input type="hidden" class="input-preco-compra">
                             </td>
 
                             {{-- Qtd --}}
-                            <td class="px-2 py-1 border text-right w-16">
+                            <td class="px-2 py-1 border text-right w-24">
                                 <input type="number" min="1" value="1"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-quantidade"
                                     name="itens[0][quantidade]">
                             </td>
 
-                            {{-- Pontos --}}
+                            {{-- Pontos (agora com name para ir pro backend, mas ainda readonly) --}}
                             <td class="px-2 py-1 border text-right w-20">
-                                <input type="text"
+                                <input type="number"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
-                                    readonly>
+                                    name="itens[0][pontuacao]">
                             </td>
 
-                            {{-- Preço Compra (último custo) --}}
-                            <td class="px-2 py-1 border text-right w-24">
-                                <input type="text"
-                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-compra"
-                                    readonly>
-                            </td>
-
-                            {{-- Preço Venda --}}
-                            <td class="px-2 py-1 border text-right w-24">
-                                <input type="text"
+                            {{-- Preço Venda (editável, com name para backend) --}}
+                            <td class="px-2 py-1 border text-right w-32">
+                                <input type="number" step="0.01" min="0"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-venda"
-                                    readonly>
+                                    name="itens[0][preco_unitario]">
                             </td>
 
                             {{-- Desconto (R$ na linha) --}}
@@ -219,6 +223,7 @@
                                 </button>
                             </td>
                         </tr>
+
                     </tbody>
                 </table>
             </div>
@@ -282,9 +287,11 @@
             function initSelect2(row) {
                 let $select = $(row).find('.produto-select');
 
+                // inicializa o Select2 com busca AJAX
                 $select.select2({
                     placeholder: 'Buscar produto...',
                     minimumInputLength: 2,
+                    width: '100%',
                     ajax: {
                         url: '{{ route('produtos.lookup') }}',
                         dataType: 'json',
@@ -301,9 +308,9 @@
                             };
                         }
                     }
-
                 });
 
+                // *** UM único handler de select2:select ***
                 $select.on('select2:select', function(e) {
                     const dados = e.params.data;
 
@@ -319,11 +326,13 @@
                     recalcularTotais();
                 });
 
-                $(row).find('.input-quantidade, .input-desconto').on('input', function() {
+                // quando mexer em qtd, desconto ou preço venda → recalcular
+                $(row).find('.input-quantidade, .input-desconto, .input-preco-venda').on('input', function() {
                     recalcularLinha(row);
                     recalcularTotais();
                 });
             }
+
 
             function recalcularLinha(row) {
                 const qtd = toNumber(row.querySelector('.input-quantidade').value);
@@ -397,6 +406,10 @@
                     .setAttribute('name', 'itens[' + indice + '][quantidade]');
                 novaLinha.querySelector('.input-desconto')
                     .setAttribute('name', 'itens[' + indice + '][desconto]');
+                novaLinha.querySelector('.input-pontos')
+                    .setAttribute('name', 'itens[' + indice + '][pontuacao]');
+                novaLinha.querySelector('.input-preco-venda')
+                    .setAttribute('name', 'itens[' + indice + '][preco_unitario]');
 
                 // recria select
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
@@ -404,7 +417,8 @@
                     '<select class="produto-select w-full" data-index="' + indice +
                     '" style="width:100%;"></select>' +
                     '<input type="hidden" name="itens[' + indice + '][codfabnumero]" class="input-codfab">' +
-                    '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">';
+                    '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">' +
+                    '<input type="hidden" class="input-preco-compra">';
 
                 // botão remover
                 novaLinha.querySelector('.btn-remover-linha').addEventListener('click', function() {

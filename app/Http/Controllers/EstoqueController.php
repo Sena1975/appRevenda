@@ -3,62 +3,81 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\ViewProduto;
 
 class EstoqueController extends Controller
 {
-    public function index(Request $request)
+public function index(Request $request)
 {
-    $query = ViewProduto::query();
+    $sort = $request->get('sort', 'descricao');
+    $dir  = $request->get('dir', 'asc');
 
-    // Detecta se é a "primeira abertura" (sem qualquer parâmetro na query string)
-    $primeiraAbertura = empty($request->query());
+    // 'todos' (default), 'com', 'sem'
+    $filtroEstoque = $request->get('filtro_estoque', 'com');
 
-    // Se for primeira abertura, padrão = true
-    // Senão, respeita o que veio no checkbox
-    if ($primeiraAbertura) {
-        $somenteComEstoque = true;
-    } else {
-        $somenteComEstoque = $request->boolean('somente_com_estoque');
-    }
+    $query = DB::table('view_app_produtos as v')
+        ->select(
+            'v.codigo_fabrica',
+            'v.descricao_produto',
+            'v.categoria',
+            'v.subcategoria',
+            'v.qtd_estoque',
+            'v.preco_revenda',
+            'v.data_ultima_entrada'
+        );
 
-    // Filtro por produto (código ou descrição)
+    // Filtro de texto (código/descrição)
     if ($request->filled('produto')) {
-        $busca = trim($request->produto);
-
-        $query->where(function ($q) use ($busca) {
-            $q->where('descricao_produto', 'like', "%{$busca}%")
-              ->orWhere('codigo_fabrica', 'like', "%{$busca}%");
+        $produto = $request->get('produto');
+        $query->where(function ($q) use ($produto) {
+            $q->where('v.codigo_fabrica', 'like', "%{$produto}%")
+              ->orWhere('v.descricao_produto', 'like', "%{$produto}%");
         });
     }
 
-    // Apenas com estoque > 0 (já com padrão aplicando na primeira abertura)
-    if ($somenteComEstoque) {
-        $query->where('qtd_estoque', '>', 0);
+    // 🔹 Novo filtro de estoque
+    if ($filtroEstoque === 'com') {
+        // somente com estoque > 0
+        $query->where('v.qtd_estoque', '>', 0);
+    } elseif ($filtroEstoque === 'sem') {
+        // sem estoque (<= 0)
+        $query->where('v.qtd_estoque', '<', 0);
+    } elseif ($filtroEstoque === 'zero') {
+        // zerado (<= 0)
+        $query->where('v.qtd_estoque', '=', 0);
     }
 
-    // ---------- ORDENÇÃO (mantém igual ao que já fizemos) ----------
-    $sort = $request->get('sort', 'descricao');      // padrão: descrição
-    $dir  = $request->get('dir', 'asc') === 'desc' ? 'desc' : 'asc';
+    // Ordenação
+    switch ($sort) {
+        case 'codigo':
+            $query->orderBy('v.codigo_fabrica', $dir);
+            break;
+        case 'categoria':
+            $query->orderBy('v.categoria', $dir)->orderBy('v.descricao_produto');
+            break;
+        case 'estoque':
+            $query->orderBy('v.qtd_estoque', $dir);
+            break;
+        case 'preco_revenda':
+            $query->orderBy('v.preco_revenda', $dir);
+            break;
+        case 'ultima_entrada':
+            $query->orderBy('v.data_ultima_entrada', $dir);
+            break;
+        default:
+            $query->orderBy('v.descricao_produto', $dir);
+    }
 
-    $columnMap = [
-        'codigo'         => 'codigo_fabrica',
-        'descricao'      => 'descricao_produto',
-        'categoria'      => 'categoria',
-        'estoque'        => 'qtd_estoque',
-        'preco_compra'   => 'preco_compra',
-        'preco_revenda'  => 'preco_revenda',
-        'ultima_entrada' => 'data_ultima_entrada',
-    ];
+    $itens = $query->paginate(20)->appends($request->query());
 
-    $orderColumn = $columnMap[$sort] ?? 'descricao_produto';
-    $query->orderBy($orderColumn, $dir);
-
-    $itens = $query
-        ->paginate(20)
-        ->appends($request->query());
-
-    return view('estoque.index', compact('itens', 'sort', 'dir', 'somenteComEstoque'));
+    return view('estoque.index', [
+        'itens'          => $itens,
+        'sort'           => $sort,
+        'dir'            => $dir,
+        'filtroEstoque'  => $filtroEstoque, // << importante para marcar o radio
+    ]);
 }
+
 
 }

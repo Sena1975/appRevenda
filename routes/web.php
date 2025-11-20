@@ -45,6 +45,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/cadastro-cliente', [ClienteController::class, 'createPublic'])
+    ->name('clientes.public.create');
+
+Route::post('/cadastro-cliente', [ClienteController::class, 'storePublic'])
+    ->name('clientes.public.store');
 Route::middleware(['auth'])->group(function () {
 
     Route::prefix('relatorios')->name('relatorios.')->group(function () {
@@ -104,6 +109,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('equiperevenda', \App\Http\Controllers\EquipeRevendaController::class);
     Route::resource('supervisores', SupervisorController::class);
     Route::resource('clientes', ClienteController::class);
+
     Route::resource('tabelapreco', TabelaprecoController::class);
 
     /*
