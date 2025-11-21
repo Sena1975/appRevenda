@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -21,7 +22,9 @@ use App\Models\ViewProduto;
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
-use App\Services\CampaignEvaluatorService; // <<<
+use App\Services\CampaignEvaluatorService;
+use App\Services\Importacao\PedidoWhatsappParser;
+use Illuminate\Http\JsonResponse;
 
 class PedidoVendaController extends Controller
 {
@@ -295,7 +298,57 @@ class PedidoVendaController extends Controller
         });
     }
 
+    /**
+     * Recebe o texto do WhatsApp e devolve os itens parseados em JSON
+     */
+    public function importarTextoWhatsapp(Request $request, PedidoWhatsappParser $parser)
+    {
+        $texto = (string) $request->input('texto', '');
 
+        if (!trim($texto)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Texto vazio. Cole a mensagem do pedido.'
+            ], 422);
+        }
+
+        try {
+            // O serviço devolve algo como:
+            // [ ['codigo' => '6587', 'quantidade' => 1, 'preco' => 25.90, 'descricao' => '...'], ... ]
+            $itens = $parser->parse($texto);
+
+            if (empty($itens)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Nenhum item foi identificado no texto informado.'
+                ], 200);
+            }
+
+            // Normaliza para o formato que o JS espera:
+            $itensNormalizados = collect($itens)->map(function ($item) {
+                return [
+                    'codigo'         => $item['codigo'] ?? null,
+                    'quantidade'     => (float) ($item['quantidade'] ?? 0),
+                    'preco_unitario' => isset($item['preco']) ? (float) $item['preco'] : null,
+                    'descricao'      => $item['descricao'] ?? null,
+                ];
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'itens'   => $itensNormalizados,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erro ao importar texto de pedido WhatsApp', [
+                'erro' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao interpretar o texto do pedido.',
+            ], 500);
+        }
+    }
     /**
      * Editar pedido
      */

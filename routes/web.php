@@ -1,8 +1,10 @@
 <?php
 
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProdutoController;
@@ -29,9 +31,9 @@ use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatorioFinanceiroController;
+use App\Http\Controllers\TextoPedidoController;
+
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -115,6 +117,12 @@ Route::middleware(['auth'])->group(function () {
             ->name('api.produtos.buscar');
     });
 
+    // Importar produtos a partir do TXT de itens não importados
+    Route::get('/produtos/importar-missing', [ProdutoController::class, 'importarMissingForm'])
+        ->name('produtos.importar_missing.form');
+
+    Route::post('/produtos/importar-missing', [ProdutoController::class, 'importarMissingStore'])
+        ->name('produtos.importar_missing.store');
     // 2) RESOURCE SEM SHOW (você não tem método show no controller)
     Route::resource('produtos', ProdutoController::class)->except(['show']);
 
@@ -163,6 +171,30 @@ Route::middleware(['auth'])->group(function () {
         ->name('vendas.cancelar');
     Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
         ->name('vendas.confirmarEntrega');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ferramenta: importar pedido via texto (WhatsApp)
+    |--------------------------------------------------------------------------
+    */
+    Route::post('/vendas/importar-texto-whatsapp', [PedidoVendaController::class, 'importarTextoWhatsapp'])
+        ->name('vendas.importar.texto');
+
+    Route::get('/tools/importar-pedido-texto', [TextoPedidoController::class, 'form'])
+        ->name('tools.importar_pedido_texto');
+
+    Route::post('/tools/importar-pedido-texto', [TextoPedidoController::class, 'gerarCsv'])
+        ->name('tools.importar_pedido_texto.post');
+
+    Route::get('produtos/nao-encontrados/{arquivo}', function ($arquivo) {
+        $path = $arquivo;
+
+        if (!Storage::exists($path)) {
+            abort(404);
+        }
+
+        return Storage::download($path);
+    })->name('produtos.download_nao_encontrados');
     /*
     |--------------------------------------------------------------------------
     | FINANCEIRO – CONTAS A RECEBER
@@ -235,6 +267,13 @@ Route::middleware(['auth'])->group(function () {
 
         return response()->json($produto ?? []);
     });
+    // IMPORTAÇÃO DE PREÇOS (arquivo do fornecedor)
+    Route::get('produtos/importar-precos', [ProdutoController::class, 'importarPrecosForm'])
+        ->name('produtos.importar_precos.form');
+
+    Route::post('produtos/importar-precos', [ProdutoController::class, 'importarPrecosStore'])
+        ->name('produtos.importar_precos.store');
+
     /*
     |--------------------------------------------------------------------------
     | FORMAS E PLANOS DE PAGAMENTO

@@ -64,7 +64,6 @@
                     </p>
                 </div>
 
-
                 {{-- Revendedora --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Revendedora</label>
@@ -77,7 +76,6 @@
                         @endforeach
                     </select>
                 </div>
-
 
                 {{-- Data Venda --}}
                 <div>
@@ -93,7 +91,6 @@
                         value="{{ old('previsao_entrega', now()->toDateString()) }}"
                         class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
-
 
                 {{-- Forma de pagamento --}}
                 <div>
@@ -125,6 +122,32 @@
                 </div>
             </div>
 
+            {{-- Importar texto de pedido (WhatsApp) --}}
+            <div class="mb-6 border rounded-lg p-4 bg-gray-50">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">
+                    Importar texto do pedido (WhatsApp)
+                </h3>
+                <p class="text-xs text-gray-500 mb-2">
+                    Cole aqui a mensagem enviada pelo cliente (no padrão "1 Unidade(s) - Código: 6587 - Preço: R$ 25,90
+                    - ...").
+                    O sistema vai identificar os itens e preencher a tabela abaixo.
+                </p>
+
+                <textarea id="textoWhatsapp" rows="5" class="w-full border-gray-300 rounded-md shadow-sm text-sm mb-3"
+                    placeholder="Cole o texto do pedido aqui..."></textarea>
+
+                <div class="flex items-center justify-between">
+                    <button type="button" id="btnImportarTextoWhatsapp"
+                        class="px-3 py-1 bg-indigo-600 text-white text-xs rounded shadow hover:bg-indigo-700">
+                        Ler texto e importar itens
+                    </button>
+
+                    <span class="text-[11px] text-gray-500">
+                        Dica: use o texto completo que a Natura envia com os itens e o total.
+                    </span>
+                </div>
+            </div>
+
             {{-- Itens --}}
             <h3 class="text-lg font-semibold mb-2">Itens da Venda</h3>
 
@@ -134,7 +157,6 @@
                     Somente produtos com estoque disponível
                 </label>
             </div>
-
 
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm border" id="tabela-itens">
@@ -161,7 +183,6 @@
                         </tr>
                     </thead>
 
-
                     <tbody id="tbody-itens">
                         <tr class="linha-item" data-index="0">
                             {{-- Código / Descrição --}}
@@ -180,14 +201,14 @@
                                     name="itens[0][quantidade]">
                             </td>
 
-                            {{-- Pontos (agora com name para ir pro backend, mas ainda readonly) --}}
+                            {{-- Pontos --}}
                             <td class="px-2 py-1 border text-right w-20">
                                 <input type="number"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
                                     name="itens[0][pontuacao]">
                             </td>
 
-                            {{-- Preço Venda (editável, com name para backend) --}}
+                            {{-- Preço Venda --}}
                             <td class="px-2 py-1 border text-right w-32">
                                 <input type="number" step="0.01" min="0"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-venda"
@@ -223,20 +244,32 @@
                                 </button>
                             </td>
                         </tr>
-
                     </tbody>
                 </table>
             </div>
 
             {{-- Botão + Totais --}}
             <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
+                {{-- Lado esquerdo: adicionar e importar --}}
+                <div class="flex flex-wrap items-center gap-3">
                     <button type="button" id="btnAddItem"
                         class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow">
                         + Adicionar item
                     </button>
+
+                    <button type="button" id="btnImportarVenda"
+                        class="px-3 py-1 bg-indigo-500 text-white text-sm rounded shadow">
+                        Importar Itens (CSV)
+                    </button>
+
+                    <input type="file" id="arquivoImportacaoVenda" accept=".csv,.txt" class="hidden">
+
+                    <span class="text-xs text-gray-500">
+                        Formato padrão: CODIGO;QTD;PRECO_COMPRA;PONTOS;PRECO_VENDA
+                    </span>
                 </div>
 
+                {{-- Lado direito: totais --}}
                 <div class="flex flex-wrap items-center gap-4 text-sm">
                     <div>Total Pontos: <span id="totalPontosSpan">0</span></div>
                     <div>Total Venda: <span id="totalVendaSpan">0,00</span></div>
@@ -246,7 +279,7 @@
                 </div>
             </div>
 
-            {{-- Hidden totais para o backend (se quiser usar) --}}
+            {{-- Hidden totais para o backend --}}
             <input type="hidden" name="total_pontos" id="total_pontos">
             <input type="hidden" name="total_venda" id="total_venda">
             <input type="hidden" name="total_lucro" id="total_lucro">
@@ -274,7 +307,7 @@
             // ------------------- Itens da venda -------------------
             let indice = 0;
 
-            // -------- Cliente: Select2 com busca por nome --------
+            // Cliente: Select2 com busca
             $('.cliente-select').select2({
                 placeholder: 'Selecione ou digite o nome do cliente...',
                 width: '100%'
@@ -287,7 +320,6 @@
             function initSelect2(row) {
                 let $select = $(row).find('.produto-select');
 
-                // inicializa o Select2 com busca AJAX
                 $select.select2({
                     placeholder: 'Buscar produto...',
                     minimumInputLength: 2,
@@ -310,14 +342,12 @@
                     }
                 });
 
-                // *** UM único handler de select2:select ***
                 $select.on('select2:select', function(e) {
                     const dados = e.params.data;
 
                     row.querySelector('.input-codfab').value = dados.codigo_fabrica || '';
                     row.querySelector('.input-produto-id').value = dados.produto_id || '';
 
-                    // Preço compra (último custo) e preço venda da view
                     row.querySelector('.input-preco-compra').value = (dados.preco_compra ?? 0).toFixed(2);
                     row.querySelector('.input-preco-venda').value = (dados.preco_revenda ?? 0).toFixed(2);
                     row.querySelector('.input-pontos').value = dados.pontos ?? 0;
@@ -326,13 +356,11 @@
                     recalcularTotais();
                 });
 
-                // quando mexer em qtd, desconto ou preço venda → recalcular
                 $(row).find('.input-quantidade, .input-desconto, .input-preco-venda').on('input', function() {
                     recalcularLinha(row);
                     recalcularTotais();
                 });
             }
-
 
             function recalcularLinha(row) {
                 const qtd = toNumber(row.querySelector('.input-quantidade').value);
@@ -390,14 +418,12 @@
                 const novaLinha = modelo.cloneNode(true);
                 novaLinha.dataset.index = indice;
 
-                // limpa inputs
                 novaLinha.querySelectorAll('input').forEach(function(inp) {
                     inp.value = '';
                 });
                 novaLinha.querySelector('.input-quantidade').value = 1;
                 novaLinha.querySelector('.input-desconto').value = 0;
 
-                // ajusta names
                 novaLinha.querySelector('.input-codfab')
                     .setAttribute('name', 'itens[' + indice + '][codfabnumero]');
                 novaLinha.querySelector('.input-produto-id')
@@ -411,7 +437,6 @@
                 novaLinha.querySelector('.input-preco-venda')
                     .setAttribute('name', 'itens[' + indice + '][preco_unitario]');
 
-                // recria select
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
                 selectTd.innerHTML =
                     '<select class="produto-select w-full" data-index="' + indice +
@@ -420,7 +445,6 @@
                     '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">' +
                     '<input type="hidden" class="input-preco-compra">';
 
-                // botão remover
                 novaLinha.querySelector('.btn-remover-linha').addEventListener('click', function() {
                     novaLinha.remove();
                     recalcularTotais();
@@ -428,10 +452,6 @@
 
                 tbody.appendChild(novaLinha);
                 initSelect2(novaLinha);
-                // Quando marcar/desmarcar "Somente com estoque", limpar selects para forçar nova busca
-                $('#somenteEstoque').on('change', function() {
-                    $('.produto-select').val(null).trigger('change');
-                });
 
                 return novaLinha;
             }
@@ -452,18 +472,349 @@
                 }
             });
 
-            // recalcula totais ao carregar
-            recalcularTotais();
+            // "Somente produtos com estoque" → recarrega buscas
+            $('#somenteEstoque').on('change', function() {
+                $('.produto-select').val(null).trigger('change');
+            });
+
+            // ----------------- IMPORTAÇÃO CSV PARA VENDA -----------------
+            const inputArquivoVenda = document.getElementById('arquivoImportacaoVenda');
+            const btnImportarVenda = document.getElementById('btnImportarVenda');
+
+            if (btnImportarVenda && inputArquivoVenda) {
+                btnImportarVenda.addEventListener('click', function() {
+                    inputArquivoVenda.click();
+                });
+
+                inputArquivoVenda.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        const texto = ev.target.result;
+                        const linhas = texto.split(/\r?\n/).filter(l => l.trim() !== '');
+
+                        linhas.forEach(function(linha) {
+                            const partes = linha.split(';');
+                            if (partes.length < 2) return;
+
+                            const codigo = (partes[0] || '').trim();
+                            const qtd = toNumber(partes[1] || '0');
+
+                            let pontos = 0;
+                            let precoVenda = 0;
+
+                            if (partes.length >= 5) {
+                                pontos = toNumber(partes[3] || '0');
+                                precoVenda = toNumber(partes[4] || '0');
+                            } else if (partes.length === 4) {
+                                pontos = toNumber(partes[2] || '0');
+                                precoVenda = toNumber(partes[3] || '0');
+                            } else if (partes.length === 3) {
+                                precoVenda = toNumber(partes[2] || '0');
+                            }
+
+                            if (!codigo || qtd <= 0) return;
+
+                            const novaLinha = adicionarLinha();
+                            const $select = $(novaLinha).find('.produto-select');
+
+                            $.ajax({
+                                url: '{{ route('produtos.lookup') }}',
+                                dataType: 'json',
+                                data: {
+                                    q: codigo
+                                },
+                                success: function(data) {
+                                    if (!data || !data.length) {
+                                        console.warn(
+                                            'Produto não encontrado para código',
+                                            codigo);
+                                        return;
+                                    }
+
+                                    let prod = data.find(p => p.codigo_fabrica ==
+                                        codigo) || data[0];
+
+                                    const option = new Option(prod.text, prod.id,
+                                        true, true);
+                                    $select.append(option).trigger('change');
+
+                                    $select.trigger({
+                                        type: 'select2:select',
+                                        params: {
+                                            data: prod
+                                        }
+                                    });
+
+                                    novaLinha.querySelector('.input-quantidade')
+                                        .value = qtd;
+
+                                    if (!isNaN(pontos) && pontos > 0) {
+                                        novaLinha.querySelector('.input-pontos')
+                                            .value = pontos;
+                                    }
+
+                                    if (!isNaN(precoVenda) && precoVenda > 0) {
+                                        novaLinha.querySelector(
+                                                '.input-preco-venda').value =
+                                            precoVenda.toFixed(2);
+                                    }
+
+                                    recalcularLinha(novaLinha);
+                                    recalcularTotais();
+                                }
+                            });
+                        });
+                    };
+
+                    reader.readAsText(file, 'UTF-8');
+                });
+            }
+
+            // ----------------- IMPORTAÇÃO VIA TEXTO WHATSAPP -----------------
+            const btnImportarTexto = document.getElementById('btnImportarTextoWhatsapp');
+            const textareaTexto = document.getElementById('textoWhatsapp');
+
+            if (btnImportarTexto && textareaTexto) {
+                btnImportarTexto.addEventListener('click', function() {
+                    const texto = (textareaTexto.value || '').trim();
+
+                    if (!texto) {
+                        alert('Cole o texto do pedido do WhatsApp antes de importar.');
+                        return;
+                    }
+
+                    fetch('{{ route('vendas.importar.texto') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                texto: texto
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(resp => {
+                            if (!resp.success) {
+                                alert(resp.message || 'Não foi possível interpretar o texto.');
+                                return;
+                            }
+
+                            const itens = resp.itens || [];
+                            if (!itens.length) {
+                                alert('Nenhum item foi retornado.');
+                                return;
+                            }
+
+                            // Filtra só itens com código e quantidade > 0
+                            const itensValidos = itens.filter(it => {
+                                const cod = (it.codigo || '').trim();
+                                const qtd = parseFloat(it.quantidade || 0);
+                                return cod && qtd && qtd > 0;
+                            });
+
+                            if (!itensValidos.length) {
+                                alert('Nenhum item válido foi encontrado no texto.');
+                                return;
+                            }
+
+                            const tbody = document.getElementById('tbody-itens');
+                            let linhas = tbody.querySelectorAll('.linha-item');
+
+                            // Garante que exista pelo menos 1 linha base
+                            if (!linhas.length) {
+                                adicionarLinha();
+                                linhas = tbody.querySelectorAll('.linha-item');
+                            }
+
+                            const linhaBase = linhas[0];
+
+                            // Remove todas as linhas extras (deixa só a primeira)
+                            linhas.forEach((linha, idx) => {
+                                if (idx > 0) linha.remove();
+                            });
+
+                            // Limpa a linha base (inputs e select2)
+                            $(linhaBase).find('.produto-select').val(null).trigger('change');
+                            linhaBase.querySelectorAll('input').forEach(inp => inp.value = '');
+                            linhaBase.querySelector('.input-quantidade').value = 1;
+                            linhaBase.querySelector('.input-desconto').value = 0;
+
+                            // Zera totais
+                            document.getElementById('totalVendaSpan').innerText = '0,00';
+                            document.getElementById('totalPontosSpan').innerText = '0';
+                            document.getElementById('totalLucroSpan').innerText = '0,00';
+                            document.getElementById('total_venda').value = '0.00';
+                            document.getElementById('total_pontos').value = '0';
+                            document.getElementById('total_lucro').value = '0.00';
+
+                            // Controle dos itens não importados
+                            let totalItens = itensValidos.length;
+                            let processados = 0;
+                            let missingItems = [];
+
+                            function registrarProcessado() {
+                                processados++;
+                                if (processados === totalItens) {
+                                    // Terminamos todos os AJAX → se houver faltando, gera TXT
+                                    if (missingItems.length) {
+                                        let linhasTxt = [];
+                                        linhasTxt.push(
+                                            'Itens não importados (produto não encontrado no sistema)'
+                                            );
+                                        linhasTxt.push('');
+
+                                        missingItems.forEach(mi => {
+                                            const precoTxt = (!isNaN(mi.preco_unitario) && mi
+                                                    .preco_unitario > 0) ?
+                                                mi.preco_unitario.toFixed(2) :
+                                                '';
+                                            linhasTxt.push(
+                                                `Código: ${mi.codigo} | Qtde: ${mi.quantidade} | Preço: ${precoTxt} | Descrição: ${mi.descricao || ''}`
+                                            );
+                                        });
+
+                                        const conteudo = linhasTxt.join('\r\n');
+                                        const blob = new Blob([conteudo], {
+                                            type: 'text/plain;charset=utf-8'
+                                        });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        const agora = new Date();
+                                        const stamp = agora.toISOString().replace(/[:\-T]/g, '').slice(
+                                            0, 15);
+
+                                        a.href = url;
+                                        a.download = `itens_nao_importados_${stamp}.txt`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+
+                                        alert(
+                                            `${missingItems.length} item(ns) não foram importados. Um arquivo TXT foi baixado com a lista.`);
+                                    }
+                                }
+                            }
+
+                            // Para cada item válido → uma linha distinta
+                            itensValidos.forEach(function(item, idx) {
+                                const codigo = (item.codigo || '').trim();
+                                const qtd = parseFloat(item.quantidade || 0);
+                                const precoV = parseFloat(item.preco_unitario || 0);
+
+                                // 1º item reaproveita a linha base, demais criam novas linhas
+                                let linhaAlvo = (idx === 0) ? linhaBase : adicionarLinha();
+                                const $select = $(linhaAlvo).find('.produto-select');
+
+                                $.ajax({
+                                    url: '{{ route('produtos.lookup') }}',
+                                    dataType: 'json',
+                                    data: {
+                                        q: codigo
+                                    },
+                                    success: function(data) {
+                                        // Se não encontrou o produto, não mantém a linha
+                                        if (!data || !data.length) {
+                                            if (idx === 0) {
+                                                // limpa a base
+                                                $(linhaBase).find('.produto-select')
+                                                    .val(null).trigger('change');
+                                                linhaBase.querySelectorAll('input')
+                                                    .forEach(inp => inp.value = '');
+                                                linhaBase.querySelector(
+                                                        '.input-quantidade').value =
+                                                    1;
+                                                linhaBase.querySelector(
+                                                    '.input-desconto').value = 0;
+                                            } else {
+                                                // remove a linha criada
+                                                linhaAlvo.remove();
+                                            }
+
+                                            missingItems.push({
+                                                codigo: codigo,
+                                                quantidade: qtd,
+                                                preco_unitario: isNaN(
+                                                        precoV) ? 0 :
+                                                    precoV,
+                                                descricao: item.descricao ||
+                                                    ''
+                                            });
+
+                                            return;
+                                        }
+
+                                        let prod = data.find(p => p
+                                            .codigo_fabrica == codigo) || data[
+                                            0];
+
+                                        const option = new Option(prod.text, prod
+                                            .id, true, true);
+                                        $select.append(option).trigger('change');
+
+                                        // dispara o select2:select para preencher preço/pontos/custo
+                                        $select.trigger({
+                                            type: 'select2:select',
+                                            params: {
+                                                data: prod
+                                            }
+                                        });
+
+                                        // aplica quantidade
+                                        linhaAlvo.querySelector('.input-quantidade')
+                                            .value = qtd;
+
+                                        // se veio preço no texto, sobrescreve
+                                        if (!isNaN(precoV) && precoV > 0) {
+                                            linhaAlvo.querySelector(
+                                                    '.input-preco-venda').value =
+                                                precoV.toFixed(2);
+                                        }
+
+                                        recalcularLinha(linhaAlvo);
+                                        recalcularTotais();
+                                    },
+                                    error: function() {
+                                        // Erro de comunicação também conta como não importado
+                                        missingItems.push({
+                                            codigo: codigo,
+                                            quantidade: qtd,
+                                            preco_unitario: isNaN(precoV) ?
+                                                0 : precoV,
+                                            descricao: item.descricao || ''
+                                        });
+
+                                        if (idx > 0) {
+                                            linhaAlvo.remove();
+                                        }
+                                    },
+                                    complete: function() {
+                                        registrarProcessado();
+                                    }
+                                });
+                            });
+                        })
+                        .catch(err => {
+                            console.error('Erro ao importar texto:', err);
+                            alert('Erro ao enviar o texto para interpretação.');
+                        });
+                });
+            }
+
         });
 
-        // ------------------- Script de Planos por Forma (fetch, usando formaPagamento/planoPagamento) -------------------
+        // ------------------- Script de Planos por Forma -------------------
         (function() {
             const formaSel = document.getElementById('formaPagamento');
             const planoSel = document.getElementById('planoPagamento');
             const planoCod = document.getElementById('planoPagamentoCodigo');
 
             async function carregarPlanos(formaId) {
-                // reset UI
                 planoSel.innerHTML = '<option value="">Carregando...</option>';
                 planoSel.disabled = true;
                 if (planoCod) planoCod.value = '';
@@ -481,7 +832,7 @@
                     });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
 
-                    const planos = await res.json(); // [{id, descricao, codigo, parcelas, prazo1,prazo2,prazo3}]
+                    const planos = await res.json();
                     planoSel.innerHTML = '<option value="">Selecione...</option>';
 
                     planos.forEach(p => {
@@ -522,7 +873,6 @@
                 });
             }
 
-            // edição / validação: se já tiver forma selecionada, carrega planos ao abrir
             if (formaSel && formaSel.value) {
                 carregarPlanos(formaSel.value);
             }
