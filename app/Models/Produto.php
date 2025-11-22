@@ -24,6 +24,8 @@ class Produto extends Model
         'status',
         'preco_revenda',
         'preco_compra',
+        'codnotafiscal',
+        'ean',
     ];
 
     public function categoria()

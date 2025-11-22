@@ -135,6 +135,12 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('supervisores', SupervisorController::class);
     Route::resource('clientes', ClienteController::class);
 
+    Route::get('tabelapreco/importar', [TabelaPrecoController::class, 'formImport'])
+        ->name('tabelapreco.formImport');
+
+    Route::post('tabelapreco/importar', [TabelaPrecoController::class, 'processImport'])
+        ->name('tabelapreco.processImport');
+
     Route::resource('tabelapreco', TabelaprecoController::class);
 
     /*
@@ -273,7 +279,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('produtos/importar-precos', [ProdutoController::class, 'importarPrecosStore'])
         ->name('produtos.importar_precos.store');
-
     /*
     |--------------------------------------------------------------------------
     | FORMAS E PLANOS DE PAGAMENTO

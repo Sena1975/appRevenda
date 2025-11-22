@@ -20,6 +20,8 @@ class TabelaPreco extends Model
         'data_inicio',
         'data_fim',
         'status',
+        'codnotafiscal',
+        'ean',
     ];
 
     protected $casts = [

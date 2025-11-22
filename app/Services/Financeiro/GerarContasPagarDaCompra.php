@@ -19,10 +19,10 @@ class GerarContasPagarDaCompra
      *      • Parcela 1 => data_base + prazo1 dias
      *      • Parcela 2 => data_base + prazo2 dias
      *      • Parcela 3 => data_base + prazo3 dias
-     *      • Parcela >3 => continua somando (ex.: último prazo + 30 * (n-3)) – pode ajustar depois se quiser;
+     *      • Parcela >3 => continua somando (ex.: último prazo + 30 * (n-3));
      *  - Se NÃO houver Plano de Pagamento:
      *      • 1 parcela => vence na data base
-     *      • 2+ parcelas => 1ª = +1 mês, 2ª = +2 meses, etc. (sua regra antiga).
+     *      • 2+ parcelas => 1ª = +1 mês, 2ª = +2 meses, etc.
      */
     public function executar(PedidoCompra $compra): void
     {
@@ -31,11 +31,25 @@ class GerarContasPagarDaCompra
             return;
         }
 
-        $total = (float) ($compra->valor_total ?? 0);
+        // ---------------- VALOR BASE DA COMPRA ----------------
+        $valorTotalBruto = (float) ($compra->valor_total ?? 0);
+        $encargos        = (float) ($compra->encargos ?? 0);
+        $valorLiquido    = (float) ($compra->valor_liquido ?? 0);
+
+        // Regra:
+        // 1) Se já existe valor_liquido (>0), usa ele (é o Total Líquido do index)
+        // 2) Senão, tenta calcular como bruto + encargos
+        if ($valorLiquido > 0) {
+            $total = $valorLiquido;
+        } else {
+            $total = $valorTotalBruto + $encargos;
+        }
+
         if ($total <= 0) {
             // Nada a gerar se valor total for 0
             return;
         }
+        // ------------------------------------------------------
 
         // Tenta carregar o plano de pagamento (se houver)
         $plano = null;
@@ -61,7 +75,7 @@ class GerarContasPagarDaCompra
 
         // Valor base por parcela (ajustando a última pra fechar certinho)
         $valorParcelaBase = round($total / $totalParcelas, 2);
-        $valorAcumulado   = 0;
+        $valorAcumulado   = 0.0;
 
         for ($parcela = 1; $parcela <= $totalParcelas; $parcela++) {
 
@@ -86,14 +100,13 @@ class GerarContasPagarDaCompra
                     $diasPrazo = (int) ($plano->prazo3 ?? $plano->prazo2 ?? $plano->prazo1 ?? 0);
                 } else {
                     // Para parcelas >3, faz uma progressão simples:
-                    // usa o último prazo conhecido + 30 dias por parcela extra (ajuste se quiser outra lógica)
                     $basePrazo = (int) ($plano->prazo3 ?? $plano->prazo2 ?? $plano->prazo1 ?? 0);
                     $diasPrazo = $basePrazo + 30 * ($parcela - 3);
                 }
 
                 $dataVencimento = (clone $dataBase)->addDays($diasPrazo);
             } else {
-                // Fallback: sua regra mensal antiga
+                // Fallback: regra mensal
                 if ($totalParcelas === 1) {
                     $dataVencimento = (clone $dataBase);
                 } else {
@@ -109,7 +122,7 @@ class GerarContasPagarDaCompra
                 'parcela'            => $parcela,
                 'total_parcelas'     => $totalParcelas,
                 'forma_pagamento_id' => $compra->forma_pagamento_id ?? 1,
-                'plano_pagamento_id' => $compra->plano_pagamento_id, // se existir essa coluna
+                'plano_pagamento_id' => $compra->plano_pagamento_id,
                 'data_emissao'       => $dataBase,
                 'data_vencimento'    => $dataVencimento,
                 'valor'              => $valorParcela,
