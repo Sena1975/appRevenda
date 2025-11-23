@@ -11,16 +11,16 @@ use Illuminate\Database\QueryException;
 
 class ClienteController extends Controller
 {
-public function index(Request $request)
-{
-    // filtros vindos da tela (GET)
-    $filtroOrigem = $request->input('origem_cadastro');
-    $filtroStatus = $request->input('status');
+    public function index(Request $request)
+    {
+        // filtros vindos da tela (GET)
+        $filtroOrigem = $request->input('origem_cadastro');
+        $filtroStatus = $request->input('status');
 
-    // Subquery com estatísticas por cliente
-    $statsSub = DB::table('apppedidovenda as p')
-        ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
-        ->selectRaw('
+        // Subquery com estatísticas por cliente
+        $statsSub = DB::table('apppedidovenda as p')
+            ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
+            ->selectRaw('
             p.cliente_id                                   as cliente_id,
             COUNT(DISTINCT i.produto_id)                  as mix,
             COALESCE(SUM(p.valor_liquido), 0)             as total_compras,
@@ -30,57 +30,59 @@ public function index(Request $request)
                 0
             )                                             as ticket_medio
         ')
-        ->whereNotNull('p.cliente_id')
-        ->groupBy('p.cliente_id');
+            ->whereNotNull('p.cliente_id')
+            ->groupBy('p.cliente_id');
 
-    $clientesQuery = DB::table('appcliente as c')
-        ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
-        ->selectRaw('
-            c.*,
-            COALESCE(s.mix, 0)            as mix,
-            COALESCE(s.total_compras, 0)  as total_compras,
-            COALESCE(s.ticket_medio, 0)   as ticket_medio
-        ');
+        $clientesQuery = Cliente::query()
+            ->from('appcliente as c')
+            ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
+            ->selectRaw('
+        c.*,
+        COALESCE(s.mix, 0)            as mix,
+        COALESCE(s.total_compras, 0)  as total_compras,
+        COALESCE(s.ticket_medio, 0)   as ticket_medio
+    ');
 
-    // === aplica filtro por origem_cadastro, se informado ===
-    if (!empty($filtroOrigem)) {
-        $clientesQuery->where('c.origem_cadastro', $filtroOrigem);
-    }
 
-    // === aplica filtro por status, se informado ===
-    if (!empty($filtroStatus)) {
-        $clientesQuery->where('c.status', $filtroStatus);
-    }
+        // === aplica filtro por origem_cadastro, se informado ===
+        if (!empty($filtroOrigem)) {
+            $clientesQuery->where('c.origem_cadastro', $filtroOrigem);
+        }
 
-    $clientes = $clientesQuery
-        ->orderBy('c.nome')
-        ->paginate(15)
-        ->appends($request->only('origem_cadastro', 'status'));
+        // === aplica filtro por status, se informado ===
+        if (!empty($filtroStatus)) {
+            $clientesQuery->where('c.status', $filtroStatus);
+        }
 
-    // ==========================
-    // ESTATÍSTICAS POR ORIGEM
-    // ==========================
-    $origensStats = DB::table('appcliente')
-        ->selectRaw("
+        $clientes = $clientesQuery
+            ->orderBy('c.nome')
+            ->paginate(15)
+            ->appends($request->only('origem_cadastro', 'status'));
+
+        // ==========================
+        // ESTATÍSTICAS POR ORIGEM
+        // ==========================
+        $origensStats = DB::table('appcliente')
+            ->selectRaw("
             COALESCE(origem_cadastro, 'Não informada') as origem_cadastro,
             COUNT(*)                                    as total,
             SUM(CASE WHEN status = 'Ativo' THEN 1 ELSE 0 END) as ativos
         ")
-        ->groupBy(DB::raw("COALESCE(origem_cadastro, 'Não informada')"))
-        ->get();
+            ->groupBy(DB::raw("COALESCE(origem_cadastro, 'Não informada')"))
+            ->get();
 
-    $totalClientes = $origensStats->sum('total');
-    $totalAtivos   = $origensStats->sum('ativos');
+        $totalClientes = $origensStats->sum('total');
+        $totalAtivos   = $origensStats->sum('ativos');
 
-    return view('clientes.index', [
-        'clientes'      => $clientes,
-        'filtroOrigem'  => $filtroOrigem,
-        'filtroStatus'  => $filtroStatus,
-        'origensStats'  => $origensStats,
-        'totalClientes' => $totalClientes,
-        'totalAtivos'   => $totalAtivos,
-    ]);
-}
+        return view('clientes.index', [
+            'clientes'      => $clientes,
+            'filtroOrigem'  => $filtroOrigem,
+            'filtroStatus'  => $filtroStatus,
+            'origensStats'  => $origensStats,
+            'totalClientes' => $totalClientes,
+            'totalAtivos'   => $totalAtivos,
+        ]);
+    }
 
 
     public function create()
@@ -107,11 +109,10 @@ public function index(Request $request)
             'email'           => [
                 'required',
                 'string',
-                'lowercase',
                 'email:rfc,dns',
                 'max:255',
-                'unique:appcliente,email',
             ],
+
             'whatsapp'        => 'required|string|max:30',
 
             'telefone'        => 'nullable|string|max:20',
@@ -204,10 +205,25 @@ public function index(Request $request)
             $dados['foto'] = $request->file('foto')->store('clientes', 'public');
         }
 
-        Cliente::create($dados);
+        $cliente = Cliente::create($dados);
 
-        return view('clientes.cadastro-publico-ok');
+        // Número da Dani em formato internacional (55 + DDD + número)
+        $daniNumber = '5571993420874'; // 71 99342-0874
+
+        // Mensagem que vai aparecer no WhatsApp
+        $texto = "Olá Dani, já fiz meu cadastro, segue ID-{$cliente->id}";
+
+        // Monta o link do WhatsApp com a mensagem
+        $whatsappLink = 'https://wa.me/' . $daniNumber . '?' . http_build_query([
+            'text' => $texto,
+        ]);
+
+        return view('clientes.cadastro-publico-ok', [
+            'cliente'       => $cliente,
+            'whatsappLink'  => $whatsappLink,
+        ]);
     }
+
 
 
     public function edit(Cliente $cliente)
@@ -219,20 +235,17 @@ public function index(Request $request)
     {
         $validated = $request->validate([
             'nome'            => 'required|string|max:255',
-            'email'           => ['nullable', 'string', 'lowercase', 'email:rfc,dns', 'max:255', 'unique:appcliente,email'],
+            'email'           => ['nullable', 'string', 'email:rfc,dns', 'max:255'],
             'telefone'        => 'nullable|string|max:20',
-
             'cep'             => 'nullable|string|max:9',
             'endereco'        => 'nullable|string|max:255',
             'uf_id'           => 'nullable|integer',
             'cidade_id'       => 'nullable|integer',
-            'bairro_id'       => 'nullable', // pode ser numérico ou "custom"
+            'bairro_id'       => 'nullable',
             'bairro_nome'     => 'nullable|string|max:100',
-
             'bairro'          => 'nullable|string|max:100',
             'cidade'          => 'nullable|string|max:100',
             'uf'              => 'nullable|string|max:2',
-
             'whatsapp'        => 'nullable|string|max:30',
             'telegram'        => 'nullable|string|max:50',
             'instagram'       => 'nullable|string|max:50',
@@ -319,10 +332,8 @@ public function index(Request $request)
             'email' => [
                 'nullable',
                 'string',
-                'lowercase',
                 'email:rfc,dns',
                 'max:255',
-                Rule::unique('appcliente', 'email')->ignore($cliente->id),
             ],
             'telefone'        => 'nullable|string|max:20',
 
@@ -445,5 +456,92 @@ public function index(Request $request)
             // Outros erros: se quiser, pode tratar diferente, mas por enquanto só relança
             throw $e;
         }
+    }
+    /**
+     * Formulário para mesclar dois cadastros de cliente
+     */
+    public function mergeForm()
+    {
+        // Você pode filtrar aqui só os "Cadastro Público" se quiser
+        $clientes = Cliente::orderBy('nome')
+            ->get(['id', 'nome', 'email', 'whatsapp', 'origem_cadastro']);
+
+        return view('clientes.merge', compact('clientes'));
+    }
+
+    /**
+     * Executa a mesclagem de dois clientes:
+     * - Cliente principal: será mantido
+     * - Cliente secundário: fornece dados complementares e depois é inativado ou excluído
+     */
+    public function mergeStore(Request $request)
+    {
+        $data = $request->validate([
+            'principal_id' => ['required', 'integer', 'exists:appcliente,id', 'different:secundario_id'],
+            'secundario_id' => ['required', 'integer', 'exists:appcliente,id'],
+        ]);
+
+        $principal = Cliente::findOrFail($data['principal_id']);
+        $secundario = Cliente::findOrFail($data['secundario_id']);
+
+        // Lista de campos que queremos tentar completar no cadastro principal
+        $campos = [
+            'cpf',
+            'telefone',
+            'whatsapp',
+            'telegram',
+            'cep',
+            'endereco',
+            'bairro',
+            'cidade',
+            'uf',
+            'instagram',
+            'facebook',
+            'email',
+            'data_nascimento',
+            'timecoracao',
+            'sexo',
+            'filhos',
+            'foto',
+        ];
+
+        foreach ($campos as $campo) {
+            $valorPrincipal = $principal->{$campo} ?? null;
+            $valorSecundario = $secundario->{$campo} ?? null;
+
+            $principalVazio = ($valorPrincipal === null || $valorPrincipal === '' || $valorPrincipal === 0);
+
+            if ($principalVazio && $valorSecundario !== null && $valorSecundario !== '') {
+                $principal->{$campo} = $valorSecundario;
+            }
+        }
+
+        // Se quiser, você pode preferir SEMPRE o dado do secundário:
+        // $principal->{$campo} = $valorSecundario ?? $valorPrincipal;
+
+        // Mantém status/origem_cadastro do principal como estão
+        $principal->save();
+
+        // Agora trata o cliente secundário
+        // Opção 1: marcar como inativo + origem "Mesclado"
+        $secundario->status = 'Inativo';
+        $secundario->origem_cadastro = $secundario->origem_cadastro
+            ? $secundario->origem_cadastro . ' (Mesclado)'
+            : 'Mesclado';
+        $secundario->save();
+
+        // Se tiver certeza que o secundário não tem pedidos/financeiro,
+        // poderia tentar deletar. Aqui vou só inativar para ser mais seguro.
+        /*
+        try {
+            $secundario->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Se der erro de FK, ele continua como Inativo (já salvo acima)
+        }
+        */
+
+        return redirect()
+            ->route('clientes.index')
+            ->with('success', "Clientes mesclados com sucesso! O cadastro de '{$principal->nome}' foi atualizado.");
     }
 }

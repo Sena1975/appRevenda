@@ -7,12 +7,20 @@
     @endphp
 
     <div class="max-w-7xl mx-auto space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
             <h1 class="text-xl font-semibold text-gray-800">Clientes</h1>
-            <a href="{{ route('clientes.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                + Novo Cliente
-            </a>
+            <div class="flex gap-2">
+                <a href="{{ route('clientes.merge.form') }}"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Mesclar cadastros
+                </a>
+                <a href="{{ route('clientes.create') }}"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    + Novo Cliente
+                </a>
+            </div>
         </div>
+
 
         @if (session('success'))
             <div class="bg-green-50 border border-green-200 text-green-700 rounded px-4 py-2">
@@ -105,7 +113,7 @@
                 <tbody>
                     @forelse($clientes as $cliente)
                         @php
-                            $isPublic = ($cliente->origem_cadastro === 'Cadastro Público');
+                            $isPublic = $cliente->origem_cadastro === 'Cadastro Público';
                         @endphp
                         <tr
                             class="border-t hover:bg-gray-50 {{ $isPublic ? 'bg-blue-50 border-l-4 border-blue-500' : '' }}">
@@ -123,7 +131,18 @@
                             <td class="px-3 py-2 font-medium text-gray-800">{{ $cliente->nome }}</td>
                             <td class="px-3 py-2 text-gray-700">{{ $cliente->email ?? '—' }}</td>
                             {{-- corrigido: campo whatsapp minúsculo --}}
-                            <td class="px-3 py-2 text-gray-700">{{ $cliente->whatsapp ?? '—' }}</td>
+                            <td class="px-3 py-2 text-gray-700">
+                                @if ($cliente->whatsapp && $cliente->whatsapp_link)
+                                    <a href="{{ $cliente->whatsapp_link }}" target="_blank"
+                                        class="inline-flex items-center gap-1 text-green-600 hover:text-green-800">
+                                        <span>📲</span>
+                                        <span>{{ $cliente->whatsapp }}</span>
+                                    </a>
+                                @else
+                                    —
+                                @endif
+                            </td>
+
 
                             {{-- MIX (qtde de itens diferentes comprados) --}}
                             <td class="px-3 py-2 text-right text-gray-800">

@@ -133,6 +133,13 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('revendedoras', RevendedoraController::class);
     Route::resource('equiperevenda', \App\Http\Controllers\EquipeRevendaController::class);
     Route::resource('supervisores', SupervisorController::class);
+
+    Route::get('/clientes/mesclar', [ClienteController::class, 'mergeForm'])
+        ->name('clientes.merge.form');
+
+    Route::post('/clientes/mesclar', [ClienteController::class, 'mergeStore'])
+        ->name('clientes.merge.store');
+        
     Route::resource('clientes', ClienteController::class);
 
     Route::get('tabelapreco/importar', [TabelaPrecoController::class, 'formImport'])

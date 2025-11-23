@@ -15,8 +15,8 @@ class Cliente extends Model
         'nome',
         'cpf',
         'telefone',
-        'whatsapp',  
-        'telegram', 
+        'whatsapp',
+        'telegram',
         'cep',
         'endereco',
         'bairro',
@@ -36,9 +36,9 @@ class Cliente extends Model
 
 
     // Formatações automáticas
-protected $casts = [
-    'data_nascimento' => 'date',
-];
+    protected $casts = [
+        'data_nascimento' => 'date',
+    ];
 
 
     // Garante e-mail em minúsculas e sem espaços
@@ -96,5 +96,33 @@ protected $casts = [
         }
 
         $this->attributes['instagram'] = $v ?: null;
+    }
+
+    public function getWhatsappLinkAttribute()
+    {
+        // Se não tiver WhatsApp cadastrado, não gera link
+        if (!$this->whatsapp) {
+            return null;
+        }
+
+        // Garante que tenha só dígitos
+        $numero = preg_replace('/\D+/', '', $this->whatsapp);
+
+        // Se não começar com 55, prefixa o DDI do Brasil
+        if (!str_starts_with($numero, '55')) {
+            $numero = '55' . $numero;
+        }
+
+        // 🔹 TEXTO PERSONALIZADO DA MENSAGEM
+        // Pode trocar essa frase como quiser
+        $texto = "Olá {$this->nome}, tudo bem? Aqui é a sua consultora de beleza 😊, por favor, efetue seu cadastro pra digitar seu pedido";
+
+        // Monta query string (já faz o encode dos espaços, acentos etc.)
+        $params = http_build_query([
+            'text' => $texto,
+        ]);
+
+        // URL final do WhatsApp
+        return "https://wa.me/{$numero}?{$params}";
     }
 }

@@ -595,66 +595,124 @@ class PedidoCompraController extends Controller
     /**
      * Processa o upload e importa os itens (CSV simples)
      */
-    public function processarImportacao(Request $request, $id)
-    {
-        $request->validate([
-            'arquivo' => 'required|file|mimes:csv,txt|max:2048',
-        ]);
+/**
+ * Processa o upload e importa os itens (CSV simples)
+ * Formato esperado (padrão Natura):
+ * CODIGO;QUANTIDADE;PONTOS;PRECO_COMPRA;PRECO_REVENDA
+ */
+public function processarImportacao(Request $request, $id)
+{
+    $request->validate([
+        'arquivo' => 'required|file|mimes:csv,txt|max:2048',
+    ]);
 
-        $pedido = PedidoCompra::findOrFail($id);
+    /** @var \App\Models\PedidoCompra $pedido */
+    $pedido = PedidoCompra::findOrFail($id);
 
-        $caminho = $request->file('arquivo')->getRealPath();
+    $caminho = $request->file('arquivo')->getRealPath();
 
-        // Lê o arquivo inteiro
-        $linhas = array_map('str_getcsv', file($caminho));
+    // Lê linhas ignorando vazias
+    $linhasArquivo = file($caminho, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-        $importados = 0;
+    $importados      = 0;
+    $naoEncontrados  = [];
 
-        foreach ($linhas as $linha) {
-            // Espera formato:
-            // CODIGO;QUANTIDADE;PRECO_COMPRA;PONTOS;PRECO_REVENDA
+    foreach ($linhasArquivo as $linhaBruta) {
+        // Cada linha: 169821;2;14;105,3;136,929
+        $cols = explode(';', $linhaBruta);
 
-            $codigo       = trim($linha[0] ?? '');
-            $qtd          = (float) str_replace(',', '.', $linha[1] ?? 0);
-            $pontos       = isset($linha[2]) ? (float) str_replace(',', '.', $linha[2]) : 0;
-            $precoCompra  = isset($linha[3]) ? (float) str_replace(',', '.', $linha[3]) : 0;
-            $precoRevenda = isset($linha[4]) ? (float) str_replace(',', '.', $linha[4]) : 0;
+        $codigo       = trim($cols[0] ?? '');
+        $qtd          = $this->brToFloat($cols[1] ?? '0');
+        $pontos       = $this->brToFloat($cols[2] ?? '0');
+        $precoCompra  = $this->brToFloat($cols[3] ?? '0');
+        $precoRevenda = $this->brToFloat($cols[4] ?? '0');
 
-            if ($codigo === '' || $qtd <= 0) {
-                continue;
-            }
-
-            $produto = Produto::where('codfab', $codigo)
-                ->orWhere('codfabnumero', $codigo)
-                ->first();
-
-            if (!$produto) {
-                continue;
-            }
-
-            ItensCompra::create([
-                'compra_id'            => $pedido->id,
-                'produto_id'           => $produto->id,
-                'quantidade'           => $qtd,
-                'qtd_disponivel'       => $qtd,
-                'preco_unitario'       => $precoCompra,
-                'valor_desconto'       => 0,
-                'total_item'           => $qtd * $precoCompra,
-                'valorcusto'           => $qtd * $precoCompra, // sem encargo (import)
-                'encargos'             => 0,
-                'total_liquido'        => $qtd * $precoCompra, // custo final = sem encargo
-                'pontos'               => $pontos,
-                'pontostotal'          => $qtd * $pontos,
-                'preco_venda_unitario' => $precoRevenda,
-                'preco_venda_total'    => $qtd * $precoRevenda,
-            ]);
-
-            $importados++;
+        // Linha inválida
+        if ($codigo === '' || $qtd <= 0) {
+            continue;
         }
 
-        return redirect()->route('compras.edit', $pedido->id)
-            ->with('success', "Importação concluída: {$importados} itens adicionados.");
+        // Tenta achar o produto pelo código de fábrica / número
+        $produto = Produto::where('codfab', $codigo)
+            ->orWhere('codfabnumero', $codigo)
+            ->first();
+
+        // 👉 Se NÃO achou produto, guarda para o TXT e NÃO cria item
+        if (! $produto) {
+            $naoEncontrados[] = [
+                'codigo'        => $codigo,
+                'quantidade'    => $qtd,
+                'pontos'        => $pontos,
+                'preco_compra'  => $precoCompra,
+                'preco_revenda' => $precoRevenda,
+            ];
+            continue;
+        }
+
+        // Cria item normalmente
+        ItensCompra::create([
+            'compra_id'            => $pedido->id,
+            'produto_id'           => $produto->id,
+            'quantidade'           => $qtd,
+            'qtd_disponivel'       => $qtd,
+
+            'preco_unitario'       => $precoCompra,
+            'valor_desconto'       => 0,
+            'total_item'           => $qtd * $precoCompra,
+
+            'valorcusto'           => $qtd * $precoCompra,   // sem encargo
+            'encargos'             => 0,
+            'total_liquido'        => $qtd * $precoCompra,   // custo final
+
+            'pontos'               => $pontos,
+            'pontostotal'          => $qtd * $pontos,
+
+            'preco_venda_unitario' => $precoRevenda,
+            'preco_venda_total'    => $qtd * $precoRevenda,
+        ]);
+
+        $importados++;
     }
+
+    /**
+     * Se houver itens sem cadastro:
+     *  - NÃO criamos linhas em branco no pedido (já tratamos acima com continue)
+     *  - Geramos um TXT para download imediato com esses itens
+     */
+    if (count($naoEncontrados) > 0) {
+        $linhasTxt   = [];
+        $linhasTxt[] = "Itens NÃO importados por não estarem cadastrados (Pedido {$pedido->id})";
+        $linhasTxt[] = "Formato: CODIGO;QUANTIDADE;PONTOS;PRECO_COMPRA;PRECO_REVENDA";
+        $linhasTxt[] = "";
+        $linhasTxt[] = "Itens importados com sucesso nesta carga: {$importados}";
+        $linhasTxt[] = "";
+
+        foreach ($naoEncontrados as $item) {
+            $linhasTxt[] = implode(';', [
+                $item['codigo'],
+                (int) $item['quantidade'],
+                number_format($item['pontos'],        2, ',', ''), // 14,00
+                number_format($item['preco_compra'],  2, ',', ''), // 105,30
+                number_format($item['preco_revenda'], 2, ',', ''), // 136,93
+            ]);
+        }
+
+        $conteudoTxt = implode(PHP_EOL, $linhasTxt);
+
+        $nomeArquivo = 'itens_nao_importados_compra_' .
+            $pedido->id . '_' . now()->format('Ymd_His') . '.txt';
+
+        // 👉 IMPORTANTE: aqui damos RETURN do arquivo, sem redirect
+        return response($conteudoTxt)
+            ->header('Content-Type', 'text/plain; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $nomeArquivo . '"');
+    }
+
+    // Se chegou aqui, todos os itens foram importados com sucesso
+    return redirect()
+        ->route('compras.edit', $pedido->id)
+        ->with('success', "Importação concluída: {$importados} itens adicionados.");
+}
 
     /**
      * Exporta os itens do pedido de compra em formato CSV

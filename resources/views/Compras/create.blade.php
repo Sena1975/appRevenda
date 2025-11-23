@@ -45,18 +45,13 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data do Pedido</label>
-                    <input type="date"
-                           name="data_pedido"
-                           value="{{ old('data_pedido', now()->toDateString()) }}"
-                           class="w-full border-gray-300 rounded-md shadow-sm"
-                           required>
+                    <input type="date" name="data_pedido" value="{{ old('data_pedido', now()->toDateString()) }}"
+                        class="w-full border-gray-300 rounded-md shadow-sm" required>
                 </div>
 
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Observação</label>
-                    <textarea name="observacao"
-                              rows="2"
-                              class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
+                    <textarea name="observacao" rows="2" class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
                 </div>
             </div>
 
@@ -76,14 +71,12 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Plano de Pagamento</label>
-                    <select name="plano_pagamento_id"
-                            id="plano_pagamento_id"
-                            class="w-full border-gray-300 rounded-md shadow-sm">
+                    <select name="plano_pagamento_id" id="plano_pagamento_id"
+                        class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Selecione...</option>
                         @foreach ($planosPagamento as $plano)
-                            <option value="{{ $plano->id }}"
-                                    data-parcelas="{{ $plano->parcelas ?? 1 }}"
-                                    @selected(old('plano_pagamento_id') == $plano->id)>
+                            <option value="{{ $plano->id }}" data-parcelas="{{ $plano->parcelas ?? 1 }}"
+                                @selected(old('plano_pagamento_id') == $plano->id)>
                                 {{ $plano->descricao ?? ($plano->nome ?? 'ID ' . $plano->id) }}
                             </option>
                         @endforeach
@@ -92,11 +85,8 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Qtde de Parcelas</label>
-                    <input type="number"
-                           name="qt_parcelas"
-                           min="1"
-                           value="{{ old('qt_parcelas', 1) }}"
-                           class="w-full border-gray-300 rounded-md shadow-sm">
+                    <input type="number" name="qt_parcelas" min="1" value="{{ old('qt_parcelas', 1) }}"
+                        class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
 
                 {{-- Encargos financeiros --}}
@@ -104,12 +94,9 @@
                     <label class="block text-sm font-medium text-gray-700">
                         Encargos financeiros (R$)
                     </label>
-                    <input type="number"
-                           step="0.01"
-                           min="0"
-                           name="encargos"
-                           value="{{ old('encargos', 0) }}"
-                           class="w-full border-gray-300 rounded-md shadow-sm text-right">
+                    <input type="number" step="0.01" min="0" name="encargos"
+                        value="{{ old('encargos', 0) }}"
+                        class="w-full border-gray-300 rounded-md shadow-sm text-right">
                     <p class="text-xs text-gray-500 mt-1">
                         Juros / taxas do pedido. Será rateado proporcionalmente nos itens.
                     </p>
@@ -148,82 +135,70 @@
 
                             {{-- Qtd --}}
                             <td class="px-2 py-1 border text-right w-16">
-                                <input type="number"
-                                       min="1"
-                                       value="1"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-quantidade"
-                                       name="itens[0][quantidade]">
+                                <input type="number" min="1" value="1"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-quantidade"
+                                    name="itens[0][quantidade]">
                             </td>
 
                             {{-- Pontos --}}
                             <td class="px-2 py-1 border text-right w-20">
-                                <input type="text"
-                                       name="itens[0][pontos]"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
-                                       readonly>
+                                <input type="text" name="itens[0][pontos]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-pontos"
+                                    readonly>
                             </td>
 
                             {{-- Preço Compra --}}
                             <td class="px-2 py-1 border text-right w-24">
-                                <input type="text"
-                                       name="itens[0][preco_compra]"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-compra"
-                                       readonly>
+                                <input type="text" name="itens[0][preco_compra]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-compra"
+                                    readonly>
                             </td>
 
                             {{-- Desconto (por item, R$) --}}
                             <td class="px-2 py-1 border text-right w-24" hidden>
-                                <input type="number"
-                                       step="0.01"
-                                       min="0"
-                                       value="0"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-desconto"
-                                       name="itens[0][desconto]">
+                                <input type="number" step="0.01" min="0" value="0"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-desconto"
+                                    name="itens[0][desconto]">
                             </td>
 
                             {{-- Preço Revenda --}}
                             <td class="px-2 py-1 border text-right w-24" hidden>
-                                <input type="text"
-                                       name="itens[0][preco_revenda]"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-revenda"
-                                       readonly>
+                                <input type="text" name="itens[0][preco_revenda]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-preco-revenda"
+                                    readonly>
                             </td>
 
                             {{-- Total Custo (bruto) --}}
                             <td class="px-2 py-1 border text-right w-28">
-                                <input type="text"
-                                       name="itens[0][total_custo]"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-custo"
-                                       readonly>
+                                <input type="text" name="itens[0][total_custo]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-custo"
+                                    readonly>
                             </td>
 
                             {{-- Total Revenda --}}
                             <td class="px-2 py-1 border text-right w-28">
-                                <input type="text"
-                                       name="itens[0][total_revenda]"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-revenda"
-                                       readonly>
+                                <input type="text" name="itens[0][total_revenda]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-total-revenda"
+                                    readonly>
                             </td>
 
                             {{-- Lucro --}}
                             <td class="px-2 py-1 border text-right w-24">
                                 <input type="text"
-                                       class="w-full border-gray-300 rounded-md shadow-sm text-right input-lucro-linha"
-                                       readonly>
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-right input-lucro-linha"
+                                    readonly>
                             </td>
 
                             {{-- Ações --}}
                             <td class="px-2 py-1 border text-center w-20">
                                 <button type="button"
-                                        class="px-2 py-1 text-xs bg-red-500 text-white rounded btn-remover-linha">
+                                    class="px-2 py-1 text-xs bg-red-500 text-white rounded btn-remover-linha">
                                     Excluir
                                 </button>
                             </td>
 
                             {{-- Total líquido (custo - desconto), só para cálculo geral --}}
-                            <input type="hidden"
-                                   name="itens[0][total_liquido]"
-                                   class="input-total-liquido">
+                            <input type="hidden" name="itens[0][total_liquido]" class="input-total-liquido">
                         </tr>
                     </tbody>
                 </table>
@@ -232,15 +207,13 @@
             {{-- Botões + Totais --}}
             <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <button type="button"
-                            id="btnAddItem"
-                            class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow">
+                    <button type="button" id="btnAddItem"
+                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow">
                         + Adicionar item
                     </button>
 
-                    <button type="button"
-                            id="btnImportar"
-                            class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow">
+                    <button type="button" id="btnImportar"
+                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded shadow">
                         Importar Itens (CSV)
                     </button>
 
@@ -263,12 +236,11 @@
 
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="{{ route('compras.index') }}"
-                   class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow text-sm">
+                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow text-sm">
                     Cancelar
                 </a>
 
-                <button type="submit"
-                        class="px-4 py-2 bg-green-600 text-white rounded shadow text-sm">
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded shadow text-sm">
                     Salvar Pedido
                 </button>
             </div>
@@ -283,7 +255,7 @@
     <script>
         window.addEventListener('load', function() {
             let indice = 0;
-            
+
             // === PREENCHE QTDE DE PARCELAS AO SELECIONAR O PLANO ===
             const planoSelect = document.querySelector('select[name="plano_pagamento_id"]');
             const parcelasInput = document.querySelector('input[name="qt_parcelas"]');
@@ -480,20 +452,57 @@
                     const texto = ev.target.result;
                     const linhas = texto.split(/\r?\n/).filter(l => l.trim() !== '');
 
+                    let naoEncontrados = [];
+                    let pendentes = 0;
+                    let importados = 0;
+
+                    function downloadNaoEncontrados() {
+                        if (!naoEncontrados.length) return;
+
+                        let linhasTxt = [];
+                        linhasTxt.push('Itens NÃO importados por não estarem cadastrados');
+                        linhasTxt.push('Formato: CODIGO;QUANTIDADE;PONTOS;PRECO_COMPRA;PRECO_REVENDA');
+                        linhasTxt.push('');
+                        linhasTxt.push('Itens importados com sucesso nesta carga: ' + importados);
+                        linhasTxt.push('');
+
+                        naoEncontrados.forEach(function(item) {
+                            linhasTxt.push([
+                                item.codigo,
+                                item.quantidade,
+                                item.pontos.toFixed(2).replace('.', ','),
+                                item.preco_compra.toFixed(2).replace('.', ','),
+                                item.preco_revenda.toFixed(2).replace('.', ',')
+                            ].join(';'));
+                        });
+
+                        const blob = new Blob([linhasTxt.join('\r\n')], {
+                            type: 'text/plain;charset=utf-8'
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'itens_nao_importados_compra_' +
+                            (new Date().toISOString().replace(/[:T\-]/g, '').slice(0, 14)) + '.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
+
                     linhas.forEach(function(linha) {
                         const partes = linha.split(';');
                         if (partes.length < 2) return;
 
                         const codigo = (partes[0] || '').trim();
                         const qtd = toNumber(partes[1] || '0');
-                        const pontos = partes[2] ? toNumber(partes[2]) : null;
-                        const precoCompra = partes[3] ? toNumber(partes[3]) : null;
-                        const precoRevenda = partes[4] ? toNumber(partes[4]) : null;
+                        const pontos = partes[2] ? toNumber(partes[2]) : 0;
+                        const precoCompra = partes[3] ? toNumber(partes[3]) : 0;
+                        const precoRevenda = partes[4] ? toNumber(partes[4]) : 0;
 
-                        if (!codigo) return;
+                        if (!codigo || qtd <= 0) return;
 
-                        const novaLinha = adicionarLinha();
-                        const $select = $(novaLinha).find('.produto-select');
+                        pendentes++;
 
                         $.ajax({
                             url: '{{ route('produtos.lookup') }}',
@@ -502,14 +511,28 @@
                                 q: codigo
                             },
                             success: function(data) {
+                                // NÃO achou produto → entra na lista de não encontrados e NÃO cria linha
                                 if (!data || !data.length) {
-                                    console.warn('Produto não encontrado na view para código', codigo);
+                                    naoEncontrados.push({
+                                        codigo: codigo,
+                                        quantidade: qtd,
+                                        pontos: pontos,
+                                        preco_compra: precoCompra,
+                                        preco_revenda: precoRevenda
+                                    });
                                     return;
                                 }
 
-                                let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
+                                // Achou → cria linha normalmente
+                                const novaLinha = adicionarLinha();
+                                const $select = $(novaLinha).find(
+                                '.produto-select');
 
-                                const option = new Option(prod.text, prod.id, true, true);
+                                let prod = data.find(p => p.codigo_fabrica ==
+                                    codigo) || data[0];
+
+                                const option = new Option(prod.text, prod.id, true,
+                                    true);
                                 $select.append(option).trigger('change');
 
                                 $select.trigger({
@@ -520,20 +543,27 @@
                                 });
 
                                 if (qtd > 0) {
-                                    novaLinha.querySelector('.input-quantidade').value = qtd;
+                                    novaLinha.querySelector('.input-quantidade')
+                                        .value = qtd;
                                 }
-                                if (pontos !== null && !isNaN(pontos)) {
-                                    novaLinha.querySelector('.input-pontos').value = pontos;
-                                }
-                                if (precoCompra !== null && !isNaN(precoCompra)) {
-                                    novaLinha.querySelector('.input-preco-compra').value = precoCompra.toFixed(2);
-                                }
-                                if (precoRevenda !== null && !isNaN(precoRevenda)) {
-                                    novaLinha.querySelector('.input-preco-revenda').value = precoRevenda.toFixed(2);
-                                }
+                                novaLinha.querySelector('.input-pontos').value =
+                                    pontos || 0;
+                                novaLinha.querySelector('.input-preco-compra')
+                                    .value = precoCompra.toFixed(2);
+                                novaLinha.querySelector('.input-preco-revenda')
+                                    .value = precoRevenda.toFixed(2);
 
                                 recalcularLinha(novaLinha);
                                 recalcularTotalGeral();
+
+                                importados++;
+                            },
+                            complete: function() {
+                                pendentes--;
+                                if (pendentes === 0) {
+                                    // Quando todas as requisições terminarem, se tiver itens sem cadastro, baixa o TXT
+                                    downloadNaoEncontrados();
+                                }
                             }
                         });
                     });
@@ -541,6 +571,7 @@
 
                 reader.readAsText(file, 'UTF-8');
             });
+
         });
     </script>
 </x-app-layout>
