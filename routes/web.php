@@ -46,7 +46,7 @@ Route::get('/whoami', function () {
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::get('/cadastro-cliente', [ClienteController::class, 'createPublic'])
