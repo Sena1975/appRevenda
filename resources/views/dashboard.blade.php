@@ -85,7 +85,7 @@
                     </div>
                     <div class="p-3 rounded-full bg-amber-50">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-amber-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 16h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 6v5.27l3.15 3.16-1.42 1.41L11 13V7h2z"/>
                         </svg>
                     </div>
                 </div>
@@ -259,5 +259,97 @@
                 @endif
             </div>
         </div>
+
+        {{-- Card: Evolução das últimas compras --}}
+        <div class="bg-white shadow rounded-lg p-4 mt-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-base font-semibold text-gray-700">
+                    Evolução das Últimas Compras
+                </h2>
+                <span class="text-xs text-gray-400">
+                    Últimos {{ $periodoEvolucaoComprasDias ?? 180 }} dias
+                </span>
+            </div>
+
+            <div class="h-64">
+                <canvas id="graficoComprasEvolucao"></canvas>
+            </div>
+        </div>
+
     </div>
+
+    {{-- SCRIPTS DO GRÁFICO --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const canvas = document.getElementById('graficoComprasEvolucao');
+
+            if (!canvas) {
+                return;
+            }
+
+            const labels  = @json($comprasEvolucaoLabels ?? []);
+            const valores = @json($comprasEvolucaoValores ?? []);
+
+            // Se não tiver dados, não tenta montar o gráfico
+            if (!labels.length || !valores.length) {
+                return;
+            }
+
+            new Chart(canvas, {
+                type: 'line', // se quiser barras: 'bar'
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total de Compras (R$)',
+                        data: valores,
+                        borderWidth: 2,
+                        borderColor: 'rgba(239, 68, 68, 1)',     // vermelho
+                        backgroundColor: 'rgba(239, 68, 68, 0.15)', // vermelho claro
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    try {
+                                        return 'R$ ' + Number(value).toLocaleString('pt-BR', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        });
+                                    } catch (e) {
+                                        return value;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const v = context.parsed.y ?? 0;
+                                    return 'R$ ' + Number(v).toLocaleString('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
 </x-app-layout>

@@ -13,7 +13,7 @@
 
             {{-- Cabeçalho --}}
             @php
-                // Funçãozinha pra sempre devolver no formato YYYY-MM-DD
+                // Função pra sempre devolver no formato YYYY-MM-DD
                 if (!function_exists('dateForInput')) {
                     function dateForInput($value)
                     {
@@ -40,21 +40,34 @@
                     }
                 }
 
-                // DATA DO PEDIDO
+                // DATA DO PEDIDO  (nome alinhado com o controller: data_pedido)
                 $dataPedido = old(
-                    'data_compra',
+                    'data_pedido',
                     dateForInput($pedido->data_compra ?? ($pedido->datapedido ?? ($pedido->dt_pedido ?? null))),
                 );
 
-                // DATA DE ENTREGA / PREVISÃO
+                // DATA DE ENTREGA / PREVISÃO (nome alinhado com o controller: data_entrega)
                 $dataEntrega = old(
-                    'data_emissao',
+                    'data_entrega',
                     dateForInput(
                         $pedido->data_emissao ??
                             ($pedido->data_previsao ??
                                 ($pedido->data_previsao_entrega ?? ($pedido->data_prevista_entrega ?? null))),
                     ),
                 );
+
+                // Totais vindos do banco para exibição inicial
+                $totalCompraInicial = $pedido->valorcusto
+                    ?? $pedido->itens->sum('valorcusto')
+                    ?? $pedido->itens->sum('total_liquido');
+
+                $totalVendaInicial = $pedido->preco_venda_total
+                    ?? $pedido->itens->sum('preco_venda_total');
+
+                $totalPontosInicial = $pedido->pontostotal
+                    ?? $pedido->itens->sum('pontostotal');
+
+                $totalLiquidoInicial = ($totalCompraInicial ?? 0) + ($pedido->encargos ?? 0);
             @endphp
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -71,17 +84,17 @@
                     </select>
                 </div>
 
-                {{-- Data do Pedido --}}
+                {{-- Data do Pedido (name = data_pedido) --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data do Pedido</label>
-                    <input type="date" name="data_compra" value="{{ $dataPedido }}"
+                    <input type="date" name="data_pedido" value="{{ $dataPedido }}"
                         class="w-full border-gray-300 rounded-md shadow-sm" required>
                 </div>
 
-                {{-- Data de Entrega / Previsão --}}
+                {{-- Data de Entrega / Previsão (name = data_entrega) --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data de Entrega (previsão)</label>
-                    <input type="date" name="data_emissao" value="{{ $dataEntrega }}"
+                    <input type="date" name="data_entrega" value="{{ $dataEntrega }}"
                         class="w-full border-gray-300 rounded-md shadow-sm">
                 </div>
 
@@ -169,6 +182,7 @@
                     <tr>
                         <th class="p-2 border">Produto</th>
                         <th class="p-2 border w-20 text-center">Qtde</th>
+                        <th class="p-2 border w-20 text-center">Tipo</th>
                         <th class="p-2 border w-24 text-center">Pontos</th>
                         <th class="p-2 border w-28 text-right">Preço Compra</th>
                         <th class="p-2 border w-28 text-right">Desconto</th>
@@ -202,6 +216,19 @@
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right quantidade">
                             </td>
 
+                            {{-- Tipo (N/B) --}}
+                            <td class="p-2 border text-center">
+                                @php
+                                    $tipoItem = $item->tipo_item ?? 'N';
+                                @endphp
+                                <select name="itens[{{ $idx }}][tipo_item]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-xs">
+                                    <option value="N" {{ $tipoItem === 'N' ? 'selected' : '' }}>Normal</option>
+                                    <option value="B" {{ $tipoItem === 'B' ? 'selected' : '' }}>Bonificado
+                                    </option>
+                                </select>
+                            </td>
+
                             {{-- Pontos --}}
                             <td class="p-2 border text-center">
                                 <input type="text" name="itens[{{ $idx }}][pontos]"
@@ -230,10 +257,10 @@
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right preco-venda">
                             </td>
 
-                            {{-- Total Compra --}}
+                            {{-- Total Compra (custo da linha, sem encargos) --}}
                             <td class="p-2 border text-right">
                                 <input type="text" name="itens[{{ $idx }}][total_custo]"
-                                    value="{{ number_format($item->total_item, 2, ',', '') }}"
+                                    value="{{ number_format($item->valorcusto ?? $item->total_liquido ?? $item->total_item, 2, ',', '') }}"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right total-compra"
                                     readonly>
                             </td>
@@ -255,24 +282,39 @@
             </table>
 
             {{-- Totais --}}
-            <div class="flex justify-end items-center mt-6 space-x-8">
+            <div class="flex flex-wrap justify-end items-center mt-6 gap-6">
                 <div class="text-right">
-                    <label class="font-semibold text-gray-700 block">Total Compra:</label>
+                    <label class="font-semibold text-gray-700 block">Total Compra (sem encargos):</label>
                     <input type="text" id="valor_total_display"
+                        value="{{ number_format($totalCompraInicial ?? 0, 2, ',', '.') }}"
                         class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
-                    <input type="hidden" id="valor_total" name="valor_total">
+                    <input type="hidden" id="valor_total" name="valor_total"
+                        value="{{ number_format($totalCompraInicial ?? 0, 2, '.', '') }}">
                 </div>
+
                 <div class="text-right">
                     <label class="font-semibold text-gray-700 block">Total Venda:</label>
                     <input type="text" id="preco_venda_total_display"
+                        value="{{ number_format($totalVendaInicial ?? 0, 2, ',', '.') }}"
                         class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
-                    <input type="hidden" id="preco_venda_total" name="preco_venda_total">
+                    <input type="hidden" id="preco_venda_total" name="preco_venda_total"
+                        value="{{ number_format($totalVendaInicial ?? 0, 2, '.', '') }}">
                 </div>
+
                 <div class="text-right">
                     <label class="font-semibold text-gray-700 block">Total Pontos:</label>
                     <input type="text" id="pontos_total_display"
+                        value="{{ number_format($totalPontosInicial ?? 0, 2, ',', '.') }}"
                         class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
-                    <input type="hidden" id="pontos_total" name="pontos_total">
+                    <input type="hidden" id="pontos_total" name="pontos_total"
+                        value="{{ number_format($totalPontosInicial ?? 0, 2, '.', '') }}">
+                </div>
+
+                <div class="text-right">
+                    <label class="font-semibold text-gray-700 block">Total Líquido (c/ encargos):</label>
+                    <input type="text" id="total_liquido_display"
+                        value="{{ number_format($totalLiquidoInicial ?? 0, 2, ',', '.') }}"
+                        class="w-32 text-right border-gray-300 rounded-md shadow-sm" readonly>
                 </div>
             </div>
 
@@ -332,6 +374,7 @@
                 const precoVenda = parseBrFloat(precoVendEl?.value || '0');
                 const desconto = parseBrFloat(descEl?.value || '0');
 
+                // mesmo critério do controller: custo sem encargos = bruto - desconto
                 const totalC = Math.max(0, qtd * precoCompra - desconto);
                 const totalV = qtd * precoVenda;
                 const totalP = qtd * pontos;
@@ -344,29 +387,36 @@
                 totalPontos += totalP;
             });
 
+            const encargos = parseBrFloat(document.getElementById('encargos')?.value || '0');
+            const totalLiquido = totalCompra + encargos;
+
             document.getElementById('valor_total_display').value = formatBr(totalCompra);
             document.getElementById('preco_venda_total_display').value = formatBr(totalVenda);
             document.getElementById('pontos_total_display').value = formatBr(totalPontos);
+            document.getElementById('total_liquido_display').value = formatBr(totalLiquido);
 
             document.getElementById('valor_total').value = totalCompra.toFixed(2);
             document.getElementById('preco_venda_total').value = totalVenda.toFixed(2);
             document.getElementById('pontos_total').value = totalPontos.toFixed(2);
         }
 
-        // adiciona listeners
+        // recalcula apenas quando o usuário mexer nos itens / encargos
         document.addEventListener('input', function(e) {
-            if (e.target.closest('#tbody-itens')) {
-                if (e.target.classList.contains('quantidade') ||
+            if (
+                e.target.closest('#tbody-itens') &&
+                (e.target.classList.contains('quantidade') ||
                     e.target.classList.contains('preco-compra') ||
                     e.target.classList.contains('preco-venda') ||
                     e.target.classList.contains('pontos') ||
-                    e.target.classList.contains('desconto')) {
-                    calcularTotais();
-                }
+                    e.target.classList.contains('desconto'))
+            ) {
+                calcularTotais();
+            }
+
+            if (e.target.id === 'encargos') {
+                calcularTotais();
             }
         });
-
-        window.addEventListener('DOMContentLoaded', calcularTotais);
 
         // Preenche Qtde de Parcelas ao selecionar o Plano de Pagamento
         const planoSelect = document.querySelector('select[name="plano_pagamento_id"]');

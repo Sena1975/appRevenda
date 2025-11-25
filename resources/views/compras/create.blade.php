@@ -110,8 +110,9 @@
                 <table class="min-w-full text-sm border" id="tabela-itens">
                     <thead>
                         <tr class="bg-gray-100 text-left">
-                            <th class="px-2 py-1 border w-1/6">Código / Descrição</th>
+                            <th class="px-2 py-1 bordermax-w-md">Código / Descrição</th>
                             <th class="px-2 py-1 border text-right w-16">Qtd</th>
+                            <th class="px-2 py-1 border text-center w-20">Tipo</th>
                             <th class="px-2 py-1 border text-right w-20">Pontos</th>
                             <th class="px-2 py-1 border text-right w-24">Preço Compra</th>
                             <th class="px-2 py-1 border text-right w-24" hidden>Desconto</th>
@@ -124,11 +125,10 @@
                     </thead>
 
                     <tbody id="tbody-itens">
-                        {{-- Linha modelo (index 0) --}}
                         <tr class="linha-item" data-index="0">
                             {{-- Código / Descrição --}}
-                            <td class="px-2 py-1 border w-1/6">
-                                <select class="produto-select w-full" data-index="0" style="width: 100%;"></select>
+                            <td class="px-2 py-1 border max-w-md align-top">
+                                <select class="produto-select w-full max-w-md" data-index="0" style="width: 100%;"></select>
                                 <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
                                 <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
                             </td>
@@ -138,6 +138,15 @@
                                 <input type="number" min="1" value="1"
                                     class="w-full border-gray-300 rounded-md shadow-sm text-right input-quantidade"
                                     name="itens[0][quantidade]">
+                            </td>
+
+                            {{-- Tipo (N / B) --}}
+                            <td class="px-2 py-1 border text-center w-20">
+                                <select name="itens[0][tipo_item]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm text-xs input-tipo-item">
+                                    <option value="N" selected>Normal</option>
+                                    <option value="B">Bonificado</option>
+                                </select>
                             </td>
 
                             {{-- Pontos --}}
@@ -270,7 +279,6 @@
                     }
                 });
 
-                // Se já veio valor antigo (old) com plano selecionado, forçar disparar ao carregar
                 if (planoSelect.value) {
                     const opt = planoSelect.options[planoSelect.selectedIndex];
                     const parcelas = opt ? opt.getAttribute('data-parcelas') : null;
@@ -295,14 +303,10 @@
                         dataType: 'json',
                         delay: 300,
                         data: function(params) {
-                            return {
-                                q: params.term
-                            };
+                            return { q: params.term };
                         },
                         processResults: function(data) {
-                            return {
-                                results: data
-                            };
+                            return { results: data };
                         }
                     }
                 });
@@ -321,7 +325,6 @@
                     recalcularTotalGeral();
                 });
 
-                // eventos de recálculo
                 $(row).find('.input-quantidade, .input-desconto').on('input', function() {
                     recalcularLinha(row);
                     recalcularTotalGeral();
@@ -373,14 +376,18 @@
                 const novaLinha = modelo.cloneNode(true);
                 novaLinha.dataset.index = indice;
 
-                // limpa inputs
                 novaLinha.querySelectorAll('input').forEach(function(inp) {
                     inp.value = '';
                 });
                 novaLinha.querySelector('.input-quantidade').value = 1;
                 novaLinha.querySelector('.input-desconto').value = 0;
 
-                // ajusta names
+                const tipoSelect = novaLinha.querySelector('.input-tipo-item');
+                if (tipoSelect) {
+                    tipoSelect.setAttribute('name', 'itens[' + indice + '][tipo_item]');
+                    tipoSelect.value = 'N';
+                }
+
                 novaLinha.querySelector('.input-codfab')
                     .setAttribute('name', 'itens[' + indice + '][codfabnumero]');
                 novaLinha.querySelector('.input-produto-id')
@@ -402,15 +409,13 @@
                 novaLinha.querySelector('.input-total-liquido')
                     .setAttribute('name', 'itens[' + indice + '][total_liquido]');
 
-                // recria select
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
                 selectTd.innerHTML =
-                    '<select class="produto-select w-full" data-index="' + indice +
+                    '<select class="produto-select w-full max-w-xs" data-index="' + indice +
                     '" style="width:100%;"></select>' +
                     '<input type="hidden" name="itens[' + indice + '][codfabnumero]" class="input-codfab">' +
                     '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">';
 
-                // botão remover
                 novaLinha.querySelector('.btn-remover-linha').addEventListener('click', function() {
                     novaLinha.remove();
                     recalcularTotalGeral();
@@ -426,7 +431,6 @@
                 adicionarLinha();
             });
 
-            // primeira linha
             const linha0 = document.querySelector('.linha-item');
             initSelect2(linha0);
             linha0.querySelector('.btn-remover-linha').addEventListener('click', function() {
@@ -437,7 +441,6 @@
                 }
             });
 
-            // Importação CSV
             const inputArquivo = document.getElementById('arquivoImportacao');
             document.getElementById('btnImportar').addEventListener('click', function() {
                 inputArquivo.click();
@@ -507,11 +510,8 @@
                         $.ajax({
                             url: '{{ route('produtos.lookup') }}',
                             dataType: 'json',
-                            data: {
-                                q: codigo
-                            },
+                            data: { q: codigo },
                             success: function(data) {
-                                // NÃO achou produto → entra na lista de não encontrados e NÃO cria linha
                                 if (!data || !data.length) {
                                     naoEncontrados.push({
                                         codigo: codigo,
@@ -523,35 +523,25 @@
                                     return;
                                 }
 
-                                // Achou → cria linha normalmente
                                 const novaLinha = adicionarLinha();
-                                const $select = $(novaLinha).find(
-                                '.produto-select');
+                                const $select = $(novaLinha).find('.produto-select');
 
-                                let prod = data.find(p => p.codigo_fabrica ==
-                                    codigo) || data[0];
+                                let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
 
-                                const option = new Option(prod.text, prod.id, true,
-                                    true);
+                                const option = new Option(prod.text, prod.id, true, true);
                                 $select.append(option).trigger('change');
 
                                 $select.trigger({
                                     type: 'select2:select',
-                                    params: {
-                                        data: prod
-                                    }
+                                    params: { data: prod }
                                 });
 
                                 if (qtd > 0) {
-                                    novaLinha.querySelector('.input-quantidade')
-                                        .value = qtd;
+                                    novaLinha.querySelector('.input-quantidade').value = qtd;
                                 }
-                                novaLinha.querySelector('.input-pontos').value =
-                                    pontos || 0;
-                                novaLinha.querySelector('.input-preco-compra')
-                                    .value = precoCompra.toFixed(2);
-                                novaLinha.querySelector('.input-preco-revenda')
-                                    .value = precoRevenda.toFixed(2);
+                                novaLinha.querySelector('.input-pontos').value = pontos || 0;
+                                novaLinha.querySelector('.input-preco-compra').value = precoCompra.toFixed(2);
+                                novaLinha.querySelector('.input-preco-revenda').value = precoRevenda.toFixed(2);
 
                                 recalcularLinha(novaLinha);
                                 recalcularTotalGeral();
@@ -561,7 +551,6 @@
                             complete: function() {
                                 pendentes--;
                                 if (pendentes === 0) {
-                                    // Quando todas as requisições terminarem, se tiver itens sem cadastro, baixa o TXT
                                     downloadNaoEncontrados();
                                 }
                             }
@@ -574,4 +563,21 @@
 
         });
     </script>
+
+    {{-- Quebra de linha na descrição do Select2 --}}
+    <style>
+        .select2-container--default .select2-selection--single {
+            min-height: 32px;
+            height: auto;
+            white-space: normal !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.2rem;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+    </style>
 </x-app-layout>

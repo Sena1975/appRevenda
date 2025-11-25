@@ -22,7 +22,6 @@ class DashboardController extends Controller
         /*
         |--------------------------------------------------------------------------
         | PRODUTOS / ESTOQUE
-        | Agora lendo de appestoque (App\Models\Estoque) e não mais de appproduto.
         |--------------------------------------------------------------------------
         */
         $produtoTable = (new Produto())->getTable();   // normalmente "appproduto"
@@ -121,7 +120,7 @@ class DashboardController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | VISÃO RÁPIDA: últimas vendas/compras
+        | VISÃO RÁPIDA: últimas vendas/compras (lista)
         |--------------------------------------------------------------------------
         */
         $ultimasVendas = PedidoVenda::orderByDesc('data_pedido')
@@ -132,22 +131,51 @@ class DashboardController extends Controller
             ->limit(5)
             ->get(['id', 'data_compra', 'valor_total']);
 
+        /*
+        |--------------------------------------------------------------------------
+        | GRÁFICO DE EVOLUÇÃO - ÚLTIMAS COMPRAS
+        | Agrupa as compras por dia (R$ total/dia) nos últimos X dias
+        |--------------------------------------------------------------------------
+        */
+        $periodoEvolucaoDias = 180; // ajuste se quiser mais/menos dias
+
+        $inicioPeriodo = Carbon::now()
+            ->subDays($periodoEvolucaoDias)
+            ->startOfDay();
+
+        $comprasEvolucao = PedidoCompra::selectRaw('DATE(data_compra) as dia, SUM(valor_total) as total')
+            ->whereBetween('data_compra', [$inicioPeriodo, $hoje])
+            ->groupBy('dia')
+            ->orderBy('dia')
+            ->get();
+
+        // Labels (eixo X) = datas formatadas
+        $comprasEvolucaoLabels = $comprasEvolucao->map(function ($row) {
+            return Carbon::parse($row->dia)->format('d/m');
+        });
+
+        // Valores (eixo Y) = total de compras no dia
+        $comprasEvolucaoValores = $comprasEvolucao->pluck('total');
+
         return view('dashboard', [
-            'totClientes'           => $totClientes,
-            'totProdutosEstoque'    => $totProdutosEstoque,
-            'valorEstoque'          => $valorEstoque,
-            'crEmAberto'            => $crEmAberto,
-            'valorAberto'           => $valorAberto,
-            'totVendasMes'          => $totVendasMes,
-            'faturamentoMes'        => $faturamentoMes,
-            'totComprasMes'         => $totComprasMes,
-            'valorComprasMes'       => $valorComprasMes,
-            'ultimasVendas'         => $ultimasVendas,
-            'ultimasCompras'        => $ultimasCompras,
-            'totVendasPendentes'    => $totVendasPendentes,
-            'valorVendasPendentes'  => $valorVendasPendentes,
-            'totComprasPendentes'   => $totComprasPendentes,
-            'valorComprasPendentes' => $valorComprasPendentes,
+            'totClientes'                 => $totClientes,
+            'totProdutosEstoque'          => $totProdutosEstoque,
+            'valorEstoque'                => $valorEstoque,
+            'crEmAberto'                  => $crEmAberto,
+            'valorAberto'                 => $valorAberto,
+            'totVendasMes'                => $totVendasMes,
+            'faturamentoMes'              => $faturamentoMes,
+            'totComprasMes'               => $totComprasMes,
+            'valorComprasMes'             => $valorComprasMes,
+            'ultimasVendas'               => $ultimasVendas,
+            'ultimasCompras'              => $ultimasCompras,
+            'totVendasPendentes'          => $totVendasPendentes,
+            'valorVendasPendentes'        => $valorVendasPendentes,
+            'totComprasPendentes'         => $totComprasPendentes,
+            'valorComprasPendentes'       => $valorComprasPendentes,
+            'comprasEvolucaoLabels'       => $comprasEvolucaoLabels,
+            'comprasEvolucaoValores'      => $comprasEvolucaoValores,
+            'periodoEvolucaoComprasDias'  => $periodoEvolucaoDias,
         ]);
     }
 }

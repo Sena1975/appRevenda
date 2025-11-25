@@ -22,6 +22,7 @@ class ItensCompra extends Model
         'pontos',
         'pontostotal',
         'qtd_disponivel',
+        'tipo_item', 
     ];
 
     // 🔗 Cada item pertence a uma compra
