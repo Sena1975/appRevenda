@@ -33,6 +33,36 @@
                     @enderror
                 </div>
 
+                {{-- Indicador (cliente que indicou) --}}
+                <div class="col-span-12 sm:col-span-6 lg:col-span-4">
+                    <label for="indicador_id" class="block text-sm font-medium text-gray-700">
+                        Indicador
+                    </label>
+
+                    @php
+                        $valorIndicador = old('indicador_id', 1);
+                    @endphp
+
+                    <select name="indicador_id" id="indicador_id"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                        {{-- Opção padrão: vendedor / sem indicação --}}
+                        <option value="1" {{ $valorIndicador == 1 ? 'selected' : '' }}>
+                            ID-1 – Vendedor (sem prêmio de indicação)
+                        </option>
+
+                        @foreach ($indicadores as $ind)
+                            <option value="{{ $ind->id }}" {{ $valorIndicador == $ind->id ? 'selected' : '' }}>
+                                ID-{{ $ind->id }} – {{ $ind->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <p class="mt-1 text-xs text-gray-500">
+                        Se este cliente foi indicado por outro, selecione aqui o cliente indicador.
+                        Caso contrário, deixe como “Vendedor”.
+                    </p>
+                </div>
+
                 <!-- Telefone -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Telefone</label>

@@ -32,6 +32,7 @@ use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatorioFinanceiroController;
 use App\Http\Controllers\TextoPedidoController;
+use App\Http\Controllers\IndicacaoController;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -184,6 +185,16 @@ Route::middleware(['auth'])->group(function () {
         ->name('vendas.cancelar');
     Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
         ->name('vendas.confirmarEntrega');
+    /*
+    |--------------------------------------------------------------------------
+    | CAMPANHA – INDICAÇÕES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/indicacoes', [IndicacaoController::class, 'index'])
+        ->name('indicacoes.index');
+
+    Route::post('/indicacoes/{indicacao}/pagar', [IndicacaoController::class, 'pagar'])
+        ->name('indicacoes.pagar');
 
     /*
     |--------------------------------------------------------------------------

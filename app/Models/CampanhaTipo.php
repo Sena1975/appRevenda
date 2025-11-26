@@ -6,14 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class CampanhaTipo extends Model
 {
-    protected $table = 'appcampanha_tipo';
-    protected $primaryKey = 'id';
+    protected $table = 'appcampanha_tipo'; // nome EXATO da tabela
+
     public $timestamps = false;
 
-    protected $fillable = ['descricao'];
-
-    public function campanhas()
-    {
-        return $this->hasMany(Campanha::class, 'tipo_id', 'id');
-    }
+    protected $fillable = [
+        'descricao',
+    ];
 }

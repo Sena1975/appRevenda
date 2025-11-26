@@ -28,6 +28,36 @@
                         value="{{ old('cpf', $cliente->cpf) }}" placeholder="000.000.000-00">
                 </div>
 
+                {{-- Indicador (cliente que indicou) --}}
+                <div class="col-span-12 sm:col-span-6 lg:col-span-4">
+                    <label for="indicador_id" class="block text-sm font-medium text-gray-700">
+                        Indicador
+                    </label>
+
+                    @php
+                        $valorIndicador = old('indicador_id', $cliente->indicador_id ?? 1);
+                    @endphp
+
+                    <select name="indicador_id" id="indicador_id"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                        {{-- Opção padrão: vendedor / sem indicação --}}
+                        <option value="1" {{ $valorIndicador == 1 ? 'selected' : '' }}>
+                            ID-1 – Vendedor (sem prêmio de indicação)
+                        </option>
+
+                        @foreach ($indicadores as $ind)
+                            <option value="{{ $ind->id }}" {{ $valorIndicador == $ind->id ? 'selected' : '' }}>
+                                ID-{{ $ind->id }} – {{ $ind->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <p class="mt-1 text-xs text-gray-500">
+                        Altere se este cliente tiver sido indicado por outro cliente da base.
+                    </p>
+                </div>
+
+
                 <!-- Telefone -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Telefone</label>
@@ -115,10 +145,12 @@
                 <!-- UF -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">UF</label>
-                    <select name="uf_id" id="uf_id" class="w-full border-gray-300 rounded-md shadow-sm" required>
+                    <select name="uf_id" id="uf_id" class="w-full border-gray-300 rounded-md shadow-sm"
+                        required>
                         <option value="">Selecione</option>
                         @foreach (DB::table('appuf')->orderBy('nome')->get() as $uf)
-                            <option value="{{ $uf->id }}" data-sigla="{{ $uf->sigla }}">{{ $uf->sigla }}
+                            <option value="{{ $uf->id }}" data-sigla="{{ $uf->sigla }}">
+                                {{ $uf->sigla }}
                                 - {{ $uf->nome }}</option>
                         @endforeach
                     </select>
@@ -291,19 +323,19 @@
                         </div>
                     </div>
                 </div>
-<div>
-    <label class="block text-sm font-medium text-gray-700">Origem do cadastro</label>
-    <select name="origem_cadastro" class="w-full border-gray-300 rounded-md shadow-sm">
-        @php
-            $origemOld = old('origem_cadastro', $cliente->origem_cadastro ?? 'Interno');
-        @endphp
-        <option value="Interno" @selected($origemOld === 'Interno')>Interno</option>
-        <option value="Cadastro Público" @selected($origemOld === 'Cadastro Público')>Cadastro Público</option>
-        <option value="Importação" @selected($origemOld === 'Importação')>Importação</option>
-        <option value="WhatsApp" @selected($origemOld === 'WhatsApp')>WhatsApp</option>
-        <option value="Instagram" @selected($origemOld === 'Instagram')>Instagram</option>
-    </select>
-</div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Origem do cadastro</label>
+                    <select name="origem_cadastro" class="w-full border-gray-300 rounded-md shadow-sm">
+                        @php
+                            $origemOld = old('origem_cadastro', $cliente->origem_cadastro ?? 'Interno');
+                        @endphp
+                        <option value="Interno" @selected($origemOld === 'Interno')>Interno</option>
+                        <option value="Cadastro Público" @selected($origemOld === 'Cadastro Público')>Cadastro Público</option>
+                        <option value="Importação" @selected($origemOld === 'Importação')>Importação</option>
+                        <option value="WhatsApp" @selected($origemOld === 'WhatsApp')>WhatsApp</option>
+                        <option value="Instagram" @selected($origemOld === 'Instagram')>Instagram</option>
+                    </select>
+                </div>
 
             </div>
 

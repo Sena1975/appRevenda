@@ -9,6 +9,14 @@
                 Preencha seus dados para que possamos te atender melhor. 💙
             </p>
 
+            @if (isset($indicadorCliente) && $indicadorCliente)
+                <div class="mb-4 p-3 rounded bg-blue-50 text-blue-800 text-sm text-center">
+                    Você está se cadastrando através do link de indicação de
+                    <strong>{{ $indicadorCliente->nome }}</strong>.
+                </div>
+            @endif
+
+
             @if ($errors->any())
                 <div class="mb-4 p-3 rounded bg-red-100 text-red-700 text-sm">
                     <strong>Ops! Verifique os campos abaixo:</strong>
@@ -22,6 +30,8 @@
 
             <form action="{{ route('clientes.public.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
+
+                <input type="hidden" name="indicador_id" value="{{ $indicadorId ?? 1 }}">
 
 
                 <div class="grid grid-cols-1 gap-4">

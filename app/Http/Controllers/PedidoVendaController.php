@@ -19,6 +19,7 @@ use App\Models\FormaPagamento;
 use App\Models\PlanoPagamento;
 use App\Models\Produto;
 use App\Models\ViewProduto;
+use App\Models\Indicacao;
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
@@ -212,6 +213,10 @@ class PedidoVendaController extends Controller
             $desconto     = (float) ($data['desconto'] ?? 0);
             $totalLiquido = max(0, $totalBruto - $desconto);
 
+            // pega indicador do cliente (padrão = 1)
+            $cliente       = Cliente::find($data['cliente_id']);
+            $indicadorId   = (int) ($cliente->indicador_id ?? 1);
+
             // ===== 3) Grava cabeçalho do pedido (status inicial PENDENTE) =====
             $vendaId = DB::table($TAB_PEDIDO)->insertGetId([
                 'cliente_id'         => $data['cliente_id'],
@@ -227,6 +232,7 @@ class PedidoVendaController extends Controller
                 'pontuacao'          => $totalPontosUnit,
                 'pontuacao_total'    => $totalPontosGeral,
                 'status'             => 'PENDENTE',
+                'indicador_id'       => $indicadorId,
             ]);
 
             // ===== 4) Grava itens =====
@@ -485,6 +491,11 @@ class PedidoVendaController extends Controller
             $campanhas = $service->reavaliarPedido($pedido);
             session()->flash('campanhas', $campanhas);
 
+            // 🔹 Atualiza indicação se existir (Etapa C)
+            // Não cria nova indicação aqui, só ajusta valores se já existir e estiver pendente
+            $pedido->refresh();
+            $this->atualizarIndicacaoParaPedido($pedido, false);
+            
             DB::commit();
             return redirect()->route('vendas.index')->with('success', 'Pedido atualizado, reservas/parcelas ajustadas e campanhas reavaliadas.');
         } catch (\Throwable $e) {
@@ -797,6 +808,104 @@ class PedidoVendaController extends Controller
         }
         return null;
     }
+
+    /**
+     * Calcula o valor do prêmio de indicação pela faixa de valor do pedido
+     */
+    private function calcularPremioIndicacao(float $valorPedido): float
+    {
+        $faixas = [
+            [0.00,    99.99,   5.00],
+            [100.00,  199.99, 10.00],
+            [200.00,  399.99, 20.00],
+            [400.00,  599.99, 40.00],
+            [600.00,  799.99, 60.00],
+            [800.00,  999.99, 80.00],
+            [1000.00, 9999.99, 100.00],
+        ];
+
+        foreach ($faixas as [$min, $max, $premio]) {
+            if ($valorPedido >= $min && $valorPedido <= $max) {
+                return $premio;
+            }
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Busca o ID da campanha de indicação (se existir)
+     * Regra: campanha ativa cujo tipo tenha descricao = 'Indicação'
+     */
+    private function getCampanhaIndicacaoId(): ?int
+    {
+        try {
+            return DB::table('appcampanha as c')
+                ->join('appcampanha_tipo as t', 't.id', '=', 'c.tipo_id')
+                ->where('t.descricao', 'Indicação')
+                ->where('c.ativa', 1)
+                ->orderByDesc('c.prioridade')
+                ->value('c.id');
+        } catch (\Throwable $e) {
+            Log::warning('Falha ao buscar campanha de indicação: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Cria/atualiza o registro em appindicacao para este pedido.
+     * - Só atua quando indicador_id != 1
+     * - Só atua se o pedido estiver ENTREGUE
+     * - Se já houver indicação PAGA, não mexe
+     * - Se não houver ainda indicação e $criarSeNaoExistir = false, não cria
+     */
+    private function atualizarIndicacaoParaPedido(PedidoVenda $pedido, bool $criarSeNaoExistir = false): void
+    {
+        // Só calcula para pedido ENTREGUE
+        if (strtoupper($pedido->status ?? '') !== 'ENTREGUE') {
+            return;
+        }
+
+        $indicadorId = (int) ($pedido->indicador_id ?? 1);
+
+        // Regra: só se indicador for diferente de 1
+        if ($indicadorId === 1) {
+            return;
+        }
+
+        $valorPedido = (float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0);
+        if ($valorPedido <= 0) {
+            return;
+        }
+
+        // Busca indicação existente para este cliente indicado
+        $indicacao = Indicacao::where('indicado_id', $pedido->cliente_id)->first();
+
+        // Se não existe e não é para criar, sai
+        if (!$indicacao && !$criarSeNaoExistir) {
+            return;
+        }
+
+        // Se não existe e pode criar, instancia
+        if (!$indicacao) {
+            $indicacao = new Indicacao();
+            $indicacao->indicado_id  = $pedido->cliente_id;
+            $indicacao->indicador_id = $indicadorId;
+        }
+
+        // Se já está pago, não recalcula (já foi pago o PIX)
+        if ($indicacao->status === 'pago') {
+            return;
+        }
+
+        $indicacao->pedido_id    = $pedido->id;
+        $indicacao->valor_pedido = $valorPedido;
+        $indicacao->valor_premio = $this->calcularPremioIndicacao($valorPedido);
+        $indicacao->status       = 'pendente'; // sempre volta pra pendente até você pagar
+
+        $indicacao->save();
+    }
+
     public function confirmarEntrega(int $id)
     {
         // Busca o pedido com itens e produtos
@@ -810,13 +919,50 @@ class PedidoVendaController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1) Baixa de estoque usando o mesmo serviço que já funcionava
-            //    (ele já trata reserva → saída, etc.)
+            // 1) Baixa de estoque
             $this->estoque->confirmarSaidaVenda($pedido);
 
-            // 2) Atualiza status do pedido para ENTREGUE
+            // 2) Ajusta pedido para ENTREGUE
             $pedido->status = 'ENTREGUE';
             $pedido->save();
+
+            // 🔹🔹🔹 AQUI entra a lógica de indicação 🔹🔹🔹
+            // Somente incluir na campanha de indicação se:
+            // - indicador_id != 1
+            // - ainda não existir indicação para este cliente (primeiro pedido)
+
+            $indicadorId = (int) ($pedido->indicador_id ?? 1);
+
+            if ($indicadorId !== 1) {
+                // verifica se já existe indicação para este cliente
+                $jaTemIndicacao = Indicacao::where('indicado_id', $pedido->cliente_id)->exists();
+
+                if (!$jaTemIndicacao) {
+                    // 5% de desconto sobre o valor_total da compra
+                    $valorTotal         = (float) ($pedido->valor_total ?? 0);
+                    $descontoIndicacao  = round($valorTotal * 0.05, 2);
+                    $descontoAtual      = (float) ($pedido->valor_desconto ?? 0);
+                    $novoDesconto       = $descontoAtual + $descontoIndicacao;
+                    $novoValorLiquido   = max(0, $valorTotal - $novoDesconto);
+
+                    // Atualiza pedido com o novo desconto e valor líquido
+                    $pedido->valor_desconto = $novoDesconto;
+                    $pedido->valor_liquido  = $novoValorLiquido;
+
+                    // Marca a campanha de indicação no pedido, se existir
+                    $campanhaIndicacaoId = $this->getCampanhaIndicacaoId();
+                    if ($campanhaIndicacaoId && !$pedido->campanha_id) {
+                        $pedido->campanha_id = $campanhaIndicacaoId;
+                    }
+
+                    $pedido->save();
+                }
+            }
+
+            // Atualiza/cria registro em appindicacao (Etapa B)
+            // Aqui podemos criar caso ainda não exista (primeiro pedido)
+            $pedido->refresh(); // garante que estamos com os valores atualizados
+            $this->atualizarIndicacaoParaPedido($pedido, true);
 
             // 3) Gera Contas a Receber se ainda não existirem para esse pedido
             $temCr = DB::table('appcontasreceber')

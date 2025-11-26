@@ -125,4 +125,46 @@ class Cliente extends Model
         // URL final do WhatsApp
         return "https://wa.me/{$numero}?{$params}";
     }
+
+    public function getWhatsappIndicacaoLinkAttribute()
+    {
+        // Se não tiver WhatsApp cadastrado, não gera link
+        if (!$this->whatsapp) {
+            return null;
+        }
+
+        // Garante que tenha só dígitos
+        $numero = preg_replace('/\D+/', '', $this->whatsapp);
+
+        // Se não começar com 55, prefixa o DDI do Brasil
+        if (!str_starts_with($numero, '55')) {
+            $numero = '55' . $numero;
+        }
+
+        // 🔹 Link público de cadastro com o ID deste cliente como indicador
+        // Certifique-se de que essa rota existe: route('clientes.public.create')
+        $linkIndicacao = route('clientes.public.create', [
+            'indicador' => $this->id,
+        ]);
+
+        // 🔹 TEXTO DA MENSAGEM QUE VAI NO WHATSAPP
+        $texto = "Olá {$this->nome}, tudo bem? 😊\n"
+            . "Esse é o SEU link de indicação para cadastrar suas amigas:\n"
+            . "{$linkIndicacao}\n\n"
+            . "Sempre que alguém se cadastrar por esse link e fizer a primeira compra, "
+            . "você participa da campanha de indicação. 🎁";
+
+        // Monta query string (faz encode dos caracteres especiais)
+        $params = http_build_query([
+            'text' => $texto,
+        ]);
+
+        // URL final do WhatsApp
+        return "https://wa.me/{$numero}?{$params}";
+    }
+
+    public function indicador()
+    {
+        return $this->belongsTo(Cliente::class, 'indicador_id');
+    }
 }

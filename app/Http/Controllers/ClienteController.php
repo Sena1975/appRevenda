@@ -87,17 +87,37 @@ class ClienteController extends Controller
 
     public function create()
     {
-        return view('clientes.create');
+        // Lista de clientes para servir como possíveis indicadores
+        // (excluindo o ID 1 se você quiser deixar só como "Vendedor")
+        $indicadores = Cliente::where('id', '!=', 1)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        return view('clientes.create', compact('indicadores'));
     }
 
-    public function createPublic()
+
+    public function createPublic(Request $request)
     {
-        // Se quiser simplificar, podemos mandar menos campos pra tela pública.
-        // Aqui vou reaproveitar UF/Cidade/Bairro igual seu create normal.
         $ufs = DB::table('appuf')->orderBy('nome')->get();
 
-        return view('clientes.cadastro-publico', compact('ufs'));
+        // pega ?indicador=ID da URL, padrão 1 (vendedor)
+        $indicadorId = (int) $request->query('indicador', 1);
+
+        $indicadorCliente = null;
+
+        if ($indicadorId !== 1) {
+            $indicadorCliente = Cliente::find($indicadorId);
+
+            // se não achar, volta pro padrão 1
+            if (!$indicadorCliente) {
+                $indicadorId = 1;
+            }
+        }
+
+        return view('clientes.cadastro-publico', compact('ufs', 'indicadorId', 'indicadorCliente'));
     }
+
 
     public function storePublic(Request $request)
     {
@@ -112,29 +132,22 @@ class ClienteController extends Controller
                 'email:rfc,dns',
                 'max:255',
             ],
-
             'whatsapp'        => 'required|string|max:30',
-
             'telefone'        => 'nullable|string|max:20',
-
             'cep'             => 'nullable|string|max:9',
             'endereco'        => 'nullable|string|max:255',
             'uf_id'           => 'nullable|integer',
             'cidade_id'       => 'nullable|integer',
             'bairro_id'       => 'nullable',
             'bairro_nome'     => 'nullable|string|max:100',
-
             'bairro'          => 'nullable|string|max:100',
             'cidade'          => 'nullable|string|max:100',
             'uf'              => 'nullable|string|max:2',
-
             'data_nascimento' => ['nullable', 'date', 'before:today'],
             'sexo'            => 'nullable|string|max:20',
             'filhos'          => 'nullable|integer|min:0',
-
             // Time do coração
             'timecoracao'     => 'nullable|string|max:60',
-
             // Foto
             'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'origem_cadastro' => 'nullable|string|max:50',
@@ -184,7 +197,6 @@ class ClienteController extends Controller
             'uf'              => $ufSigla ?? $request->uf,
             'cidade'          => $cidadeNome ?? $request->cidade,
             'bairro'          => $bairroNome ?? $request->bairro,
-
             'whatsapp'        => $request->whatsapp,
             'telegram'        => null,
             'instagram'       => null,
@@ -194,10 +206,10 @@ class ClienteController extends Controller
             'sexo'            => $request->sexo,
             'filhos'          => $request->filhos,
             'timecoracao'     => $request->timecoracao,
-
             // ⚠ status fixo para cadastros públicos
             'status'          => 'Em Aprovação',
             'origem_cadastro' => 'Público',
+            'indicador_id'    => (int) $request->input('indicador_id', 1),
         ];
 
         // Foto (se enviada)
@@ -228,8 +240,14 @@ class ClienteController extends Controller
 
     public function edit(Cliente $cliente)
     {
-        return view('clientes.edit', compact('cliente'));
+        // Indicadores possíveis: outros clientes, exceto ele mesmo
+        $indicadores = Cliente::where('id', '!=', $cliente->id)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        return view('clientes.edit', compact('cliente', 'indicadores'));
     }
+
 
     public function store(Request $request)
     {
@@ -315,6 +333,7 @@ class ClienteController extends Controller
             'timecoracao'     => $request->timecoracao,
             'status'          => $request->status,
             'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
+            'indicador_id'    => (int) $request->input('indicador_id', 1),
         ];
 
         if ($request->hasFile('foto')) {
@@ -336,18 +355,15 @@ class ClienteController extends Controller
                 'max:255',
             ],
             'telefone'        => 'nullable|string|max:20',
-
             'cep'             => 'nullable|string|max:9',
             'endereco'        => 'nullable|string|max:255',
             'uf_id'           => 'nullable|integer',
             'cidade_id'       => 'nullable|integer',
             'bairro_id'       => 'nullable',
             'bairro_nome'     => 'nullable|string|max:100',
-
             'bairro'          => 'nullable|string|max:100',
             'cidade'          => 'nullable|string|max:100',
             'uf'              => 'nullable|string|max:2',
-
             'whatsapp'        => ['nullable', 'string', 'max:20'],
             'telegram'        => ['nullable', 'string', 'max:64'],
             'instagram'       => 'nullable|string|max:50',
@@ -416,6 +432,7 @@ class ClienteController extends Controller
             'timecoracao'     => $request->timecoracao,
             'status'          => $request->status,
             'origem_cadastro' => $request->input('origem_cadastro', $cliente->origem_cadastro ?? 'Interno'),
+            'indicador_id'    => (int) $request->input('indicador_id', 1),
         ];
 
         // Foto (substitui a antiga)

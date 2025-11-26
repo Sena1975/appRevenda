@@ -103,7 +103,7 @@
                         ],
                         ['Fornecedores', 'fornecedores.index', '<path d="M3 3h18v18H3V3z" />'],
                         ['Categorias', 'categorias.index', '<path d="M4 6h16M4 10h16M4 14h16M4 18h16" />'],
-                        ['Subcategorias', 'subcategororias.index', '<path d="M4 6h16M4 12h8m-8 6h16" />'],
+                        ['Subcategorias', 'subcategorias.index', '<path d="M4 6h16M4 12h8m-8 6h16" />'],
                         ['Produtos', 'produtos.index', '<path d="M3 3h18v18H3V3zM7 3v18M17 3v18" />'],
                         [
                             'Importar Produtos (ZAP)',
@@ -413,47 +413,78 @@
             </div>
         </div>
 
-        <!-- CAMPANHAS -->
-        <div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
-            <button @click="open = !open"
-                class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
+<!-- CAMPANHAS -->
+<div x-data="{ open: {{ $isCampanhas ? 'true' : 'false' }} }" class="mt-2">
+    <button @click="open = !open"
+        class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50 focus:outline-none rounded transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
+        </svg>
+        <span x-show="openSidebar" class="ml-3 flex-1 text-left">Campanhas</span>
+        <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
+        @if (Route::has('campanhas.index'))
+            <a href="{{ route('campanhas.index') }}"
+                class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+       {{ request()->routeIs('campanhas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6h16M4 10h16M4 14h16" />
+                </svg>
+                <span x-show="openSidebar" class="ml-2">Gerenciar Campanhas</span>
+            </a>
+        @endif
+
+        @if (Route::has('campanhas.create'))
+            <a href="{{ route('campanhas.create') }}"
+                class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+       {{ request()->routeIs('campanhas.create') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4v16m8-8H4" />
+                </svg>
+                <span x-show="openSidebar" class="ml-2">Nova Campanha</span>
+            </a>
+        @endif
+
+        @if (Route::has('participacoes.index'))
+            <a href="{{ route('participacoes.index') }}"
+                class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+       {{ request()->routeIs('participacoes.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
                 </svg>
-                <span x-show="openSidebar" class="ml-3 flex-1 text-left">Campanhas</span>
-                <svg x-show="openSidebar" :class="{ 'rotate-180': open }" xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                <span x-show="openSidebar" class="ml-2">Participações</span>
+            </a>
+        @endif
+
+        @if (Route::has('indicacoes.index'))
+            <a href="{{ route('indicacoes.index') }}"
+               class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+       {{ request()->routeIs('indicacoes.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 4v4m0 4h.01M5 13a7 7 0 0114 0v3a2 2 0 01-2 2h-3l-2 2-2-2H7a2 2 0 01-2-2v-3z" />
                 </svg>
-            </button>
+                <span x-show="openSidebar" class="ml-2">Indicações</span>
+            </a>
+        @endif
+    </div>
+</div>
 
-            <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
-                @if (Route::has('campanhas.index'))
-                    <a href="{{ route('campanhas.index') }}"
-                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('campanhas.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6h16M4 10h16M4 14h16" />
-                        </svg>
-                        <span x-show="openSidebar" class="ml-2">Gerenciar Campanhas</span>
-                    </a>
-                @endif
 
-                @if (Route::has('participacoes.index'))
-                    <a href="{{ route('participacoes.index') }}"
-                        class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all {{ request()->routeIs('participacoes.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
-                        </svg>
-                        <span x-show="openSidebar" class="ml-2">Participações</span>
-                    </a>
-                @endif
-            </div>
-        </div>
+
     </nav>
 
     <!-- RODAPÉ: Sair -->

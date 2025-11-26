@@ -107,6 +107,7 @@
                         <th class="px-3 py-2 text-right">Compras (R$)</th>
                         <th class="px-3 py-2 text-right">Ticket Médio (R$)</th>
                         <th class="px-3 py-2 text-right">Origem</th>
+                        <th class="px-3 py-2 text-right"> Indicador </th>
                         <th class="px-3 py-2 text-right">Ações</th>
                     </tr>
                 </thead>
@@ -130,7 +131,6 @@
                             </td>
                             <td class="px-3 py-2 font-medium text-gray-800">{{ $cliente->nome }}</td>
                             <td class="px-3 py-2 text-gray-700">{{ $cliente->email ?? '—' }}</td>
-                            {{-- corrigido: campo whatsapp minúsculo --}}
                             <td class="px-3 py-2 text-gray-700">
                                 @if ($cliente->whatsapp && $cliente->whatsapp_link)
                                     <a href="{{ $cliente->whatsapp_link }}" target="_blank"
@@ -141,8 +141,13 @@
                                 @else
                                     —
                                 @endif
+                                @if ($cliente->whatsapp_indicacao_link)
+                                    <a href="{{ $cliente->whatsapp_indicacao_link }}" target="_blank"
+                                        class="inline-flex items-center px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 mt-1">
+                                        🔗 link de indicação
+                                    </a>
+                                @endif
                             </td>
-
 
                             {{-- MIX (qtde de itens diferentes comprados) --}}
                             <td class="px-3 py-2 text-right text-gray-800">
@@ -162,6 +167,16 @@
                             {{-- Origem --}}
                             <td class="px-4 py-2 text-right text-gray-700">
                                 {{ $cliente->origem_cadastro ?? '—' }}
+                            </td>
+                            <td class="px-3 py-2 text-sm text-gray-700">
+                                @if ($cliente->indicador_id == 1)
+                                    ID-1 (Padrão)
+                                @else
+                                    ID-{{ $cliente->indicador_id }}
+                                    @if (!empty($cliente->indicador))
+                                        – {{ $cliente->indicador->nome }}
+                                    @endif
+                                @endif
                             </td>
 
                             {{-- bloco de ações (com ícones) --}}

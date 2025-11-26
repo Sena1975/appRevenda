@@ -16,16 +16,22 @@ class CampanhaController extends Controller
         return view('campanhas.index', compact('campanhas')); // opcional agora
     }
 
-    public function create()
-    {
-        $tipos = CampanhaTipo::orderBy('descricao')->get();
-        $produtos = Produto::orderBy('nome')->get(['id','nome','codfabnumero']); // para eventual brinde
-        return view('campanhas.create', compact('tipos','produtos'));
-    }
+public function create()
+{
+    $tipos = CampanhaTipo::orderBy('descricao')->get();
+    $produtos = Produto::orderBy('nome')->get(['id','nome','codfabnumero']); // para eventual brinde
+    return view('campanhas.create', compact('tipos','produtos'));
+}
 
     public function store(CampanhaRequest $request)
     {
         $dados = $request->validated();
+
+        $dados['ativa'] = $request->boolean('ativa');
+        $dados['cumulativa'] = $request->boolean('cumulativa');
+        $dados['aplicacao_automatica'] = $request->boolean('aplicacao_automatica');
+        $dados['acumulativa_por_valor'] = $request->boolean('acumulativa_por_valor');
+        $dados['acumulativa_por_quantidade'] = $request->boolean('acumulativa_por_quantidade');
 
         // Ajuste de campos que podem vir vazios a depender do tipo
         if ((int)$dados['tipo_id'] === 1) {
