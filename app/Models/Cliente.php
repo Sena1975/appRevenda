@@ -40,6 +40,19 @@ class Cliente extends Model
         'data_nascimento' => 'date',
     ];
 
+    // app/Models/Cliente.php
+
+    public function getFotoUrlAttribute()
+    {
+        // Se tiver caminho de foto gravado, usa storage
+        if (!empty($this->foto)) {
+            return asset('storage/' . ltrim($this->foto, '/'));
+        }
+
+        // Se não tiver foto, usa avatar padrão em public/images
+        return asset('images/avatar-cliente.png'); // ou .svg, veja o nome certo aí
+    }
+
 
     // Garante e-mail em minúsculas e sem espaços
     public function setEmailAttribute($value)

@@ -118,17 +118,14 @@
                         @endphp
                         <tr
                             class="border-t hover:bg-gray-50 {{ $isPublic ? 'bg-blue-50 border-l-4 border-blue-500' : '' }}">
+
                             <td class="px-3 py-2">
-                                @if ($cliente->foto && Storage::exists('public/' . $cliente->foto))
-                                    <img src="{{ asset('storage/' . $cliente->foto) }}"
-                                        class="w-12 h-12 rounded-full object-cover border border-gray-300 shadow-sm"
-                                        alt="">
-                                @else
-                                    <img src="{{ asset('storage/clientes/default.png') }}"
-                                        class="w-12 h-12 rounded-full object-cover border border-gray-200 opacity-70"
-                                        alt="">
-                                @endif
+                                <img src="{{ $cliente->foto_url }}" alt="Foto de {{ $cliente->nome }}"
+                                    class="h-10 w-10 rounded-full object-cover border border-gray-300">
                             </td>
+
+
+
                             <td class="px-3 py-2 font-medium text-gray-800">{{ $cliente->nome }}</td>
                             <td class="px-3 py-2 text-gray-700">{{ $cliente->email ?? '—' }}</td>
                             <td class="px-3 py-2 text-gray-700">
