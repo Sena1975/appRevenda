@@ -18,6 +18,7 @@ class BotConversaService
         $this->client = new Client([
             'base_uri' => rtrim(config('services.botconversa.base_url'), '/') . '/',
             'timeout'  => 15,
+            'http_errors' => false,
         ]);
     }
 
@@ -93,9 +94,18 @@ class BotConversaService
                 ],
             ]);
 
+
+            if ($resp->getStatusCode() === 400) {
+                Log::info('BotConversa: get_by_phone 404 (assinante não encontrado)', [
+                    'telefone' => $phone,
+                ]);
+                return null;
+            }
+
             if ($resp->getStatusCode() !== 200) {
                 Log::info('BotConversa: get_by_phone status != 200', [
                     'status' => $resp->getStatusCode(),
+                    'telefone' => $phone,
                     'body'   => (string) $resp->getBody(),
                 ]);
                 return null;
