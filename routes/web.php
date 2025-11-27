@@ -95,6 +95,9 @@ Route::middleware(['auth'])->group(function () {
             ->header('Content-Type', 'image/png')
             ->header('Content-Disposition', 'inline; filename="qrcode-cadastro-cliente.png"');
     })->name('clientes.qrcode.png');
+
+    Route::get('/clientes/{cliente}/indicador-info', [ClienteController::class, 'indicadorInfo'])
+        ->name('clientes.indicador.info');
     /*
     |--------------------------------------------------------------------------
     | DASHBOARD
@@ -140,7 +143,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/clientes/mesclar', [ClienteController::class, 'mergeStore'])
         ->name('clientes.merge.store');
-        
+
     Route::resource('clientes', ClienteController::class);
 
     Route::get('tabelapreco/importar', [TabelaPrecoController::class, 'formImport'])
@@ -180,21 +183,20 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::resource('vendas', PedidoVendaController::class);
     Route::get('vendas/{id}/exportar', [PedidoVendaController::class, 'exportar'])->name('vendas.exportar');
-    Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');
     Route::post('/vendas/{id}/cancelar', [PedidoVendaController::class, 'cancelar'])
         ->name('vendas.cancelar');
-    Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
-        ->name('vendas.confirmarEntrega');
+    // Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');
+    Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])->name('vendas.confirmarEntrega');
     /*
     |--------------------------------------------------------------------------
     | CAMPANHA – INDICAÇÕES
     |--------------------------------------------------------------------------
     */
-    Route::get('/indicacoes', [IndicacaoController::class, 'index'])
-        ->name('indicacoes.index');
 
-    Route::post('/indicacoes/{indicacao}/pagar', [IndicacaoController::class, 'pagar'])
-        ->name('indicacoes.pagar');
+    Route::get('/indicacoes', [IndicacaoController::class, 'index'])->name('indicacoes.index');
+    Route::post('/indicacoes/{id}/pagar', [IndicacaoController::class, 'pagar'])->name('indicacoes.pagar');
+    // Route::post('/indicacoes/{indicacao}/pagar', [IndicacaoController::class, 'pagar'])->name('indicacoes.pagar');
+
 
     /*
     |--------------------------------------------------------------------------
@@ -326,6 +328,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/aniversariantes/{mes}/json', [AniversarianteController::class, 'listarJson'])
         ->whereNumber('mes')
         ->name('aniversariantes.json');
+
+    // routes/web.php
+    Route::get('/teste-whatsapp', function (\App\Services\Whatsapp\BotConversaService $whatsapp) {
+        $telefone = '557196720776'; 
+        $mensagem = "Teste de BotConversa via appRevenda\nPedido #123\nValor: R$ 50,00";
+
+        $ok = $whatsapp->enviarParaTelefone($telefone, $mensagem, 'Carlos Sena');
+
+        dd(['enviado' => $ok]);
+    });
 
     /*
     |--------------------------------------------------------------------------

@@ -13,7 +13,7 @@ class CampanhaProduto extends Model
      * Nome da tabela no banco.
      * Ajuste aqui se o nome estiver diferente.
      */
-    protected $table = 'appcampanhaproduto';
+    protected $table = 'appcampanha_produto';
 
     /**
      * Campos que podem ser preenchidos em massa (create/update).

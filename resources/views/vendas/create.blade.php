@@ -42,7 +42,17 @@
                                 class="w-full border-gray-300 rounded-md shadow-sm cliente-select" required>
                                 <option value="">Selecione...</option>
                                 @foreach ($clientes ?? [] as $cliente)
-                                    <option value="{{ $cliente->id }}" @selected(old('cliente_id') == $cliente->id)>
+                                    @php
+                                        $indicadorId = (int) ($cliente->indicador_id ?? 1);
+                                        $indicadorTexto =
+                                            $indicadorId === 1
+                                                ? 'ID-1 (Vendedor padrão / sem indicação)'
+                                                : 'ID-' . $indicadorId . ' (cliente indicado)';
+                                    @endphp
+                                    <option value="{{ $cliente->id }}"
+                                        data-indicador-id="{{ $indicadorId }}"
+                                        data-indicador-text="{{ $indicadorTexto }}"
+                                        @selected(old('cliente_id') == $cliente->id)>
                                         {{ $cliente->nome ?? ($cliente->nomecompleto ?? $cliente->razaosocial) }}
                                     </option>
                                 @endforeach
@@ -58,11 +68,18 @@
                         </div>
                     </div>
 
-                    <p class="mt-1 text-xs text-gray-500">
-                        Não achou o cliente? Clique em <strong>+ Novo</strong> para cadastrar em outra aba e depois
-                        pesquise o nome aqui.
-                    </p>
+                
+
+                                        {{-- Info do indicador --}}
+                <div id="indicador-wrapper"
+                    class="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded p-2">
+                    <span class="font-semibold">Indicador:</span>
+                    <span id="indicador-text">Selecione um cliente para ver o indicador.</span>
                 </div>
+                    
+                </div>
+
+
 
                 {{-- Revendedora --}}
                 <div>
@@ -70,7 +87,8 @@
                     <select name="revendedora_id" class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Selecione...</option>
                         @foreach ($revendedoras ?? [] as $rev)
-                            <option value="{{ $rev->id }}" @selected(old('revendedora_id', $revendedoraPadraoId) == $rev->id)>
+                            <option value="{{ $rev->id }}"
+                                @selected(old('revendedora_id', $revendedoraPadraoId) == $rev->id)>
                                 {{ $rev->nome }}
                             </option>
                         @endforeach
@@ -80,7 +98,8 @@
                 {{-- Data Venda --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data da Venda</label>
-                    <input type="date" name="data_pedido" value="{{ old('data_pedido', now()->toDateString()) }}"
+                    <input type="date" name="data_pedido"
+                        value="{{ old('data_pedido', now()->toDateString()) }}"
                         class="w-full border-gray-300 rounded-md shadow-sm" required>
                 </div>
 
@@ -118,7 +137,8 @@
                 {{-- Observação --}}
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Observação</label>
-                    <textarea name="observacao" rows="2" class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
+                    <textarea name="observacao" rows="2"
+                        class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
                 </div>
             </div>
 
@@ -133,7 +153,8 @@
                     O sistema vai identificar os itens e preencher a tabela abaixo.
                 </p>
 
-                <textarea id="textoWhatsapp" rows="5" class="w-full border-gray-300 rounded-md shadow-sm text-sm mb-3"
+                <textarea id="textoWhatsapp" rows="5"
+                    class="w-full border-gray-300 rounded-md shadow-sm text-sm mb-3"
                     placeholder="Cole o texto do pedido aqui..."></textarea>
 
                 <div class="flex items-center justify-between">
@@ -312,6 +333,35 @@
                 placeholder: 'Selecione ou digite o nome do cliente...',
                 width: '100%'
             });
+
+            // --------- Indicador do cliente (campanha de indicação) ---------
+            const indicadorTextEl = document.getElementById('indicador-text');
+            const clienteSelectEl = document.getElementById('cliente_id');
+
+            function atualizarIndicadorSelect() {
+                if (!clienteSelectEl || !indicadorTextEl) return;
+
+                const opt = clienteSelectEl.options[clienteSelectEl.selectedIndex];
+                if (!opt || !opt.dataset) {
+                    indicadorTextEl.textContent = 'Selecione um cliente para ver o indicador.';
+                    return;
+                }
+
+                const texto = opt.dataset.indicadorText || 'ID-1 (Vendedor padrão / sem indicação)';
+                indicadorTextEl.textContent = texto;
+            }
+
+            // Usa jQuery porque o Select2 dispara change com .trigger('change')
+            if (clienteSelectEl) {
+                $('#cliente_id').on('change', function() {
+                    atualizarIndicadorSelect();
+                });
+
+                // Se já tiver cliente selecionado (ex: após validação), atualiza ao carregar
+                if (clienteSelectEl.value) {
+                    atualizarIndicadorSelect();
+                }
+            }
 
             function toNumber(val) {
                 return parseFloat((val || '0').toString().replace(',', '.')) || 0;
@@ -528,17 +578,13 @@
                                 },
                                 success: function(data) {
                                     if (!data || !data.length) {
-                                        console.warn(
-                                            'Produto não encontrado para código',
-                                            codigo);
+                                        console.warn('Produto não encontrado para código', codigo);
                                         return;
                                     }
 
-                                    let prod = data.find(p => p.codigo_fabrica ==
-                                        codigo) || data[0];
+                                    let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
 
-                                    const option = new Option(prod.text, prod.id,
-                                        true, true);
+                                    const option = new Option(prod.text, prod.id, true, true);
                                     $select.append(option).trigger('change');
 
                                     $select.trigger({
@@ -548,17 +594,14 @@
                                         }
                                     });
 
-                                    novaLinha.querySelector('.input-quantidade')
-                                        .value = qtd;
+                                    novaLinha.querySelector('.input-quantidade').value = qtd;
 
                                     if (!isNaN(pontos) && pontos > 0) {
-                                        novaLinha.querySelector('.input-pontos')
-                                            .value = pontos;
+                                        novaLinha.querySelector('.input-pontos').value = pontos;
                                     }
 
                                     if (!isNaN(precoVenda) && precoVenda > 0) {
-                                        novaLinha.querySelector(
-                                                '.input-preco-venda').value =
+                                        novaLinha.querySelector('.input-preco-venda').value =
                                             precoVenda.toFixed(2);
                                     }
 
@@ -665,12 +708,12 @@
                                         let linhasTxt = [];
                                         linhasTxt.push(
                                             'Itens não importados (produto não encontrado no sistema)'
-                                            );
+                                        );
                                         linhasTxt.push('');
 
                                         missingItems.forEach(mi => {
-                                            const precoTxt = (!isNaN(mi.preco_unitario) && mi
-                                                    .preco_unitario > 0) ?
+                                            const precoTxt = (!isNaN(mi.preco_unitario) &&
+                                                    mi.preco_unitario > 0) ?
                                                 mi.preco_unitario.toFixed(2) :
                                                 '';
                                             linhasTxt.push(
@@ -696,7 +739,8 @@
                                         URL.revokeObjectURL(url);
 
                                         alert(
-                                            `${missingItems.length} item(ns) não foram importados. Um arquivo TXT foi baixado com a lista.`);
+                                            `${missingItems.length} item(ns) não foram importados. Um arquivo TXT foi baixado com a lista.`
+                                        );
                                     }
                                 }
                             }
@@ -739,22 +783,16 @@
                                             missingItems.push({
                                                 codigo: codigo,
                                                 quantidade: qtd,
-                                                preco_unitario: isNaN(
-                                                        precoV) ? 0 :
-                                                    precoV,
-                                                descricao: item.descricao ||
-                                                    ''
+                                                preco_unitario: isNaN(precoV) ? 0 : precoV,
+                                                descricao: item.descricao || ''
                                             });
 
                                             return;
                                         }
 
-                                        let prod = data.find(p => p
-                                            .codigo_fabrica == codigo) || data[
-                                            0];
+                                        let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
 
-                                        const option = new Option(prod.text, prod
-                                            .id, true, true);
+                                        const option = new Option(prod.text, prod.id, true, true);
                                         $select.append(option).trigger('change');
 
                                         // dispara o select2:select para preencher preço/pontos/custo
@@ -766,13 +804,11 @@
                                         });
 
                                         // aplica quantidade
-                                        linhaAlvo.querySelector('.input-quantidade')
-                                            .value = qtd;
+                                        linhaAlvo.querySelector('.input-quantidade').value = qtd;
 
                                         // se veio preço no texto, sobrescreve
                                         if (!isNaN(precoV) && precoV > 0) {
-                                            linhaAlvo.querySelector(
-                                                    '.input-preco-venda').value =
+                                            linhaAlvo.querySelector('.input-preco-venda').value =
                                                 precoV.toFixed(2);
                                         }
 
@@ -784,8 +820,7 @@
                                         missingItems.push({
                                             codigo: codigo,
                                             quantidade: qtd,
-                                            preco_unitario: isNaN(precoV) ?
-                                                0 : precoV,
+                                            preco_unitario: isNaN(precoV) ? 0 : precoV,
                                             descricao: item.descricao || ''
                                         });
 
@@ -838,9 +873,9 @@
                     planos.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p.id;
-                        opt.textContent = p.parcelas > 0 ?
-                            `${p.descricao} (${p.parcelas}x)` :
-                            p.descricao;
+                        opt.textContent = p.parcelas > 0
+                            ? `${p.descricao} (${p.parcelas}x)`
+                            : p.descricao;
                         opt.dataset.codigo = p.codigo ?? '';
                         opt.dataset.parcelas = p.parcelas ?? 0;
                         opt.dataset.prazo1 = p.prazo1 ?? 0;

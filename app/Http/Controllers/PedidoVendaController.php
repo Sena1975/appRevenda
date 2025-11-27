@@ -19,23 +19,31 @@ use App\Models\FormaPagamento;
 use App\Models\PlanoPagamento;
 use App\Models\Produto;
 use App\Models\ViewProduto;
+use App\Models\Campanha;
 use App\Models\Indicacao;
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
 use App\Services\CampaignEvaluatorService;
 use App\Services\Importacao\PedidoWhatsappParser;
+use App\Services\Whatsapp\BotConversaService;
+
 use Illuminate\Http\JsonResponse;
 
 class PedidoVendaController extends Controller
 {
     private EstoqueService $estoque;
     private ContasReceberService $cr;
+    private BotConversaService $whatsapp;
 
-    public function __construct(EstoqueService $estoque, ContasReceberService $cr)
-    {
+    public function __construct(
+        EstoqueService $estoque,
+        ContasReceberService $cr,
+        BotConversaService $whatsapp
+    ) {
         $this->estoque = $estoque;
         $this->cr      = $cr;
+        $this->whatsapp = $whatsapp;
     }
 
     /**
@@ -58,6 +66,12 @@ class PedidoVendaController extends Controller
 
         return view('vendas.index', compact('pedidos'));
     }
+
+    public function show($id)
+    {
+        return redirect()->route('vendas.edit', $id);
+    }
+
     private function normalizeMovEnums(string $tipo, ?string $status): array
     {
         // normaliza tipo_mov
@@ -102,7 +116,7 @@ class PedidoVendaController extends Controller
      */
     public function create()
     {
-        $clientes     = Cliente::orderBy('nome')->get(['id', 'nome']);
+        $clientes     = Cliente::orderBy('nome')->get(['id', 'nome', 'indicador_id']);
         $revendedoras = Revendedora::orderBy('nome')->get(['id', 'nome']);
         $formas       = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
         $produtos     = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
@@ -495,7 +509,7 @@ class PedidoVendaController extends Controller
             // Não cria nova indicação aqui, só ajusta valores se já existir e estiver pendente
             $pedido->refresh();
             $this->atualizarIndicacaoParaPedido($pedido, false);
-            
+
             DB::commit();
             return redirect()->route('vendas.index')->with('success', 'Pedido atualizado, reservas/parcelas ajustadas e campanhas reavaliadas.');
         } catch (\Throwable $e) {
@@ -601,9 +615,18 @@ class PedidoVendaController extends Controller
         $TAB_MOV      = 'appmovestoque';
         $TAB_CR       = 'appcontasreceber';
 
-        // Nome da coluna de RESERVA no estoque:
         $COL_RESERVA  = 'reservado';
         $COL_DISP     = 'disponivel';
+
+        // 🔴 1) Bloqueia cancelamento se a indicação já foi paga
+        $indicacaoJaPaga = Indicacao::where('pedido_id', $id)
+            ->where('status', 'pago')
+            ->exists();
+
+        if ($indicacaoJaPaga) {
+            return back()->with('error', 'Não é possível cancelar este pedido, pois o prêmio de indicação já foi pago.');
+        }
+
         DB::transaction(function () use ($id, $data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $TAB_CR, $COL_RESERVA, $COL_DISP) {
 
             // 1) Lock do pedido
@@ -616,31 +639,25 @@ class PedidoVendaController extends Controller
             // 2) Itens do pedido
             $itens = DB::table($TAB_ITENS)->where('pedido_id', $id)->get();
 
-            // 3) Para cada item, ajustar estoque conforme STATUS atual
+            // 3) Ajustes de estoque (seu código atual aqui...)
             foreach ($itens as $it) {
-                // Lock do registro de estoque deste produto
                 $estq = DB::table($TAB_ESTOQUE)
                     ->lockForUpdate()
                     ->where('codfabnumero', $it->codfabnumero)
                     ->first();
 
-                // Se não houver registro de estoque, ignore este item
                 if (!$estq) continue;
 
                 $qtd = (int) $it->quantidade;
 
                 if (in_array(mb_strtoupper($pedido->status), ['PENDENTE', 'ABERTO', 'RESERVADO'])) {
-                    // 3A) Pedido ainda não entregue: apenas remove a RESERVA
-                    // calcula nova reserva (não deixa negativo)
+
                     $valorReservaAtual = (int) ($estq->{$COL_RESERVA} ?? 0);
                     $novaReserva = max(0, $valorReservaAtual - $qtd);
 
                     DB::table($TAB_ESTOQUE)
                         ->where('codfabnumero', $it->codfabnumero)
                         ->update([$COL_RESERVA => $novaReserva]);
-
-                    // movimentação: ENTRADA por CANCELAMENTO (origem VENDA) -Cancelar PENDENTE/ABERTO/RESERVADO → liberar reserva
-                    [$tipoOk, $statusOk] = $this->normalizeMovEnums('RESERVA_ENTRADA', 'CANCELADO');
 
                     $mov = [
                         'produto_id'   => $it->produto_id,
@@ -654,8 +671,6 @@ class PedidoVendaController extends Controller
                     ];
                     $this->safeInsertMov($TAB_MOV, $mov, $id);
                 } elseif (mb_strtoupper($pedido->status) === 'ENTREGUE') {
-                    // === Pedido ENTREGUE: devolver ao estoque disponível ===
-                    // escolha a melhor coluna base gravável (prioridade: estoque_gerencial → fisico → ... )
                     $colBase = $this->firstWritableColumn($TAB_ESTOQUE, [
                         'estoque_gerencial',
                         'fisico',
@@ -670,12 +685,8 @@ class PedidoVendaController extends Controller
                         DB::table($TAB_ESTOQUE)
                             ->where('codfabnumero', $it->codfabnumero)
                             ->increment($colBase, $qtd);
-                    } else {
-                        // Não achou coluna gravável (ex.: tudo gerado) -> apenas registra movimento
-                        // (opcional: log/alert para revisar schema)
                     }
 
-                    // movimento: ENTRADA / CANCELADO (origem VENDA)
                     $mov = [
                         'produto_id'   => $it->produto_id,
                         'codfabnumero' => $it->codfabnumero,
@@ -690,28 +701,49 @@ class PedidoVendaController extends Controller
                 }
             }
 
-            // 4) Pedido -> CANCELADO (sem updated_at)
+            // 4) Pedido -> CANCELADO
             DB::table($TAB_PEDIDO)->where('id', $id)->update([
                 'status'           => 'CANCELADO',
                 'obs_cancelamento' => $data['observacao'],
                 'canceled_at'      => now(),
             ]);
 
-            // 5) Títulos (CR) -> CANCELADO (mesma observação)
+            // 5) Títulos (CR) -> CANCELADO
             DB::table($TAB_CR)->where('pedido_id', $id)->update([
                 'status'           => 'CANCELADO',
                 'obs_cancelamento' => $data['observacao'],
                 'canceled_at'      => now(),
             ]);
+
+            // 6) 🔁 Cancelar indicação vinculada (se ainda não estiver paga)
+            Indicacao::where('pedido_id', $id)
+                ->where('status', '!=', 'pago')
+                ->update([
+                    'status'        => 'cancelado',
+                    'valor_premio'  => 0,          // opcional: zerar o prêmio
+                    'updated_at'    => now(),
+                ]);
         });
 
-        return back()->with('success', 'Pedido cancelado, estoque/títulos ajustados.');
+        return back()->with('success', 'Pedido cancelado, estoque/títulos e indicação ajustados.');
     }
 
     public function destroy($id)
     {
         DB::beginTransaction();
+
         try {
+            // 🔴 1) Se tiver indicação paga, não deixa excluir
+            $indicacaoJaPaga = Indicacao::where('pedido_id', $id)
+                ->where('status', 'pago')
+                ->exists();
+
+            if ($indicacaoJaPaga) {
+                DB::rollBack();
+                return redirect()->route('vendas.index')
+                    ->with('error', 'Não é possível excluir este pedido, pois o prêmio de indicação já foi pago.');
+            }
+
             $pedido = PedidoVenda::with('itens.produto')->findOrFail($id);
 
             if (strtoupper($pedido->status) === 'PENDENTE') {
@@ -719,6 +751,11 @@ class PedidoVendaController extends Controller
             }
 
             $this->cr->cancelarAbertasPorPedido($pedido->id);
+
+            // 🔁 2) Apaga indicação associada, se não estiver paga
+            Indicacao::where('pedido_id', $pedido->id)
+                ->where('status', '!=', 'pago')
+                ->delete();
 
             ItemVenda::where('pedido_id', $pedido->id)->delete();
             $pedido->delete();
@@ -730,6 +767,7 @@ class PedidoVendaController extends Controller
             return redirect()->route('vendas.index')->with('error', 'Erro ao excluir: ' . $e->getMessage());
         }
     }
+
     private function firstExistingColumn(string $table, array $candidates): ?string
     {
         foreach ($candidates as $c) {
@@ -852,6 +890,38 @@ class PedidoVendaController extends Controller
         }
     }
 
+    // Retorna true se ESTE pedido for a primeira compra concluída de um cliente indicado (indicador_id != 1).
+    private function ehPrimeiraCompraIndicada(PedidoVenda $pedido): bool
+    {
+        $indicadorId = (int) ($pedido->indicador_id ?? 1);
+
+        // Se o indicador for 1, não entra na campanha
+        if ($indicadorId === 1) {
+            return false;
+        }
+
+        // Se já existe registro de indicação pra esse cliente,
+        // significa que a 1ª compra já foi processada antes
+        $jaTemIndicacao = Indicacao::where('indicado_id', $pedido->cliente_id)->exists();
+        if ($jaTemIndicacao) {
+            return false;
+        }
+
+        // Se já existe outro pedido ENTREGUE desse cliente,
+        // também não é mais a primeira compra
+        $jaTemPedidoEntregue = PedidoVenda::where('cliente_id', $pedido->cliente_id)
+            ->where('status', 'ENTREGUE')
+            ->where('id', '!=', $pedido->id)
+            ->exists();
+
+        if ($jaTemPedidoEntregue) {
+            return false;
+        }
+
+        // Chegou aqui: é cliente indicado, sem indicação anterior e sem outra compra entregue
+        return true;
+    }
+
     /**
      * Cria/atualiza o registro em appindicacao para este pedido.
      * - Só atua quando indicador_id != 1
@@ -878,8 +948,13 @@ class PedidoVendaController extends Controller
             return;
         }
 
-        // Busca indicação existente para este cliente indicado
-        $indicacao = Indicacao::where('indicado_id', $pedido->cliente_id)->first();
+        // Campanha de indicação (se existir)
+        $campanhaIndicacaoId = $this->getCampanhaIndicacaoId();
+
+        // Busca indicação EXISTENTE para ESTE cliente E ESTE pedido
+        $indicacao = Indicacao::where('indicado_id', $pedido->cliente_id)
+            ->where('pedido_id', $pedido->id)
+            ->first();
 
         // Se não existe e não é para criar, sai
         if (!$indicacao && !$criarSeNaoExistir) {
@@ -891,6 +966,8 @@ class PedidoVendaController extends Controller
             $indicacao = new Indicacao();
             $indicacao->indicado_id  = $pedido->cliente_id;
             $indicacao->indicador_id = $indicadorId;
+            $indicacao->pedido_id    = $pedido->id;
+            $indicacao->status       = 'pendente';
         }
 
         // Se já está pago, não recalcula (já foi pago o PIX)
@@ -898,95 +975,161 @@ class PedidoVendaController extends Controller
             return;
         }
 
-        $indicacao->pedido_id    = $pedido->id;
+        // Preenche/atualiza valores
         $indicacao->valor_pedido = $valorPedido;
         $indicacao->valor_premio = $this->calcularPremioIndicacao($valorPedido);
-        $indicacao->status       = 'pendente'; // sempre volta pra pendente até você pagar
+
+        // Amarra à campanha de indicação, se existir
+        if ($campanhaIndicacaoId && !$indicacao->campanha_id) {
+            $indicacao->campanha_id = $campanhaIndicacaoId;
+        }
 
         $indicacao->save();
     }
 
-    public function confirmarEntrega(int $id)
-    {
-        // Busca o pedido com itens e produtos
-        $pedido = PedidoVenda::with('itens.produto')->findOrFail($id);
+    /**
+     * Monta e envia o recibo de entrega via WhatsApp usando BotConversa.
+     */
+ private function enviarReciboWhatsApp(PedidoVenda $pedido): void
+{
+    // Garante cliente carregado
+    $pedido->loadMissing('cliente');
 
-        // Só permite confirmar se ainda estiver pendente/aberto/reservado
-        $statusAtual = strtoupper($pedido->status ?? '');
-        if (!in_array($statusAtual, ['PENDENTE', 'ABERTO', 'RESERVADO'])) {
-            return back()->with('info', 'Este pedido não está pendente para confirmação.');
-        }
-
-        DB::beginTransaction();
-        try {
-            // 1) Baixa de estoque
-            $this->estoque->confirmarSaidaVenda($pedido);
-
-            // 2) Ajusta pedido para ENTREGUE
-            $pedido->status = 'ENTREGUE';
-            $pedido->save();
-
-            // 🔹🔹🔹 AQUI entra a lógica de indicação 🔹🔹🔹
-            // Somente incluir na campanha de indicação se:
-            // - indicador_id != 1
-            // - ainda não existir indicação para este cliente (primeiro pedido)
-
-            $indicadorId = (int) ($pedido->indicador_id ?? 1);
-
-            if ($indicadorId !== 1) {
-                // verifica se já existe indicação para este cliente
-                $jaTemIndicacao = Indicacao::where('indicado_id', $pedido->cliente_id)->exists();
-
-                if (!$jaTemIndicacao) {
-                    // 5% de desconto sobre o valor_total da compra
-                    $valorTotal         = (float) ($pedido->valor_total ?? 0);
-                    $descontoIndicacao  = round($valorTotal * 0.05, 2);
-                    $descontoAtual      = (float) ($pedido->valor_desconto ?? 0);
-                    $novoDesconto       = $descontoAtual + $descontoIndicacao;
-                    $novoValorLiquido   = max(0, $valorTotal - $novoDesconto);
-
-                    // Atualiza pedido com o novo desconto e valor líquido
-                    $pedido->valor_desconto = $novoDesconto;
-                    $pedido->valor_liquido  = $novoValorLiquido;
-
-                    // Marca a campanha de indicação no pedido, se existir
-                    $campanhaIndicacaoId = $this->getCampanhaIndicacaoId();
-                    if ($campanhaIndicacaoId && !$pedido->campanha_id) {
-                        $pedido->campanha_id = $campanhaIndicacaoId;
-                    }
-
-                    $pedido->save();
-                }
-            }
-
-            // Atualiza/cria registro em appindicacao (Etapa B)
-            // Aqui podemos criar caso ainda não exista (primeiro pedido)
-            $pedido->refresh(); // garante que estamos com os valores atualizados
-            $this->atualizarIndicacaoParaPedido($pedido, true);
-
-            // 3) Gera Contas a Receber se ainda não existirem para esse pedido
-            $temCr = DB::table('appcontasreceber')
-                ->where('pedido_id', $pedido->id)
-                ->exists();
-
-            if (!$temCr) {
-                $this->cr->gerarParaPedido($pedido);
-            }
-
-            // 4) Reavalia campanhas (mesmo padrão dos outros fluxos)
-            $pedido->load('itens');
-            $service   = app(CampaignEvaluatorService::class);
-            $campanhas = $service->reavaliarPedido($pedido);
-            session()->flash('campanhas', $campanhas);
-
-            DB::commit();
-
-            return redirect()
-                ->route('vendas.index')
-                ->with('success', 'Entrega confirmada, estoque baixado e contas a receber geradas.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->with('error', 'Falha ao confirmar entrega: ' . $e->getMessage());
-        }
+    $cliente = $pedido->cliente;
+    if (!$cliente) {
+        return;
     }
+
+    // Ajuste para o campo correto na sua tabela de clientes
+    $telefone = $cliente->whatsapp
+        ?? $cliente->telefone
+        ?? $cliente->celular
+        ?? null;
+
+    if (!$telefone) {
+        Log::info('Recibo WhatsApp não enviado: cliente sem telefone', [
+            'pedido_id'  => $pedido->id,
+            'cliente_id' => $cliente->id ?? null,
+        ]);
+        return;
+    }
+
+    $valor   = (float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0);
+    $dataPed = $pedido->data_pedido
+        ? \Carbon\Carbon::parse($pedido->data_pedido)->format('d/m/Y')
+        : now()->format('d/m/Y');
+
+    $mensagem = "Olá {$cliente->nome}!\n\n"
+        . "Recebemos a confirmação da ENTREGA do seu pedido #{$pedido->id}.\n"
+        . "Data do pedido: {$dataPed}\n"
+        . "Valor final: R$ " . number_format($valor, 2, ',', '.') . "\n\n";
+
+    if (!empty($pedido->observacao)) {
+        $mensagem .= "Obs.: {$pedido->observacao}\n\n";
+    }
+
+    $mensagem .= "Qualquer dúvida, estou à disposição 😊";
+
+    // 👉 Aqui agora funciona, porque $this->whatsapp foi injetado no construtor
+    $ok = $this->whatsapp->enviarParaTelefone($telefone, $mensagem, $cliente->nome);
+
+    if (!$ok) {
+        Log::warning('Falha ao enviar recibo de entrega no WhatsApp', [
+            'pedido_id'  => $pedido->id,
+            'cliente_id' => $cliente->id ?? null,
+            'telefone'   => $telefone,
+        ]);
+    }
+}
+
+   public function confirmarEntrega(int $id)
+{
+    $pedido = PedidoVenda::with('itens.produto', 'cliente')->findOrFail($id);
+
+    $statusAtual = strtoupper($pedido->status ?? '');
+    if (!in_array($statusAtual, ['PENDENTE', 'ABERTO', 'RESERVADO'])) {
+        return back()->with('info', 'Este pedido não está pendente para confirmação.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+        // 1) baixa estoque
+        $this->estoque->confirmarSaidaVenda($pedido);
+
+        // 2) marca como ENTREGUE
+        $pedido->status = 'ENTREGUE';
+        $pedido->save();
+
+        // 3) Descobre se este pedido é a PRIMEIRA COMPRA indicada
+        $primeiraCompraIndicada = $this->ehPrimeiraCompraIndicada($pedido);
+
+        // Se for a primeira compra de cliente indicado,
+        // aplica desconto de 5% e marca campanha de indicação
+        if ($primeiraCompraIndicada) {
+
+            $valorTotal        = (float) ($pedido->valor_total ?? 0);
+            $descontoIndicacao = round($valorTotal * 0.05, 2);
+
+            $descontoAtual     = (float) ($pedido->valor_desconto ?? 0);
+            $novoDesconto      = $descontoAtual + $descontoIndicacao;
+            $novoValorLiquido  = max(0, $valorTotal - $novoDesconto);
+
+            $pedido->valor_desconto = $novoDesconto;
+            $pedido->valor_liquido  = $novoValorLiquido;
+
+            // Observação explicando o desconto da campanha de indicação
+            $textoObs = 'Desconto de 5% referente à campanha de indicação.';
+            $obsAtual = trim((string) $pedido->observacao);
+
+            if ($obsAtual === '') {
+                $pedido->observacao = $textoObs;
+            } elseif (!str_contains(mb_strtolower($obsAtual), 'campanha de indicação')) {
+                $pedido->observacao = $obsAtual . ' | ' . $textoObs;
+            }
+
+            // pegar campanha de indicação
+            $campanhaIndicacaoId = $this->getCampanhaIndicacaoId();
+            if ($campanhaIndicacaoId && !$pedido->campanha_id) {
+                $pedido->campanha_id = $campanhaIndicacaoId;
+            }
+
+            $pedido->save();
+        }
+
+        // 4) Atualiza (ou cria) a indicação para ESTE pedido
+        $this->atualizarIndicacaoParaPedido($pedido, $primeiraCompraIndicada);
+
+        // 5) Gera Contas a Receber
+        $this->cr->gerarParaPedido($pedido);
+
+        // 6) Reavalia campanhas
+        $pedido->load('itens');
+        $service   = app(CampaignEvaluatorService::class);
+        $campanhas = $service->reavaliarPedido($pedido);
+        session()->flash('campanhas', $campanhas);
+
+        DB::commit();
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return back()->with('error', 'Falha ao confirmar entrega: ' . $e->getMessage());
+    }
+
+    // 7) 🔔 Envia recibo pelo WhatsApp FORA da transação
+    try {
+        // garante cliente carregado
+        $pedido->loadMissing('cliente');
+        $this->enviarReciboWhatsApp($pedido);
+    } catch (\Throwable $e) {
+        Log::warning('Erro ao enviar recibo WhatsApp após confirmação de entrega', [
+            'pedido_id' => $pedido->id,
+            'erro'      => $e->getMessage(),
+        ]);
+    }
+
+    return redirect()->route('vendas.index')
+        ->with('success', 'Entrega confirmada, CR gerado, campanhas/indicações processadas e recibo enviado pelo WhatsApp (quando possível).');
+}
+
 }

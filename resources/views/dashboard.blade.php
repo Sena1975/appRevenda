@@ -21,8 +21,10 @@
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-blue-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 11c1.657 0 3-1.79 3-4s-1.343-4-3-4-3 1.79-3 4 1.343 4 3 4zM8 11c1.657 0 3-1.79 3-4S9.657 3 8 3 5 4.79 5 7s1.343 4 3 4zm0 2c-2.67 0-8 1.34-8 4v2h10v-2c0-.74.2-1.43.55-2.06A9.08 9.08 0 008 13zm8 0c-.29 0-.61.02-.95.05 1.16.84 1.95 1.95 1.95 3.45v2h7v-2c0-2.66-5.33-4.5-8-4.5z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M16 11c1.657 0 3-1.79 3-4s-1.343-4-3-4-3 1.79-3 4 1.343 4 3 4zM8 11c1.657 0 3-1.79 3-4S9.657 3 8 3 5 4.79 5 7s1.343 4 3 4zm0 2c-2.67 0-8 1.34-8 4v2h10v-2c0-.74.2-1.43.55-2.06A9.08 9.08 0 008 13zm8 0c-.29 0-.61.02-.95.05 1.16.84 1.95 1.95 1.95 3.45v2h7v-2c0-2.66-5.33-4.5-8-4.5z" />
                         </svg>
                     </div>
                 </div>
@@ -41,8 +43,10 @@
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-green-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M21 7H3L2 9h20l-1-2zM3 11h18v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9zM16 4V2H8v2H3v2h18V4h-5z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-green-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M21 7H3L2 9h20l-1-2zM3 11h18v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9zM16 4V2H8v2H3v2h18V4h-5z" />
                         </svg>
                     </div>
                 </div>
@@ -54,15 +58,17 @@
                     <div>
                         <p class="text-sm text-gray-500">Valor do estoque</p>
                         <p class="text-3xl font-bold text-emerald-700 mt-1">
-                            R$ {{ number_format(($valorEstoque ?? 0), 2, ',', '.') }}
+                            R$ {{ number_format($valorEstoque ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-gray-500 mt-1">
                             Soma de (estoque x preço)
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-emerald-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zm1 17.93V19h-2v-.07A6.002 6.002 0 016 13h2a4 4 0 007.874-1H18a6.002 6.002 0 01-5 5.93zM11 5v.07A6.002 6.002 0 016 11h2a4 4 0 017.874 1H18a6.002 6.002 0 01-5-5.93V5h-2z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-emerald-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zm1 17.93V19h-2v-.07A6.002 6.002 0 016 13h2a4 4 0 007.874-1H18a6.002 6.002 0 01-5 5.93zM11 5v.07A6.002 6.002 0 016 11h2a4 4 0 017.874 1H18a6.002 6.002 0 01-5-5.93V5h-2z" />
                         </svg>
                     </div>
                 </div>
@@ -79,33 +85,70 @@
                         <p class="text-xs text-gray-500 mt-1">
                             Valor em aberto:
                             <span class="font-semibold text-gray-700">
-                                R$ {{ number_format(($valorAberto ?? 0), 2, ',', '.') }}
+                                R$ {{ number_format($valorAberto ?? 0, 2, ',', '.') }}
                             </span>
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-amber-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-amber-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 6v5.27l3.15 3.16-1.42 1.41L11 13V7h2z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-amber-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 6v5.27l3.15 3.16-1.42 1.41L11 13V7h2z" />
                         </svg>
+                    </div>
+                </div>
+            </div>
+            {{-- PRÊMIOS DE INDICAÇÃO (PIX) --}}
+            <div class="bg-white rounded-xl shadow-sm p-5 hover:shadow md:transition">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Prêmios de Indicação (PIX)</p>
+                        <p class="text-3xl font-bold text-sky-700 mt-1">
+                            R$
+                            {{ number_format(($valorPremiosPendentes ?? 0) + ($valorPremiosPagos ?? 0), 2, ',', '.') }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Pendente:
+                            <span class="font-semibold text-amber-700">
+                                R$ {{ number_format($valorPremiosPendentes ?? 0, 2, ',', '.') }}
+                            </span>
+                            &nbsp;·&nbsp;
+                            Pago:
+                            <span class="font-semibold text-emerald-700">
+                                R$ {{ number_format($valorPremiosPagos ?? 0, 2, ',', '.') }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="p-3 rounded-full bg-sky-50">
+
+                        <!-- Ícone de medalha (Medal) -->
+
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="h-7 w-7 text-indigo-600">
+                            <path
+                                d="M223.75 130.75L154.62 15.54A31.997 31.997 0 0 0 127.18 0H16.03C3.08 0-4.5 14.57 2.92 25.18l111.27 158.96c29.72-27.77 67.52-46.83 109.56-53.39zM495.97 0H384.82c-11.24 0-21.66 5.9-27.44 15.54l-69.13 115.21c42.04 6.56 79.84 25.62 109.56 53.38L509.08 25.18C516.5 14.57 508.92 0 495.97 0zM256 160c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176-78.8-176-176-176zm92.52 157.26l-37.93 36.96 8.97 52.22c1.6 9.36-8.26 16.51-16.65 12.09L256 393.88l-46.9 24.65c-8.4 4.45-18.25-2.74-16.65-12.09l8.97-52.22-37.93-36.96c-6.82-6.64-3.05-18.23 6.35-19.59l52.43-7.64 23.43-47.52c2.11-4.28 6.19-6.39 10.28-6.39 4.11 0 8.22 2.14 10.33 6.39l23.43 47.52 52.43 7.64c9.4 1.36 13.17 12.95 6.35 19.59z" />
+                        </svg>
+
                     </div>
                 </div>
             </div>
 
             {{-- VENDAS DO MÊS --}}
+
             <div class="bg-white rounded-xl shadow-sm p-5 hover:shadow md:transition">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Vendas no mês</p>
                         <p class="text-3xl font-bold text-emerald-700 mt-1">
-                            R$ {{ number_format(($faturamentoMes ?? 0), 2, ',', '.') }}
+                            R$ {{ number_format($faturamentoMes ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-gray-500 mt-1">
                             Pedidos: <span class="font-semibold">{{ $totVendasMes ?? 0 }}</span>
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-emerald-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M5 4h14l-1 14H6L5 4zm4 16a3 3 0 006 0H9z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-emerald-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M5 4h14l-1 14H6L5 4zm4 16a3 3 0 006 0H9z" />
                         </svg>
                     </div>
                 </div>
@@ -117,15 +160,16 @@
                     <div>
                         <p class="text-sm text-gray-500">Compras no mês</p>
                         <p class="text-3xl font-bold text-red-700 mt-1">
-                            R$ {{ number_format(($valorComprasMes ?? 0), 2, ',', '.') }}
+                            R$ {{ number_format($valorComprasMes ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-gray-500 mt-1">
                             Pedidos de compra: <span class="font-semibold">{{ $totComprasMes ?? 0 }}</span>
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-red-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 4h10l1 4H6l1-4zm-2 6h14l-1.5 9h-11L5 10z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-red-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M7 4h10l1 4H6l1-4zm-2 6h14l-1.5 9h-11L5 10z" />
                         </svg>
                     </div>
                 </div>
@@ -137,7 +181,7 @@
                     <div>
                         <p class="text-sm text-gray-500">Vendas Pendentes</p>
                         <p class="text-3xl font-bold text-purple-700 mt-1">
-                            R$ {{ number_format(($valorVendasPendentes ?? 0), 2, ',', '.') }}
+                            R$ {{ number_format($valorVendasPendentes ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-gray-500 mt-1">
                             Pedidos pendentes:
@@ -147,8 +191,9 @@
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-purple-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-purple-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 1a11 11 0 100 22 11 11 0 000-22zm1 6v5.27l3.15 3.16-1.42 1.41L11 13V7h2z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-purple-600" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path d="M12 1a11 11 0 100 22 11 11 0 000-22zm1 6v5.27l3.15 3.16-1.42 1.41L11 13V7h2z" />
                         </svg>
                     </div>
                 </div>
@@ -160,7 +205,7 @@
                     <div>
                         <p class="text-sm text-gray-500">Compras Pendentes</p>
                         <p class="text-3xl font-bold text-orange-700 mt-1">
-                            R$ {{ number_format(($valorComprasPendentes ?? 0), 2, ',', '.') }}
+                            R$ {{ number_format($valorComprasPendentes ?? 0, 2, ',', '.') }}
                         </p>
                         <p class="text-xs text-gray-500 mt-1">
                             Pedidos pendentes:
@@ -170,8 +215,10 @@
                         </p>
                     </div>
                     <div class="p-3 rounded-full bg-orange-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2 2 7v6c0 5.25 3.5 10.06 9 11 5.5-.94 9-5.75 9-11V7l-8-5zm0 4 5 2.5v1L12 7 7 9.5v-1L12 6zm0 4c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-orange-500" viewBox="0 0 24 24"
+                            fill="currentColor">
+                            <path
+                                d="M12 2 2 7v6c0 5.25 3.5 10.06 9 11 5.5-.94 9-5.75 9-11V7l-8-5zm0 4 5 2.5v1L12 7 7 9.5v-1L12 6zm0 4c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z" />
                         </svg>
                     </div>
                 </div>
@@ -190,7 +237,7 @@
                     Pedidos mais recentes cadastrados no sistema.
                 </p>
 
-                @if(($ultimasVendas ?? collect())->isEmpty())
+                @if (($ultimasVendas ?? collect())->isEmpty())
                     <p class="text-sm text-gray-500 mt-4">Nenhuma venda cadastrada.</p>
                 @else
                     <table class="w-full text-xs sm:text-sm mt-3">
@@ -208,7 +255,7 @@
                                         {{ \Carbon\Carbon::parse($venda->data_pedido)->format('d/m/Y') }}
                                     </td>
                                     <td class="py-1 text-right text-emerald-700">
-                                        R$ {{ number_format(($venda->valor_liquido ?? 0), 2, ',', '.') }}
+                                        R$ {{ number_format($venda->valor_liquido ?? 0, 2, ',', '.') }}
                                     </td>
                                     <td class="py-1 text-right text-gray-500">
                                         #{{ $venda->id }}
@@ -229,7 +276,7 @@
                     Pedidos de compra mais recentes.
                 </p>
 
-                @if(($ultimasCompras ?? collect())->isEmpty())
+                @if (($ultimasCompras ?? collect())->isEmpty())
                     <p class="text-sm text-gray-500 mt-4">Nenhuma compra cadastrada.</p>
                 @else
                     <table class="w-full text-xs sm:text-sm mt-3">
@@ -247,7 +294,7 @@
                                         {{ \Carbon\Carbon::parse($compra->data_compra)->format('d/m/Y') }}
                                     </td>
                                     <td class="py-1 text-right text-red-700">
-                                        R$ {{ number_format(($compra->valor_total ?? 0), 2, ',', '.') }}
+                                        R$ {{ number_format($compra->valor_total ?? 0, 2, ',', '.') }}
                                     </td>
                                     <td class="py-1 text-right text-gray-500">
                                         #{{ $compra->id }}
@@ -281,14 +328,14 @@
     {{-- SCRIPTS DO GRÁFICO --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('graficoComprasEvolucao');
 
             if (!canvas) {
                 return;
             }
 
-            const labels  = @json($comprasEvolucaoLabels ?? []);
+            const labels = @json($comprasEvolucaoLabels ?? []);
             const valores = @json($comprasEvolucaoValores ?? []);
 
             // Se não tiver dados, não tenta montar o gráfico
@@ -304,7 +351,7 @@
                         label: 'Total de Compras (R$)',
                         data: valores,
                         borderWidth: 2,
-                        borderColor: 'rgba(239, 68, 68, 1)',     // vermelho
+                        borderColor: 'rgba(239, 68, 68, 1)', // vermelho
                         backgroundColor: 'rgba(239, 68, 68, 0.15)', // vermelho claro
                         fill: true,
                         tension: 0.3,

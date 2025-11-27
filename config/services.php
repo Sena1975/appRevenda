@@ -35,9 +35,10 @@ return [
         ],
     ],
 
-    'botconversa' => [
-        'webhook_url' => env('BOTCONVERSA_WEBHOOK', ''),
-    ],
-    
+'botconversa' => [
+    'base_url' => env('BOTCONVERSA_BASE_URL', 'https://backend.botconversa.com.br/api/v1/webhook'),
+    'api_key'  => env('BOTCONVERSA_API_KEY'),
+    'origin_tag_id'  => env('BOTCONVERSA_ORIGIN_TAG_ID'),
+],
 
 ];

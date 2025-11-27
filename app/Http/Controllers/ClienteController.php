@@ -561,4 +561,33 @@ class ClienteController extends Controller
             ->route('clientes.index')
             ->with('success', "Clientes mesclados com sucesso! O cadastro de '{$principal->nome}' foi atualizado.");
     }
+
+    public function indicadorInfo(Cliente $cliente)
+    {
+        // ID do indicador gravado no cliente (padrão = 1)
+        $indicadorId = (int) ($cliente->indicador_id ?? 1);
+
+        // Nome do indicador (se diferente de 1)
+        $indicadorNome = null;
+
+        if ($indicadorId !== 1) {
+            $indicador = Cliente::find($indicadorId);
+            $indicadorNome = $indicador?->nome;
+        }
+
+        // Texto amigável pra mostrar na tela
+        if ($indicadorId === 1) {
+            $texto = 'ID-1 (Vendedor padrão / sem indicação)';
+        } elseif ($indicadorNome) {
+            $texto = "ID-{$indicadorId} - {$indicadorNome}";
+        } else {
+            $texto = "ID-{$indicadorId} (cliente indicador não encontrado)";
+        }
+
+        return response()->json([
+            'indicador_id'   => $indicadorId,
+            'indicador_nome' => $indicadorNome,
+            'texto'          => $texto,
+        ]);
+    }
 }

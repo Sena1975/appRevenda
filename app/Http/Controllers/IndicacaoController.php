@@ -4,53 +4,66 @@ namespace App\Http\Controllers;
 
 use App\Models\Indicacao;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class IndicacaoController extends Controller
 {
     /**
-     * Lista de indicações com filtro por status
-     * status = pendente (default), pago ou todos
+     * Lista indicações (pendentes ou pagas) para controle de pagamento
      */
     public function index(Request $request)
     {
-        $status = $request->input('status', 'pendente');
+        $status = $request->query('status', 'pendente');
 
-        $query = Indicacao::with(['indicador', 'indicado', 'pedido'])
-            ->orderBy('status')
-            ->orderByDesc('id');
+        $query = Indicacao::with(['indicador', 'indicado', 'pedido']);
 
-        if ($status !== 'todos') {
+        if ($status === 'pendente' || $status === 'pago') {
             $query->where('status', $status);
         }
 
-        $indicacoes = $query->paginate(20)->appends($request->only('status'));
+        // >>> AQUI: soma do prêmio das indicações do filtro atual
+        // TROQUE 'valor_premio' PELO NOME REAL DO CAMPO NA SUA TABELA
+        $totalPremio = (clone $query)->sum('valor_premio');
 
-        // Totais por status (pra você ter noção dos valores)
-        $totais = Indicacao::selectRaw('status, COUNT(*) qtd, SUM(valor_premio) total_premio')
-            ->groupBy('status')
-            ->pluck('total_premio', 'status');
+        $indicacoes = $query
+            ->orderByDesc('created_at')
+            ->paginate(15)
+            ->appends($request->query());
 
-        return view('indicacoes.index', [
-            'indicacoes' => $indicacoes,
-            'filtroStatus' => $status,
-            'totais' => $totais,
-        ]);
+        $totais = [
+            'pendentes' => Indicacao::where('status', 'pendente')->count(),
+            'pagas'     => Indicacao::where('status', 'pago')->count(),
+            'todas'     => Indicacao::count(),
+        ];
+
+        return view('indicacoes.index', compact(
+            'indicacoes',
+            'status',
+            'totais',
+            'totalPremio',   // <<< não esquece de enviar isso
+        ));
     }
 
     /**
-     * Confirma o pagamento do prêmio de indicação
+     * Confirma o pagamento da indicação (muda status para "pago")
      */
-    public function pagar(Indicacao $indicacao)
+    public function pagar($id)
     {
+        $indicacao = Indicacao::with(['indicador', 'indicado'])->findOrFail($id);
+
         if ($indicacao->status === 'pago') {
-            return back()->with('info', 'Este prêmio já está marcado como PAGO.');
+            return back()->with('info', 'Esta indicação já está marcada como paga.');
         }
 
         $indicacao->status = 'pago';
-        $indicacao->data_pagamento = Carbon::now();
+
+        // Se depois você criar uma coluna data_pagamento/pago_em, pode setar aqui:
+        // $indicacao->data_pagamento = now();
+
         $indicacao->save();
 
-        return back()->with('success', 'Pagamento da indicação confirmado com sucesso!');
+        return back()->with(
+            'success',
+            'Pagamento da indicação confirmado com sucesso.'
+        );
     }
 }

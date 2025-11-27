@@ -8,9 +8,12 @@ use App\Models\ContasReceber;
 use App\Models\PedidoVenda;
 use App\Models\PedidoCompra;
 use App\Models\Estoque;
+use App\Models\Indicacao;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -26,6 +29,10 @@ class DashboardController extends Controller
         */
         $produtoTable = (new Produto())->getTable();   // normalmente "appproduto"
         $estoqueTable = (new Estoque())->getTable();   // normalmente "appestoque"
+
+        // Detecta coluna de quantidade no estoque
+        $valorPremiosPendentes = Indicacao::where('status', 'pendente')->sum('valor_premio');
+        $valorPremiosPagos     = Indicacao::where('status', 'pago')->sum('valor_premio');
 
         // Detecta coluna de quantidade no estoque
         $colQtd = Schema::hasColumn($estoqueTable, 'disponivel') ? 'disponivel'
@@ -50,10 +57,10 @@ class DashboardController extends Controller
         if ($colQtd && $colPreco) {
             $valorEstoque = (float) (
                 DB::table($estoqueTable . ' as e')
-                    ->join($produtoTable . ' as p', 'p.id', '=', 'e.produto_id')
-                    ->where('e.' . $colQtd, '>', 0)
-                    ->selectRaw("SUM(e.$colQtd * p.$colPreco) as total")
-                    ->value('total') ?? 0
+                ->join($produtoTable . ' as p', 'p.id', '=', 'e.produto_id')
+                ->where('e.' . $colQtd, '>', 0)
+                ->selectRaw("SUM(e.$colQtd * p.$colPreco) as total")
+                ->value('total') ?? 0
             );
         }
 
@@ -172,6 +179,8 @@ class DashboardController extends Controller
             'totVendasPendentes'          => $totVendasPendentes,
             'valorVendasPendentes'        => $valorVendasPendentes,
             'totComprasPendentes'         => $totComprasPendentes,
+            'valorPremiosPendentes' => $valorPremiosPendentes,
+            'valorPremiosPagos'     => $valorPremiosPagos,
             'valorComprasPendentes'       => $valorComprasPendentes,
             'comprasEvolucaoLabels'       => $comprasEvolucaoLabels,
             'comprasEvolucaoValores'      => $comprasEvolucaoValores,

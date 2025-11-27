@@ -15,9 +15,20 @@ class Campanha extends Model
     const UPDATED_AT = 'atualizado_em';
 
     protected $fillable = [
-        'nome','descricao','tipo_id','data_inicio','data_fim','ativa','cumulativa',
-        'aplicacao_automatica','prioridade','valor_base_cupom','acumulativa_por_valor',
-        'acumulativa_por_quantidade','quantidade_minima_cupom','tipo_acumulacao',
+        'nome',
+        'descricao',
+        'tipo_id',
+        'data_inicio',
+        'data_fim',
+        'ativa',
+        'cumulativa',
+        'aplicacao_automatica',
+        'prioridade',
+        'valor_base_cupom',
+        'acumulativa_por_valor',
+        'acumulativa_por_quantidade',
+        'quantidade_minima_cupom',
+        'tipo_acumulacao',
         'produto_brinde_id'
     ];
 
@@ -58,6 +69,11 @@ class Campanha extends Model
     public function cupons()
     {
         return $this->hasMany(CampanhaCupom::class, 'campanha_id', 'id');
+    }
+
+    public function indicacoes()
+    {
+        return $this->hasMany(\App\Models\Indicacao::class, 'campanha_id');
     }
 
     // Regras auxiliares

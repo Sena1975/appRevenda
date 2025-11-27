@@ -16,6 +16,7 @@ class Cliente extends Model
         'cpf',
         'telefone',
         'whatsapp',
+        'botconversa_subscriber_id',
         'telegram',
         'cep',
         'endereco',
