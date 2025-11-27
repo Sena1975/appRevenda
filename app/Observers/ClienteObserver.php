@@ -14,7 +14,8 @@ class ClienteObserver
             /** @var BotConversaService $botConversa */
             $botConversa = app(BotConversaService::class);
 
-            $telefone = $cliente->telefone ?? $cliente->phone ?? null;
+            $telefone = $cliente->telefone ?? $cliente->phone ?? $cliente->whatsapp ?? null;
+
 
             if (!$telefone) {
                 Log::warning('BotConversa: cliente criado sem telefone', [
@@ -84,7 +85,6 @@ class ClienteObserver
                 'telefone'      => $telefone,
                 'subscriber_id' => $subscriberId,
             ]);
-
         } catch (\Throwable $e) {
             Log::error('BotConversa: erro ao integrar cliente novo', [
                 'cliente_id' => $cliente->id,

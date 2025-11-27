@@ -187,11 +187,12 @@ class ClienteController extends Controller
             $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
         }
 
+        $telefone = $request->input('telefone') ?: $request->input('whatsapp');
         // --- Monta dados para gravar ---
         $dados = [
             'nome'            => $request->nome,
             'email'           => $request->email,
-            'telefone'        => $request->telefone,
+            'telefone'        => $telefone,
             'cep'             => $request->cep,
             'endereco'        => $request->endereco,
             'uf'              => $ufSigla ?? $request->uf,
