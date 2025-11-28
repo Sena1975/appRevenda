@@ -24,7 +24,7 @@ class PedidoVenda extends Model
         'status',                 // 'PENDENTE','ENTREGUE','CANCELADO'
         'forma_pagamento_id',
         'plano_pagamento_id',
-        'codplano',              // NOVO
+        'codplano',
         'campanha_id',
         'camp_sugerida_id',
         'indicador_id',
@@ -32,8 +32,8 @@ class PedidoVenda extends Model
         'valor_total',
         'valor_desconto',
         'valor_liquido',
-        'pontuacao',             // NOVO (soma dos pontos unitários)
-        'pontuacao_total',       // NOVO (soma de qtd x pontos)
+        'pontuacao', 
+        'pontuacao_total',
         'observacao',
     ];
 
@@ -54,6 +54,11 @@ class PedidoVenda extends Model
     public function itens()
     {
         return $this->hasMany(ItemVenda::class, 'pedido_id', 'id');
+    }
+
+    public function indicador()
+    {
+        return $this->belongsTo(Cliente::class, 'indicador_id');
     }
 
     public function cliente()

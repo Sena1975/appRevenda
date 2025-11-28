@@ -8,9 +8,8 @@ use Carbon\Carbon;
 
 use App\Models\PedidoVenda;
 use App\Models\ItemVenda;
-use App\Models\Campanha;            // ajuste se o namespace/tablename forem diferentes
-use App\Models\CampanhaProduto;     // tabela de restrições por produto/categoria/subcategoria, se existir
-// use App\Models\Participacao;     // se você tem tabela de participações
+use App\Models\Campanha;
+use App\Models\CampanhaProduto;
 
 class CampanhaService
 {
@@ -34,11 +33,11 @@ class CampanhaService
             ->get();
 
         if ($campanhas->isEmpty()) {
-            return ['applied'=>[], 'desconto_total'=>0.0, 'mensagens'=>['Nenhuma campanha vigente.']];
+            return ['applied' => [], 'desconto_total' => 0.0, 'mensagens' => ['Nenhuma campanha vigente.']];
         }
 
         // 2) carrega itens do pedido com informações necessárias
-        $itens = $pedido->itens()->with(['produto.categoria','produto.subcategoria'])->get();
+        $itens = $pedido->itens()->with(['produto.categoria', 'produto.subcategoria'])->get();
 
         $aplicadas = [];
         $descontoTotal = 0.0;
@@ -57,10 +56,10 @@ class CampanhaService
 
             $aplicadas[] = [
                 'campanha_id'   => $camp->id,
-                'nome'          => $camp->nome ?? ('Campanha #'.$camp->id),
-                'tipo_beneficio'=> $camp->tipo_beneficio,
+                'nome'          => $camp->nome ?? ('Campanha #' . $camp->id),
+                'tipo_beneficio' => $camp->tipo_beneficio,
                 'valor'         => (float)$resultado['valor'],
-                'itens_afetados'=> $resultado['itens_afetados'] ?? [],
+                'itens_afetados' => $resultado['itens_afetados'] ?? [],
             ];
 
             $descontoTotal += (float)$resultado['valor'];
@@ -123,10 +122,9 @@ class CampanhaService
             $restr = $camp->restricoes; // collection CampanhaProduto
             if ($restr->isNotEmpty()) {
                 // ao menos 1 item do pedido precisa “bater” com uma das restrições
-                $bateu = $itens->contains(function($it) use ($restr){
-                    return $restr->contains(function($r) use ($it){
-                        return
-                            ($r->produto_id      && $it->produto_id == $r->produto_id) ||
+                $bateu = $itens->contains(function ($it) use ($restr) {
+                    return $restr->contains(function ($r) use ($it) {
+                        return ($r->produto_id      && $it->produto_id == $r->produto_id) ||
                             ($r->categoria_id    && $it->produto?->categoria_id == $r->categoria_id) ||
                             ($r->subcategoria_id && $it->produto?->subcategoria_id == $r->subcategoria_id);
                     });
@@ -151,7 +149,7 @@ class CampanhaService
                 $perc = (float)$camp->percentual; // 0–100
                 foreach ($itens as $it) {
                     if (!$this->itemElegivel($camp, $it)) continue;
-                    $desc = round(($it->preco_unitario * $it->quantidade) * ($perc/100), 2);
+                    $desc = round(($it->preco_unitario * $it->quantidade) * ($perc / 100), 2);
                     if ($desc > 0) {
                         $valor += $desc;
                         $itensAfetados[$it->id] = $desc;
@@ -175,7 +173,7 @@ class CampanhaService
 
             case 'PERCENTUAL_TOTAL':
                 $perc = (float)$camp->percentual;
-                $valor = round($pedido->valor_total * ($perc/100), 2);
+                $valor = round($pedido->valor_total * ($perc / 100), 2);
                 $msg = "Desconto de {$perc}% no total do pedido.";
                 break;
 
@@ -193,7 +191,7 @@ class CampanhaService
 
         return [
             'valor'         => max(0, $valor),
-            'itens_afetados'=> $itensAfetados,
+            'itens_afetados' => $itensAfetados,
             'mensagem'      => $msg,
         ];
     }
@@ -204,11 +202,43 @@ class CampanhaService
         $restr = $camp->restricoes;
         if ($restr->isEmpty()) return true;
 
-        return $restr->contains(function($r) use ($it){
-            return
-                ($r->produto_id      && $it->produto_id == $r->produto_id) ||
+        return $restr->contains(function ($r) use ($it) {
+            return ($r->produto_id      && $it->produto_id == $r->produto_id) ||
                 ($r->categoria_id    && $it->produto?->categoria_id == $r->categoria_id) ||
                 ($r->subcategoria_id && $it->produto?->subcategoria_id == $r->subcategoria_id);
         });
     }
+    /**
+     * Retorna as campanhas vigentes filtrando pelo campo metodo_php.
+     *
+     * @param  string  $metodoPhp  Valor exato que está no campo campanha.metodo_php
+     * @return \Illuminate\Support\Collection|\App\Models\Campanha[]
+     */
+    public function campanhasVigentesPorMetodo(string $metodoPhp): Collection
+    {
+        $hoje = Carbon::today()->toDateString();
+
+        return Campanha::query()
+            ->where('ativa', true)
+            ->whereDate('data_inicio', '<=', $hoje)
+            ->whereDate('data_fim', '>=', $hoje)
+            ->where('metodo_php', $metodoPhp)
+            ->orderBy('prioridade', 'desc')
+            ->get();
+    }
+
+    /**
+     * Retorna apenas os IDs das campanhas vigentes filtradas por metodo_php.
+     *
+     * @param  string  $metodoPhp
+     * @return int[]
+     */
+    public function campanhasVigentesIdsPorMetodo(string $metodoPhp): array
+    {
+        return $this->campanhasVigentesPorMetodo($metodoPhp)
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->all();
+    }
+
 }

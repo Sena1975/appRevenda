@@ -24,6 +24,8 @@ class ClienteObserver
                 return;
             }
 
+            $clienteVindoDoApp = ($cliente->origem_cadastro ?? null) != 'app';
+
             $originTagId = config('services.botconversa.origin_tag_id');
 
             /**
@@ -45,10 +47,14 @@ class ClienteObserver
                         'subscriber_id' => $subscriberId,
                     ]);
 
-                    // OPCIONAL: se você quiser também marcar a tag de origem
-                    // mesmo para contatos que já existiam no BotConversa:
+                    // opcional: marcar a tag de origem também para quem já existia
                     if ($originTagId) {
                         $botConversa->addTagToSubscriber($subscriberId, $originTagId);
+                    }
+                    // 🔹 Se veio do app, já manda boas-vindas
+                    if ($clienteVindoDoApp) {
+                        $mensagem = $this->mensagemBoasVindas($cliente);
+                        $botConversa->sendMessageToSubscriber($subscriberId, $mensagem);
                     }
                 }
 
@@ -85,11 +91,32 @@ class ClienteObserver
                 'telefone'      => $telefone,
                 'subscriber_id' => $subscriberId,
             ]);
+
+            // 🔹 Se veio do app, manda boas-vindas para quem acabou de ser criado
+            if ($clienteVindoDoApp && $subscriberId) {
+                $mensagem = $this->mensagemBoasVindas($cliente);
+                $botConversa->sendMessageToSubscriber($subscriberId, $mensagem);
+            }
         } catch (\Throwable $e) {
             Log::error('BotConversa: erro ao integrar cliente novo', [
                 'cliente_id' => $cliente->id,
                 'erro'       => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Monta a mensagem de boas-vindas (ajuste o texto à vontade)
+     */
+    private function mensagemBoasVindas(Cliente $cliente): string
+    {
+        $nome = $cliente->nome ?: 'cliente';
+
+        return "Olá {$nome}! 👋\n\n"
+            . "Que bom ter você com a gente! 🎉\n"
+            . "Seu cadastro no nosso app foi realizado com sucesso.\n\n"
+            . "A partir de agora você vai receber por aqui atualizações importantes "
+            . "sobre seus pedidos e novidades.\n\n"
+            . "Se precisar de ajuda, é só responder esta mensagem. 🙂";
     }
 }

@@ -17,6 +17,7 @@ class Campanha extends Model
     protected $fillable = [
         'nome',
         'descricao',
+        'metodo_php',
         'tipo_id',
         'data_inicio',
         'data_fim',
