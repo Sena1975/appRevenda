@@ -42,6 +42,7 @@ class LimparBaseTeste extends Command
             'appcontasreceber',
             'appbaixa_pagar',
             'appcontaspagar',
+            'appmensagens',
 
             // Vendas
             'appitemvenda',
@@ -56,11 +57,14 @@ class LimparBaseTeste extends Command
             'appestoque',
 
             // Campanhas (se existirem)
-            'appcampanha_cliente',
-            'appcampanha_cupom',
-            'appcampanha_premio',
-            'appcampanha_produto',
-            'appcampanha',
+            // 'appcampanha',
+            // 'appcampanha_tipo',
+            // 'appcampanha_cliente',
+            // 'appcampanha_cupom',
+            // 'appcampanha_premio',
+            // 'appcampanha_produto',
+            'appindicacao',
+            
 
             // Filas / sessões (opcional)
             'jobs',
