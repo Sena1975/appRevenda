@@ -22,13 +22,15 @@ use App\Models\ViewProduto;
 use App\Models\Campanha;
 use App\Models\Indicacao;
 use App\Models\ContasReceber;
+use App\Services\MensageriaService;
+use App\Services\Whatsapp\MensagensCampanhaService;
 
 
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
 use App\Services\CampaignEvaluatorService;
 use App\Services\Importacao\PedidoWhatsappParser;
-use App\Services\Whatsapp\BotConversaService;
+
 
 use Illuminate\Http\JsonResponse;
 
@@ -36,16 +38,14 @@ class PedidoVendaController extends Controller
 {
     private EstoqueService $estoque;
     private ContasReceberService $cr;
-    private BotConversaService $whatsapp;
 
     public function __construct(
         EstoqueService $estoque,
         ContasReceberService $cr,
-        BotConversaService $whatsapp
+
     ) {
         $this->estoque = $estoque;
         $this->cr      = $cr;
-        $this->whatsapp = $whatsapp;
     }
 
     /**
@@ -339,6 +339,17 @@ class PedidoVendaController extends Controller
 
                     // >>> FIM CAMPANHA INDICAÇÃO <<<
 
+                }
+                // Após tratar campanha / indicação, envia mensagem para o CLIENTE
+                if ($pedido) {
+                    try {
+                        $this->enviarAvisoClientePedidoCriado($pedido);
+                    } catch (\Throwable $e) {
+                        Log::warning('Erro ao enviar WhatsApp para cliente na criação do pedido', [
+                            'pedido_id' => $pedido->id ?? null,
+                            'erro'      => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
 
@@ -1077,9 +1088,12 @@ class PedidoVendaController extends Controller
         $indicacao->save();
     }
 
-
     /**
-     * Monta e envia o recibo de entrega via WhatsApp usando BotConversa.
+     * Monta e envia o recibo de ENTREGA via WhatsApp usando MensageriaService.
+     * - Informa que o pedido foi ENTREGUE
+     * - Valor final
+     * - Vencimento das parcelas
+     * - Observação do pedido (se houver)
      */
     function enviarReciboWhatsApp(PedidoVenda $pedido): void
     {
@@ -1091,46 +1105,32 @@ class PedidoVendaController extends Controller
             return;
         }
 
-        // Ajuste para o campo correto na sua tabela de clientes
-        $telefone = $cliente->whatsapp
-            ?? $cliente->telefone
-            ?? $cliente->celular
-            ?? null;
+        // Telefone é resolvido dentro do BotConversaService via Mensageria,
+        // então não precisamos mais tratar aqui.
+        $valor = (float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0);
 
-        if (!$telefone) {
-            Log::info('Recibo WhatsApp não enviado: cliente sem telefone', [
-                'pedido_id'  => $pedido->id,
-                'cliente_id' => $cliente->id ?? null,
-            ]);
-            return;
-        }
-
-        $valor   = (float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0);
-        $dataPed = $pedido->data_pedido
+        $dataPedido  = $pedido->data_pedido
             ? Carbon::parse($pedido->data_pedido)->format('d/m/Y')
             : now()->format('d/m/Y');
 
-        /**
-         * 1) Busca as parcelas de contas a receber ligadas a esse pedido.
-         *    Aqui usei 'pedido_id' que você disse que é o nome correto.
-         *    Ajuste os campos 'data_vencimento' e 'valor' se na sua tabela
-         *    tiverem nomes diferentes (ex.: dtvencto, vlparcela, etc.).
-         */
+        // Data efetiva da entrega (usamos "agora", pois não há campo específico)
+        $dataEntrega = now()->format('d/m/Y');
+
+        // 1) Busca as parcelas de contas a receber ligadas a esse pedido.
         $parcelas = ContasReceber::where('pedido_id', $pedido->id)
             ->orderBy('data_vencimento')
             ->get();
 
         // 📝 TEXTO DA MENSAGEM PARA O CLIENTE
         $mensagem  = "Olá {$cliente->nome}! 👋\n\n";
-        $mensagem .= "Parabéns pela sua compra! 🎉\n";
-        $mensagem .= "Seu pedido nº *{$pedido->id}* foi registrado em {$dataPed}.\n";
+        $mensagem .= "Seu pedido nº *{$pedido->id}* foi *ENTREGUE* em {$dataEntrega}. 🎉\n";
+        $mensagem .= "Ele foi registrado em {$dataPedido}.\n";
         $mensagem .= "Valor final: *R$ " . number_format($valor, 2, ',', '.') . "*.\n\n";
 
         if ($parcelas->count() > 0) {
             $mensagem .= "📅 *Detalhes do pagamento:*\n";
 
             foreach ($parcelas as $index => $parcela) {
-                // Ajuste os nomes dos campos abaixo se for diferente na sua tabela
                 $vencimento = $parcela->data_vencimento ?? null;
                 $valorParc  = (float) ($parcela->valor ?? 0);
 
@@ -1148,19 +1148,42 @@ class PedidoVendaController extends Controller
         }
 
         if (!empty($pedido->observacao)) {
-            $mensagem .= "Obs.: {$pedido->observacao}\n\n";
+            $mensagem .= "📝 Observação: {$pedido->observacao}\n\n";
         }
 
         $mensagem .= "Qualquer dúvida, estou à disposição 😊";
 
-        // Envia usando o serviço de WhatsApp já injetado no construtor
-        $ok = $this->whatsapp->enviarParaTelefone($telefone, $mensagem, $cliente->nome);
+        try {
+            /** @var MensageriaService $mensageria */
+            $mensageria = app(MensageriaService::class);
 
-        if (!$ok) {
+            $campanha = $pedido->campanha_id
+                ? Campanha::find($pedido->campanha_id)
+                : null;
+
+            $msgModel = $mensageria->enviarWhatsapp(
+                cliente: $cliente,
+                conteudo: $mensagem,
+                tipo: 'pedido_entregue_cliente',
+                pedido: $pedido,
+                campanha: $campanha,
+                payloadExtra: [
+                    'evento'        => 'pedido_entregue_cliente',
+                    'data_entrega'  => $dataEntrega,
+                ],
+            );
+
+            Log::info('Recibo WhatsApp enviado para cliente (pedido entregue)', [
+                'pedido_id'   => $pedido->id,
+                'cliente_id'  => $cliente->id,
+                'mensagem_id' => $msgModel->id,
+                'msg_status'  => $msgModel->status,
+            ]);
+        } catch (\Throwable $e) {
             Log::warning('Falha ao enviar mensagem de recibo no WhatsApp', [
                 'pedido_id'  => $pedido->id,
                 'cliente_id' => $cliente->id ?? null,
-                'telefone'   => $telefone,
+                'erro'       => $e->getMessage(),
             ]);
         }
     }
@@ -1168,77 +1191,205 @@ class PedidoVendaController extends Controller
     /**
      * Envia mensagem ao INDICADOR informando a primeira compra do indicado
      * e o valor do prêmio da campanha de indicação.
+     *
+     * Agora usando MensageriaService + MensagensCampanhaService
+     * para registrar em `mensagens`.
      */
     private function enviarAvisoIndicadorWhatsApp(Indicacao $indicacao): void
     {
-        // Carrega indicador (quem vai receber o prêmio)
-        $indicador = Cliente::find($indicacao->indicador_id);
-        if (!$indicador) {
-            Log::info('Aviso indicação não enviado: indicador não encontrado', [
-                'indicacao_id' => $indicacao->id ?? null,
-                'indicador_id' => $indicacao->indicador_id ?? null,
-            ]);
-            return;
-        }
+        try {
+            // Carrega indicador (quem vai receber o prêmio)
+            $indicador = Cliente::find($indicacao->indicador_id);
+            if (!$indicador) {
+                Log::info('Aviso indicação não enviado: indicador não encontrado', [
+                    'indicacao_id' => $indicacao->id ?? null,
+                    'indicador_id' => $indicacao->indicador_id ?? null,
+                ]);
+                return;
+            }
 
-        // Telefone do indicador (ajuste os campos conforme seu banco)
-        $telefone = $indicador->whatsapp
-            ?? $indicador->telefone
-            ?? $indicador->celular
-            ?? null;
+            // Nome do indicado (cliente que fez a compra)
+            $indicado = Cliente::find($indicacao->indicado_id);
+            if (!$indicado) {
+                Log::info('Aviso indicação não enviado: indicado não encontrado', [
+                    'indicacao_id' => $indicacao->id ?? null,
+                    'indicado_id'  => $indicacao->indicado_id ?? null,
+                ]);
+                return;
+            }
 
-        if (!$telefone) {
-            Log::info('Aviso indicação não enviado: indicador sem telefone', [
-                'indicacao_id' => $indicacao->id ?? null,
-                'indicador_id' => $indicador->id ?? null,
-            ]);
-            return;
-        }
+            // Pedido e campanha associados à indicação
+            $pedido   = PedidoVenda::find($indicacao->pedido_id);
+            $campanha = $indicacao->campanha_id
+                ? Campanha::find($indicacao->campanha_id)
+                : null;
 
-        // Nome do indicado (cliente que fez a compra)
-        $indicado = Cliente::find($indicacao->indicado_id);
-        $nomeIndicado = $indicado->nome ?? 'seu indicado';
+            if (!$pedido) {
+                Log::info('Aviso indicação não enviado: pedido não encontrado', [
+                    'indicacao_id' => $indicacao->id ?? null,
+                    'pedido_id'    => $indicacao->pedido_id ?? null,
+                ]);
+                return;
+            }
 
-        $valorPremio = (float) ($indicacao->valor_premio ?? 0);
-        $valorPedido = (float) ($indicacao->valor_pedido ?? 0);
+            $valorPremio = (float) ($indicacao->valor_premio ?? 0.0);
+            if ($valorPremio <= 0) {
+                Log::info('Aviso indicação não enviado: valor de prêmio <= 0', [
+                    'indicacao_id' => $indicacao->id ?? null,
+                    'valor_premio' => $valorPremio,
+                ]);
+                return;
+            }
 
-        if ($valorPremio <= 0) {
-            Log::info('Aviso indicação não enviado: valor de prêmio <= 0', [
-                'indicacao_id' => $indicacao->id ?? null,
-                'valor_premio' => $valorPremio,
-            ]);
-            return;
-        }
+            /** @var MensageriaService $mensageria */
+            $mensageria = app(MensageriaService::class);
 
-        $valorPremioFmt = 'R$ ' . number_format($valorPremio, 2, ',', '.');
-        $valorPedidoFmt = 'R$ ' . number_format($valorPedido, 2, ',', '.');
+            /** @var MensagensCampanhaService $msgCampanha */
+            $msgCampanha = app(MensagensCampanhaService::class);
 
-        $mensagem  = "Olá {$indicador->nome}! 👋\n\n";
-        $mensagem .= "O cliente *{$nomeIndicado}* que você indicou acabou de realizar a *primeira compra*.\n";
-        $mensagem .= "Valor do pedido: *{$valorPedidoFmt}*.\n";
-        $mensagem .= "Seu prêmio na campanha de indicação é de *{$valorPremioFmt}*.\n\n";
-        $mensagem .= "Assim que for liberado, faremos o PIX pra você. Qualquer dúvida, é só responder por aqui. 🙂";
+            // Monta o texto usando o service de campanha (com valor do prêmio)
+            $texto = $msgCampanha->montarMensagemPedidoPendente(
+                indicador: $indicador,
+                indicado: $indicado,
+                pedido: $pedido,
+                valorPremio: $valorPremio,
+            );
 
-        // 👉 AQUI use exatamente o mesmo serviço que você usa no recibo:
-        // Se no enviarReciboWhatsApp você faz algo tipo:
-        // $ok = $this->whatsapp->enviarParaTelefone($telefone, $mensagem, $indicador->nome);
-        // copie igual aqui:
+            // Envia via Mensageria (registra em `mensagens` e manda pelo BotConversa)
+            $msgModel = $mensageria->enviarWhatsapp(
+                cliente: $indicador,
+                conteudo: $texto,
+                tipo: 'indicacao_primeira_compra',
+                pedido: $pedido,
+                campanha: $campanha,
+                payloadExtra: [
+                    'evento'       => 'indicacao_primeira_compra',
+                    'indicacao_id' => $indicacao->id,
+                    'valor_premio' => $valorPremio,
+                    'valor_pedido' => (float)($indicacao->valor_pedido ?? 0),
+                ],
+            );
 
-        $ok = $this->whatsapp->enviarParaTelefone($telefone, $mensagem, $indicador->nome);
-
-        if (!$ok) {
-            Log::warning('Falha ao enviar WhatsApp para indicador', [
-                'indicacao_id' => $indicacao->id ?? null,
-                'indicador_id' => $indicador->id ?? null,
-                'telefone'     => $telefone,
-            ]);
-        } else {
             Log::info('WhatsApp enviado para indicador (campanha de indicação)', [
                 'indicacao_id' => $indicacao->id ?? null,
                 'indicador_id' => $indicador->id ?? null,
-                'telefone'     => $telefone,
+                'telefone'     => $indicador->whatsapp
+                    ?? $indicador->telefone
+                    ?? $indicador->celular
+                    ?? null,
+                'mensagem_id'  => $msgModel->id,
+                'msg_status'   => $msgModel->status,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Erro ao enviar WhatsApp para indicador (campanha de indicação)', [
+                'indicacao_id' => $indicacao->id ?? null,
+                'pedido_id'    => $indicacao->pedido_id ?? null,
+                'erro'         => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Envia mensagem ao CLIENTE assim que o pedido é criado (PENDENTE),
+     * informando valor, forma de pagamento e previsão de entrega.
+     */
+    private function enviarAvisoClientePedidoCriado(PedidoVenda $pedido): void
+    {
+        try {
+            $pedido->loadMissing('cliente', 'forma', 'plano');
+
+            $cliente = $pedido->cliente;
+            if (!$cliente) {
+                Log::info('Aviso cliente não enviado: pedido sem cliente', [
+                    'pedido_id' => $pedido->id ?? null,
+                ]);
+                return;
+            }
+
+            /** @var MensageriaService $mensageria */
+            $mensageria = app(MensageriaService::class);
+
+            $campanha = $pedido->campanha_id
+                ? Campanha::find($pedido->campanha_id)
+                : null;
+
+            $texto = $this->montarMensagemClientePedidoCriado($pedido);
+
+            $msgModel = $mensageria->enviarWhatsapp(
+                cliente: $cliente,
+                conteudo: $texto,
+                tipo: 'pedido_pendente_cliente',
+                pedido: $pedido,
+                campanha: $campanha,
+                payloadExtra: [
+                    'evento' => 'pedido_pendente_cliente',
+                ],
+            );
+
+            Log::info('WhatsApp enviado para cliente (pedido criado)', [
+                'pedido_id'   => $pedido->id,
+                'cliente_id'  => $cliente->id,
+                'mensagem_id' => $msgModel->id,
+                'msg_status'  => $msgModel->status,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Erro ao enviar WhatsApp para cliente (pedido criado)', [
+                'pedido_id' => $pedido->id ?? null,
+                'erro'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Texto enviado ao CLIENTE na criação do pedido.
+     * Informa que o pedido foi registrado, valor, forma de pagamento,
+     * previsão de entrega e observação.
+     */
+    private function montarMensagemClientePedidoCriado(PedidoVenda $pedido): string
+    {
+        $cliente = $pedido->cliente;
+        $nome    = $cliente?->nome ?: 'cliente';
+
+        $dataPedido = optional($pedido->data_pedido)->format('d/m/Y');
+        $previsao   = optional($pedido->previsao_entrega)->format('d/m/Y');
+
+        $valor = number_format(
+            (float)($pedido->valor_liquido ?? $pedido->valor_total ?? 0),
+            2,
+            ',',
+            '.'
+        );
+
+        $formaPg   = $pedido->forma?->nome
+            ?? $pedido->forma?->descricao
+            ?? 'a forma de pagamento selecionada';
+
+        $planoPg   = $pedido->plano?->nome
+            ?? $pedido->plano?->descricao
+            ?? null;
+
+        $linhaPlano = $planoPg
+            ? "\n💳 Plano de pagamento: *{$planoPg}*"
+            : '';
+
+        $linhaPrevisao = $previsao
+            ? "\n📅 Previsão de entrega: *{$previsao}*"
+            : '';
+
+        $linhaObs = $pedido->observacao
+            ? "\n📝 Observação: {$pedido->observacao}"
+            : '';
+
+        return "Olá {$nome}! 👋\n\n"
+            . "Registramos o seu pedido *#{$pedido->id}* e já estamos providenciando os produtos que você solicitou. 🙌\n\n"
+            . "🧾 Data do pedido: *{$dataPedido}*\n"
+            . "💰 Valor do pedido: *R$ {$valor}*\n"
+            . "💳 Forma de pagamento: *{$formaPg}*"
+            . $linhaPlano
+            . $linhaPrevisao
+            . $linhaObs
+            . "\n\nAssim que o pedido for entregue, você receberá uma confirmação por aqui. "
+            . "Qualquer dúvida, é só responder esta mensagem. 🙂";
     }
 
     public function confirmarEntrega(int $id)

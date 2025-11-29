@@ -7,42 +7,28 @@ use App\Models\PedidoVenda;
 
 class MensagensCampanhaService
 {
-    public function __construct(
-        private BotConversaService $botConversa
-    ) {}
-
     /**
      * Quando o indicado fez um pedido (status PENDENTE),
-     * avisar o indicador que ele terá um prêmio em dinheiro após a entrega.
+     * montamos a mensagem para avisar o INDICADOR
+     * que ele terá um prêmio em dinheiro após a entrega.
+     *
+     * $valorPremio é opcional: se você já tiver a regra de cálculo,
+     * pode passar aqui para exibir o valor exato.
      */
-    public function enviarAvisoIndicadorPedidoPendente(Cliente $indicador, Cliente $indicado, PedidoVenda $pedido): bool
-    {
-        $mensagem = $this->montarMensagemPedidoPendente($indicador, $indicado, $pedido);
-
-        return $this->botConversa->enviarParaCliente($indicador, $mensagem);
-    }
-
-    /**
-     * Quando o pedido do indicado for ENTREGUE,
-     * avisar o indicador e pedir a chave PIX.
-     */
-    public function enviarAvisoIndicadorPremioDisponivel(Cliente $indicador, Cliente $indicado, PedidoVenda $pedido): bool
-    {
-        $mensagem = $this->montarMensagemPremioDisponivel($indicador, $indicado, $pedido);
-
-        return $this->botConversa->enviarParaCliente($indicador, $mensagem);
-    }
-
-    /* =======================
-        Montagem dos textos
-       ======================= */
-
-    private function montarMensagemPedidoPendente(Cliente $indicador, Cliente $indicado, PedidoVenda $pedido): string
-    {
+    public function montarMensagemPedidoPendente(
+        Cliente $indicador,
+        Cliente $indicado,
+        PedidoVenda $pedido,
+        ?float $valorPremio = null
+    ): string {
         $nomeIndicador = $indicador->nome ?: 'cliente';
         $nomeIndicado  = $indicado->nome ?: 'seu indicado';
         $valorPedido   = $this->formatarValor((float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0));
         $dataPedido    = optional($pedido->data_pedido)->format('d/m/Y');
+
+        $linhaPremio = $valorPremio !== null
+            ? "Assim que o pedido for *entregue*, você terá direito a um prêmio de *R$ ".$this->formatarValor($valorPremio)."* pela indicação. 💸\n\n"
+            : "Assim que o pedido for *entregue*, você terá direito a um *prêmio em dinheiro* pela indicação. 💸\n\n";
 
         return "Olá {$nomeIndicador}! 👋\n\n"
              . "Tem novidade boa pra você! 🎉\n\n"
@@ -50,16 +36,29 @@ class MensagensCampanhaService
              . "🧾 Pedido: *#{$pedido->id}*\n"
              . "📅 Data do pedido: *{$dataPedido}*\n"
              . "💰 Valor do pedido: *R$ {$valorPedido}*\n\n"
-             . "Assim que o pedido for *entregue*, você terá direito a um *prêmio em dinheiro* pela indicação. 💸\n\n"
+             . $linhaPremio
              . "Quando a entrega for concluída, te aviso por aqui com as instruções pra receber o prêmio. 😉";
     }
 
-    private function montarMensagemPremioDisponivel(Cliente $indicador, Cliente $indicado, PedidoVenda $pedido): string
-    {
+    /**
+     * Quando o pedido do indicado for ENTREGUE,
+     * montamos a mensagem para avisar o INDICADOR
+     * e pedir a chave PIX.
+     */
+    public function montarMensagemPremioDisponivel(
+        Cliente $indicador,
+        Cliente $indicado,
+        PedidoVenda $pedido,
+        ?float $valorPremio = null
+    ): string {
         $nomeIndicador = $indicador->nome ?: 'cliente';
         $nomeIndicado  = $indicado->nome ?: 'seu indicado';
         $valorPedido   = $this->formatarValor((float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0));
         $dataEntrega   = optional($pedido->previsao_entrega ?? $pedido->criado_em)->format('d/m/Y');
+
+        $linhaPremio = $valorPremio !== null
+            ? "Conforme a nossa campanha de indicação, você tem direito a um prêmio de *R$ ".$this->formatarValor($valorPremio)."* 🎉\n\n"
+            : "Conforme a nossa campanha de indicação, você tem direito a um *prêmio em dinheiro* 🎉\n\n";
 
         return "Olá {$nomeIndicador}! 👋\n\n"
              . "Boas notícias! ✅\n\n"
@@ -67,7 +66,7 @@ class MensagensCampanhaService
              . "🧾 Pedido: *#{$pedido->id}*\n"
              . "💰 Valor do pedido: *R$ {$valorPedido}*\n"
              . "📅 Data da entrega: *{$dataEntrega}*\n\n"
-             . "Conforme a nossa campanha de indicação, você tem direito a um *prêmio em dinheiro* 🎉\n\n"
+             . $linhaPremio
              . "Por favor, responda esta mensagem informando a sua *chave PIX* "
              . "(CPF, CNPJ, e-mail, telefone ou chave aleatória) para fazermos o pagamento do prêmio. 🙏";
     }

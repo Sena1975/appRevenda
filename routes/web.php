@@ -33,8 +33,11 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatorioFinanceiroController;
 use App\Http\Controllers\TextoPedidoController;
 use App\Http\Controllers\IndicacaoController;
+use App\Http\Controllers\RelatorioMensagensController;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use App\Http\Controllers\MensagemController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -331,13 +334,25 @@ Route::middleware(['auth'])->group(function () {
 
     // routes/web.php
     Route::get('/teste-whatsapp', function (\App\Services\Whatsapp\BotConversaService $whatsapp) {
-        $telefone = '557196720776'; 
+        $telefone = '557196720776';
         $mensagem = "Teste de BotConversa via appRevenda\nPedido #123\nValor: R$ 50,00";
 
         $ok = $whatsapp->enviarParaTelefone($telefone, $mensagem, 'Carlos Sena');
 
         dd(['enviado' => $ok]);
     });
+
+    Route::get('/mensagens', [MensagemController::class, 'index'])
+        ->name('mensagens.index');
+
+    Route::get('/relatorios/mensagens/campanhas', [RelatorioMensagensController::class, 'porCampanha'])
+        ->name('relatorios.mensagens.por_campanha');
+
+    Route::get('/relatorios/mensagens/clientes', [RelatorioMensagensController::class, 'porCliente'])
+        ->name('relatorios.mensagens.por_cliente');
+
+    Route::get('/relatorios/campanhas/indicacao', [RelatorioMensagensController::class, 'campanhasIndicacao'])
+        ->name('relatorios.campanhas.indicacao');
 
     /*
     |--------------------------------------------------------------------------

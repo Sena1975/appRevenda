@@ -49,3 +49,7 @@ echo "♻️ Reiniciando PHP-FPM ($PHP_FPM_SERVICE)..."
 systemctl restart "$PHP_FPM_SERVICE"
 
 echo "✅ Deploy finalizado com sucesso em $(date)"
+
+# git update-index --chmod=+x deploy.sh
+# git commit -m "Marca deploy.sh como executável para deploy"
+# git push origin main
