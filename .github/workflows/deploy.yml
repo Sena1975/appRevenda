@@ -28,3 +28,5 @@ jobs:
             export COMPOSER_ALLOW_SUPERUSER=1
             chmod +x deploy.sh          # 👈 garante permissão sempre
             ./deploy.sh
+
+            
