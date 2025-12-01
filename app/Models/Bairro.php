@@ -1,52 +1,17 @@
 <?php
 
-namespace App\Services;
+namespace App\Models;
 
-use App\Models\Cliente;
-use App\Models\PedidoVenda;
-use App\Models\Mensagem;
-use App\Models\Campanha;
-use App\Services\Whatsapp\BotConversaService;
+use Illuminate\Database\Eloquent\Model;
 
-class MensageriaService
+class Bairro extends Model
 {
-    public function __construct(
-        private BotConversaService $botConversa,
-    ) {}
+    protected $table = 'appbairro';
 
-    public function enviarWhatsapp(
-        Cliente $cliente,
-        string $conteudo,
-        ?string $tipo = null,
-        ?PedidoVenda $pedido = null,
-        ?Campanha $campanha = null
-    ): Mensagem {
-        // 1) grava no banco
-        $mensagem = Mensagem::create([
-            'cliente_id'  => $cliente->id,
-            'pedido_id'   => $pedido?->id,
-            'campanha_id' => $campanha?->id,
-            'canal'       => 'whatsapp',
-            'direcao'     => 'outbound',
-            'tipo'        => $tipo,
-            'conteudo'    => $conteudo,
-            'status'      => 'queued',
-            'provider'    => 'botconversa',
-            'payload'     => [], // aqui você pode guardar dados extras
-        ]);
+    protected $fillable = ['nome', 'cidade_id'];
 
-        // 2) envia via BotConversa
-        $ok = $this->botConversa->enviarParaCliente($cliente, $conteudo);
-
-        // Se quiser enriquecer, pode ajustar BotConversaService pra retornar dados
-        // como subscriber_id, message_id, etc.
-        // Aqui vou só marcar status enviado/failed:
-
-        $mensagem->status  = $ok ? 'sent' : 'failed';
-        $mensagem->sent_at = $ok ? now() : null;
-        $mensagem->failed_at = $ok ? null : now();
-        $mensagem->save();
-
-        return $mensagem;
+    public function cidade()
+    {
+        return $this->belongsTo(Cidade::class, 'cidade_id');
     }
 }
