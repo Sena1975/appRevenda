@@ -20,6 +20,7 @@ use App\Models\PlanoPagamento;
 use App\Models\Produto;
 use App\Models\ViewProduto;
 use App\Models\Campanha;
+use App\Models\CampanhaPremio;
 use App\Models\Indicacao;
 use App\Models\ContasReceber;
 use App\Services\MensageriaService;
@@ -942,28 +943,40 @@ class PedidoVendaController extends Controller
     }
 
     /**
-     * Calcula o valor do prêmio de indicação pela faixa de valor do pedido
+     * Calcula o valor do prêmio de indicação pela faixa de valor do pedido,
+     * buscando na tabela appcampanha_premio da campanha de indicação ativa.
      */
     private function calcularPremioIndicacao(float $valorPedido): float
     {
-        $faixas = [
-            [0.00,    99.99,   5.00],
-            [100.00,  199.99, 10.00],
-            [200.00,  399.99, 20.00],
-            [400.00,  599.99, 40.00],
-            [600.00,  799.99, 60.00],
-            [800.00,  999.99, 80.00],
-            [1000.00, 9999.99, 100.00],
-        ];
+        // 1) Descobre qual é a campanha de indicação ativa
+        $campanhaId = $this->getCampanhaIndicacaoId();
 
-        foreach ($faixas as [$min, $max, $premio]) {
-            if ($valorPedido >= $min && $valorPedido <= $max) {
-                return $premio;
-            }
+        if (!$campanhaId) {
+            Log::info('calcularPremioIndicacao: nenhuma campanha de indicação ativa encontrada.');
+            return 0.0;
         }
 
-        return 0.0;
+        // 2) Busca a faixa de prêmio compatível com o valor do pedido
+        $faixa = CampanhaPremio::query()
+            ->where('campanha_id', $campanhaId)
+            ->where('faixa_inicio', '<=', $valorPedido)
+            ->where('faixa_fim', '>=', $valorPedido)
+            ->orderBy('faixa_inicio')
+            ->first();
+
+        if (!$faixa) {
+            Log::info('calcularPremioIndicacao: nenhuma faixa encontrada', [
+                'campanha_id'  => $campanhaId,
+                'valor_pedido' => $valorPedido,
+            ]);
+
+            return 0.0;
+        }
+
+        // Como está com cast decimal:2, costuma vir como string
+        return (float) $faixa->valor_premio;
     }
+
 
     /**
      * Busca o ID da campanha de indicação (se existir)
