@@ -280,6 +280,15 @@
                 <textarea name="observacao" rows="3" class="w-full border rounded">{{ $pedido->observacao }}</textarea>
             </div>
 
+            {{-- Opções de comunicação --}}
+            <div class="mb-4">
+                <label class="inline-flex items-center text-sm text-gray-700">
+                    <input type="checkbox" name="enviar_mensagem" value="1" class="rounded border-gray-300 mr-2"
+                        {{ old('enviar_mensagem', '1') ? 'checked' : '' }}>
+                    <span>Enviar mensagem de atualização/confirmação para o cliente no WhatsApp</span>
+                </label>
+            </div>
+
             {{-- Barra de ações fixa --}}
             <div class="sticky bottom-0 left-0 right-0 mt-4">
                 <div class="bg-white/95 backdrop-blur border-t px-4 py-3 rounded-t">
@@ -701,7 +710,7 @@
         function confirmarEntregaPedido() {
             if (!confirm(
                     'Confirmar entrega do pedido #{{ $pedido->id }}? Isso baixará o estoque e gerará as contas a receber.'
-                    )) {
+                )) {
                 return;
             }
 
