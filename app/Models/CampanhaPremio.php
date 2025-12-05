@@ -11,13 +11,16 @@ class CampanhaPremio extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'campanha_id','faixa_inicio','faixa_fim','valor_premio'
+        'campanha_id',
+        'faixa_inicio',
+        'faixa_fim',
+        'valor_premio', // percentual (%)
     ];
 
     protected $casts = [
         'faixa_inicio' => 'decimal:2',
-        'faixa_fim' => 'decimal:2',
-        'valor_premio' => 'decimal:2',
+        'faixa_fim'    => 'decimal:2',
+        'valor_premio' => 'decimal:2', // ex.: 5.00 = 5%
     ];
 
     public function campanha()

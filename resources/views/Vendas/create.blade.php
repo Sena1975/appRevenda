@@ -68,18 +68,14 @@
                         </div>
                     </div>
 
-                
+                    {{-- Info do indicador --}}
+                    <div id="indicador-wrapper"
+                        class="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded p-2">
+                        <span class="font-semibold">Indicador:</span>
+                        <span id="indicador-text">Selecione um cliente para ver o indicador.</span>
+                    </div>
 
-                                        {{-- Info do indicador --}}
-                <div id="indicador-wrapper"
-                    class="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded p-2">
-                    <span class="font-semibold">Indicador:</span>
-                    <span id="indicador-text">Selecione um cliente para ver o indicador.</span>
                 </div>
-                    
-                </div>
-
-
 
                 {{-- Revendedora --}}
                 <div>
@@ -125,7 +121,7 @@
                     </select>
                 </div>
 
-                {{-- Plano de pagamento (preenchido via AJAX conforme a forma) --}}
+                {{-- Plano de pagamento --}}
                 <div>
                     <label class="block text-sm font-medium">Plano de Pagamento *</label>
                     <select id="planoPagamento" name="plano_pagamento_id" class="w-full border rounded h-10" required>
@@ -183,8 +179,8 @@
                 <table class="min-w-full text-sm border" id="tabela-itens">
                     <thead>
                         <tr class="bg-gray-100 text-left">
-                            {{-- descrição um pouco menor --}}
-                            <th class="px-2 py-1 border w-1/4">Código / Descrição</th>
+                            {{-- descrição com largura fixa --}}
+                            <th class="px-2 py-1 border max-w-md">Código / Descrição</th>
 
                             {{-- Qtd maior --}}
                             <th class="px-2 py-1 border text-right w-24">Qtd</th>
@@ -207,8 +203,8 @@
                     <tbody id="tbody-itens">
                         <tr class="linha-item" data-index="0">
                             {{-- Código / Descrição --}}
-                            <td class="px-2 py-1 border w-1/4">
-                                <select class="produto-select w-full" data-index="0" style="width: 100%;"></select>
+                            <td class="px-2 py-1 border max-w-md align-top">
+                                <select class="produto-select w-full max-w-md" data-index="0" style="width: 100%;"></select>
                                 <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
                                 <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
                                 {{-- Preço compra fica só em hidden, para cálculo de lucro --}}
@@ -290,10 +286,22 @@
                     </span>
                 </div>
 
-                {{-- Lado direito: totais --}}
-                <div class="flex flex-wrap items-center gap-4 text-sm">
+                {{-- Lado direito: totais + desconto --}}
+                <div class="flex flex-col items-end gap-1 text-sm">
                     <div>Total Pontos: <span id="totalPontosSpan">0</span></div>
-                    <div>Total Venda: <span id="totalVendaSpan">0,00</span></div>
+                    <div>Total Venda (Bruto): <span id="totalVendaSpan">0,00</span></div>
+
+                    <div class="flex items-center gap-2">
+                        <span>Desconto (R$):</span>
+                        <input type="number" step="0.01" min="0" name="valor_desconto" id="valor_desconto"
+                            value="{{ old('valor_desconto', 0) }}"
+                            class="w-28 border-gray-300 rounded-md shadow-sm text-right text-sm">
+                    </div>
+
+                    <div class="font-semibold">
+                        Total Líquido (R$): <span id="totalLiquidoSpan">0,00</span>
+                    </div>
+
                     <div class="font-semibold">
                         Lucro Total: <span id="totalLucroSpan">0,00</span>
                     </div>
@@ -304,6 +312,10 @@
             <input type="hidden" name="total_pontos" id="total_pontos">
             <input type="hidden" name="total_venda" id="total_venda">
             <input type="hidden" name="total_lucro" id="total_lucro">
+
+            {{-- Também mandando nos nomes usados no edit --}}
+            <input type="hidden" name="valor_total" id="valor_total">
+            <input type="hidden" name="valor_liquido" id="valor_liquido">
 
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="{{ route('vendas.index') }}"
@@ -328,6 +340,9 @@
             // ------------------- Itens da venda -------------------
             let indice = 0;
 
+            const inputValorDesconto = document.getElementById('valor_desconto');
+            const spanTotalLiquido = document.getElementById('totalLiquidoSpan');
+
             // Cliente: Select2 com busca
             $('.cliente-select').select2({
                 placeholder: 'Selecione ou digite o nome do cliente...',
@@ -351,13 +366,11 @@
                 indicadorTextEl.textContent = texto;
             }
 
-            // Usa jQuery porque o Select2 dispara change com .trigger('change')
             if (clienteSelectEl) {
                 $('#cliente_id').on('change', function() {
                     atualizarIndicadorSelect();
                 });
 
-                // Se já tiver cliente selecionado (ex: após validação), atualiza ao carregar
                 if (clienteSelectEl.value) {
                     atualizarIndicadorSelect();
                 }
@@ -428,36 +441,68 @@
                 row.querySelector('.input-lucro-linha').value = lucro.toFixed(2);
             }
 
-            function recalcularTotais() {
-                let totalVenda = 0;
-                let totalPontos = 0;
-                let totalLucro = 0;
+  function recalcularTotais() {
+    let totalVendaBruta = 0;
+    let totalPontos = 0;
+    let totalLucroBruto = 0;
 
-                document.querySelectorAll('#tbody-itens tr').forEach(function(linha) {
-                    const qtd = toNumber(linha.querySelector('.input-quantidade').value);
-                    const pVenda = toNumber(linha.querySelector('.input-preco-venda').value);
-                    const pCompra = toNumber(linha.querySelector('.input-preco-compra').value);
-                    const desconto = toNumber(linha.querySelector('.input-desconto').value);
-                    const pontos = toNumber(linha.querySelector('.input-pontos').value);
+    document.querySelectorAll('#tbody-itens tr').forEach(function(linha) {
+        const qtd      = toNumber(linha.querySelector('.input-quantidade').value);
+        const pVenda   = toNumber(linha.querySelector('.input-preco-venda').value);
+        const pCompra  = toNumber(linha.querySelector('.input-preco-compra').value);
+        const descLinha = toNumber(linha.querySelector('.input-desconto').value);
+        const pontos   = toNumber(linha.querySelector('.input-pontos').value);
 
-                    const totalBruto = qtd * pVenda;
-                    const totalLinha = Math.max(0, totalBruto - desconto);
-                    const custoTotal = qtd * pCompra;
-                    const lucroLinha = totalLinha - custoTotal;
+        const totalBrutoLinha = qtd * pVenda;
+        const totalLinha      = Math.max(0, totalBrutoLinha - descLinha);
+        const custoTotal      = qtd * pCompra;
+        const lucroLinhaBruto = totalLinha - custoTotal;
 
-                    totalVenda += totalLinha;
-                    totalPontos += (qtd * pontos);
-                    totalLucro += lucroLinha;
-                });
+        totalVendaBruta += totalLinha;
+        totalPontos     += (qtd * pontos);
+        totalLucroBruto += lucroLinhaBruto;
+    });
 
-                document.getElementById('totalVendaSpan').innerText = totalVenda.toFixed(2).replace('.', ',');
-                document.getElementById('totalPontosSpan').innerText = totalPontos.toFixed(0);
-                document.getElementById('totalLucroSpan').innerText = totalLucro.toFixed(2).replace('.', ',');
+    // Atualiza spans básicos
+    document.getElementById('totalVendaSpan').innerText  = totalVendaBruta.toFixed(2).replace('.', ',');
+    document.getElementById('totalPontosSpan').innerText = totalPontos.toFixed(0);
 
-                document.getElementById('total_venda').value = totalVenda.toFixed(2);
-                document.getElementById('total_pontos').value = totalPontos.toFixed(0);
-                document.getElementById('total_lucro').value = totalLucro.toFixed(2);
-            }
+    // Desconto do pedido
+    const inputValorDesconto = document.getElementById('valor_desconto');
+    const descontoPedido = inputValorDesconto
+        ? toNumber(inputValorDesconto.value)
+        : 0;
+
+    // Total líquido do pedido
+    const totalLiquido = Math.max(0, totalVendaBruta - descontoPedido);
+
+    const spanTotalLiquido = document.getElementById('totalLiquidoSpan');
+    if (spanTotalLiquido) {
+        spanTotalLiquido.innerText = totalLiquido.toFixed(2).replace('.', ',');
+    }
+
+    // Lucro após considerar o desconto do pedido
+    const lucroAposDesconto = Math.max(0, totalLucroBruto - descontoPedido);
+
+    document.getElementById('totalLucroSpan').innerText =
+        lucroAposDesconto.toFixed(2).replace('.', ',');
+
+    // Hidden para o backend
+    document.getElementById('total_venda').value  = totalVendaBruta.toFixed(2);
+    document.getElementById('total_pontos').value = totalPontos.toFixed(0);
+    document.getElementById('total_lucro').value  = lucroAposDesconto.toFixed(2);
+
+    const inputValorTotal   = document.getElementById('valor_total');
+    const inputValorLiquido = document.getElementById('valor_liquido');
+
+    if (inputValorTotal) {
+        inputValorTotal.value = totalVendaBruta.toFixed(2);
+    }
+    if (inputValorLiquido) {
+        inputValorLiquido.value = totalLiquido.toFixed(2);
+    }
+}
+
 
             function adicionarLinha() {
                 const tbody = document.getElementById('tbody-itens');
@@ -489,7 +534,7 @@
 
                 let selectTd = novaLinha.querySelector('.produto-select').parentElement;
                 selectTd.innerHTML =
-                    '<select class="produto-select w-full" data-index="' + indice +
+                    '<select class="produto-select w-full max-w-md" data-index="' + indice +
                     '" style="width:100%;"></select>' +
                     '<input type="hidden" name="itens[' + indice + '][codfabnumero]" class="input-codfab">' +
                     '<input type="hidden" name="itens[' + indice + '][produto_id]" class="input-produto-id">' +
@@ -526,6 +571,13 @@
             $('#somenteEstoque').on('change', function() {
                 $('.produto-select').val(null).trigger('change');
             });
+
+            // Quando editar o desconto do pedido, recalcula total líquido
+            if (inputValorDesconto) {
+                inputValorDesconto.addEventListener('input', function() {
+                    recalcularTotais();
+                });
+            }
 
             // ----------------- IMPORTAÇÃO CSV PARA VENDA -----------------
             const inputArquivoVenda = document.getElementById('arquivoImportacaoVenda');
@@ -653,7 +705,6 @@
                                 return;
                             }
 
-                            // Filtra só itens com código e quantidade > 0
                             const itensValidos = itens.filter(it => {
                                 const cod = (it.codigo || '').trim();
                                 const qtd = parseFloat(it.quantidade || 0);
@@ -668,7 +719,6 @@
                             const tbody = document.getElementById('tbody-itens');
                             let linhas = tbody.querySelectorAll('.linha-item');
 
-                            // Garante que exista pelo menos 1 linha base
                             if (!linhas.length) {
                                 adicionarLinha();
                                 linhas = tbody.querySelectorAll('.linha-item');
@@ -676,26 +726,28 @@
 
                             const linhaBase = linhas[0];
 
-                            // Remove todas as linhas extras (deixa só a primeira)
                             linhas.forEach((linha, idx) => {
                                 if (idx > 0) linha.remove();
                             });
 
-                            // Limpa a linha base (inputs e select2)
                             $(linhaBase).find('.produto-select').val(null).trigger('change');
                             linhaBase.querySelectorAll('input').forEach(inp => inp.value = '');
                             linhaBase.querySelector('.input-quantidade').value = 1;
                             linhaBase.querySelector('.input-desconto').value = 0;
 
-                            // Zera totais
                             document.getElementById('totalVendaSpan').innerText = '0,00';
                             document.getElementById('totalPontosSpan').innerText = '0';
                             document.getElementById('totalLucroSpan').innerText = '0,00';
+                            if (spanTotalLiquido) spanTotalLiquido.innerText = '0,00';
                             document.getElementById('total_venda').value = '0.00';
                             document.getElementById('total_pontos').value = '0';
                             document.getElementById('total_lucro').value = '0.00';
+                            const inputValorTotal = document.getElementById('valor_total');
+                            const inputValorLiquido = document.getElementById('valor_liquido');
+                            if (inputValorTotal) inputValorTotal.value = '0.00';
+                            if (inputValorLiquido) inputValorLiquido.value = '0.00';
+                            if (inputValorDesconto) inputValorDesconto.value = '0';
 
-                            // Controle dos itens não importados
                             let totalItens = itensValidos.length;
                             let processados = 0;
                             let missingItems = [];
@@ -703,7 +755,6 @@
                             function registrarProcessado() {
                                 processados++;
                                 if (processados === totalItens) {
-                                    // Terminamos todos os AJAX → se houver faltando, gera TXT
                                     if (missingItems.length) {
                                         let linhasTxt = [];
                                         linhasTxt.push(
@@ -745,13 +796,11 @@
                                 }
                             }
 
-                            // Para cada item válido → uma linha distinta
                             itensValidos.forEach(function(item, idx) {
                                 const codigo = (item.codigo || '').trim();
                                 const qtd = parseFloat(item.quantidade || 0);
                                 const precoV = parseFloat(item.preco_unitario || 0);
 
-                                // 1º item reaproveita a linha base, demais criam novas linhas
                                 let linhaAlvo = (idx === 0) ? linhaBase : adicionarLinha();
                                 const $select = $(linhaAlvo).find('.produto-select');
 
@@ -762,21 +811,17 @@
                                         q: codigo
                                     },
                                     success: function(data) {
-                                        // Se não encontrou o produto, não mantém a linha
                                         if (!data || !data.length) {
                                             if (idx === 0) {
-                                                // limpa a base
                                                 $(linhaBase).find('.produto-select')
                                                     .val(null).trigger('change');
                                                 linhaBase.querySelectorAll('input')
                                                     .forEach(inp => inp.value = '');
                                                 linhaBase.querySelector(
-                                                        '.input-quantidade').value =
-                                                    1;
+                                                    '.input-quantidade').value = 1;
                                                 linhaBase.querySelector(
                                                     '.input-desconto').value = 0;
                                             } else {
-                                                // remove a linha criada
                                                 linhaAlvo.remove();
                                             }
 
@@ -795,7 +840,6 @@
                                         const option = new Option(prod.text, prod.id, true, true);
                                         $select.append(option).trigger('change');
 
-                                        // dispara o select2:select para preencher preço/pontos/custo
                                         $select.trigger({
                                             type: 'select2:select',
                                             params: {
@@ -803,10 +847,8 @@
                                             }
                                         });
 
-                                        // aplica quantidade
                                         linhaAlvo.querySelector('.input-quantidade').value = qtd;
 
-                                        // se veio preço no texto, sobrescreve
                                         if (!isNaN(precoV) && precoV > 0) {
                                             linhaAlvo.querySelector('.input-preco-venda').value =
                                                 precoV.toFixed(2);
@@ -816,7 +858,6 @@
                                         recalcularTotais();
                                     },
                                     error: function() {
-                                        // Erro de comunicação também conta como não importado
                                         missingItems.push({
                                             codigo: codigo,
                                             quantidade: qtd,
@@ -859,7 +900,7 @@
                     return;
                 }
 
-                try {
+            try {
                     const res = await fetch(`/planos-por-forma/${encodeURIComponent(formaId)}`, {
                         headers: {
                             'Accept': 'application/json'
@@ -913,4 +954,21 @@
             }
         })();
     </script>
+
+    {{-- Quebra de linha na descrição do Select2 --}}
+    <style>
+        .select2-container--default .select2-selection--single {
+            min-height: 32px;
+            height: auto;
+            white-space: normal !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.2rem;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+    </style>
 </x-app-layout>

@@ -268,15 +268,18 @@ class PedidoVendaController extends Controller
 
                 if ($primeiraCompraIndicada && $campanhaId) {
 
-                    // >>> INÍCIO CAMPANHA INDICAÇÃO: APLICA 5% E CRIA INDICAÇÃO <<<
+                    // >>> INÍCIO CAMPANHA INDICAÇÃO: APLICA DESCONTO DA CAMPANHA E CRIA INDICAÇÃO <<<
 
-                    $valorTotal     = (float) ($pedido->valor_total ?? 0);
-                    $descontoAtual  = (float) ($pedido->valor_desconto ?? 0);
+                    $valorTotal    = (float) ($pedido->valor_total ?? 0);
+                    $descontoAtual = (float) ($pedido->valor_desconto ?? 0);
 
-                    // 5% sobre o valor total
-                    $descontoIndicacao = round($valorTotal * 0.05, 2);
+                    // Percentual da campanha (campo perc_desc da appcampanha)
+                    $percentualDesconto = $this->getPercentualDescontoCampanha($campanhaId); // ex.: 0.05
 
-                    // soma desconto da tela + 5% da indicação
+                    // Desconto da indicação sobre o valor total
+                    $descontoIndicacao = round($valorTotal * $percentualDesconto, 2);
+
+                    // soma desconto da tela + desconto da indicação
                     $novoDesconto     = $descontoAtual + $descontoIndicacao;
                     $novoValorLiquido = max(0, $valorTotal - $novoDesconto);
 
@@ -285,9 +288,14 @@ class PedidoVendaController extends Controller
                     $pedido->valor_liquido  = $novoValorLiquido;
                     $pedido->campanha_id    = $campanhaId;
 
-                    // (opcional) registra na observação
+                    // (opcional) registra na observação, com o percentual dinâmico
                     $obsOriginal = trim($pedido->observacao ?? '');
-                    $obsCampanha = 'Desconto de 5% aplicado (primeira compra indicada).';
+
+                    // converte 0.05 → "5"
+                    $percentualLabel = number_format($percentualDesconto * 100, 2, ',', '');
+                    // se quiser sem casas decimais, pode usar number_format(..., 0, ',', '')
+                    $obsCampanha = "Desconto de {$percentualLabel}% aplicado (primeira compra indicada).";
+
 
                     $pedido->observacao = $obsOriginal
                         ? $obsOriginal . ' | ' . $obsCampanha
@@ -942,13 +950,17 @@ class PedidoVendaController extends Controller
         return null;
     }
 
+
     /**
      * Calcula o valor do prêmio de indicação pela faixa de valor do pedido,
-     * buscando na tabela appcampanha_premio da campanha de indicação ativa.
+     * usando o percentual configurado na tabela appcampanha_premio.
+     *
+     * @param  float  $valorLiquido  Valor líquido do pedido do cliente indicado
+     * @return float Valor do prêmio em reais (ex.: 8.00)
      */
-    private function calcularPremioIndicacao(float $valorPedido): float
+    private function calcularPremioIndicacao(float $valorLiquido): float
     {
-        // 1) Descobre qual é a campanha de indicação ativa
+        // 1) Descobre a campanha de indicação ativa
         $campanhaId = $this->getCampanhaIndicacaoId();
 
         if (!$campanhaId) {
@@ -956,27 +968,75 @@ class PedidoVendaController extends Controller
             return 0.0;
         }
 
-        // 2) Busca a faixa de prêmio compatível com o valor do pedido
+        // 2) Busca a faixa compatível com o valor do pedido
         $faixa = CampanhaPremio::query()
             ->where('campanha_id', $campanhaId)
-            ->where('faixa_inicio', '<=', $valorPedido)
-            ->where('faixa_fim', '>=', $valorPedido)
+            ->where('faixa_inicio', '<=', $valorLiquido)
+            ->where('faixa_fim', '>=', $valorLiquido)
             ->orderBy('faixa_inicio')
             ->first();
 
         if (!$faixa) {
             Log::info('calcularPremioIndicacao: nenhuma faixa encontrada', [
-                'campanha_id'  => $campanhaId,
-                'valor_pedido' => $valorPedido,
+                'campanha_id'   => $campanhaId,
+                'valor_liquido' => $valorLiquido,
             ]);
 
             return 0.0;
         }
 
-        // Como está com cast decimal:2, costuma vir como string
-        return (float) $faixa->valor_premio;
+        // 3) Percentual de prêmio (ex.: 5, 6, 7...)
+        $percentual = (float) $faixa->valor_premio;
+
+        // 4) Calcula o valor em reais
+        $valorPremio = $valorLiquido * $percentual / 100;
+
+        // 5) Arredonda para 2 casas decimais
+        return round($valorPremio, 2);
     }
 
+
+    /**
+     * Retorna o percentual de desconto da campanha (campo perc_desc da appcampanha)
+     * em formato decimal para cálculo.
+     *
+     * Ex.:
+     *  - perc_desc = 0.05 => retorna 0.05 (5%)
+     *  - perc_desc = 5    => retorna 0.05 (5%)  [caso você prefira gravar 5 no banco]
+     */
+    private function getPercentualDescontoCampanha(int $campanhaId): float
+    {
+        try {
+            $percDesc = DB::table('appcampanha')
+                ->where('id', $campanhaId)
+                ->value('perc_desc');
+
+            if ($percDesc === null) {
+                Log::warning('Campanha sem perc_desc definido', [
+                    'campanha_id' => $campanhaId,
+                ]);
+
+                // fallback: 0% se não tiver nada no banco
+                return 0.00;
+            }
+
+            $percDesc = (float) $percDesc;
+
+            // Se a pessoa gravar "5" ao invés de "0.05", converte pra decimal
+            if ($percDesc > 1) {
+                $percDesc = $percDesc / 100;
+            }
+
+            return $percDesc;
+        } catch (\Throwable $e) {
+            Log::warning('Erro ao buscar perc_desc da campanha: ' . $e->getMessage(), [
+                'campanha_id' => $campanhaId,
+            ]);
+
+            // fallback de segurança
+            return 0.00;
+        }
+    }
 
     /**
      * Busca o ID da campanha de indicação (se existir)
@@ -991,7 +1051,7 @@ class PedidoVendaController extends Controller
         try {
             $id = DB::table('appcampanha as c')
                 ->join('appcampanha_tipo as t', 't.id', '=', 'c.tipo_id')
-                ->where('t.metodo_php', 'isCampanhaIndicacao') // <- ATENÇÃO: UNDERSCORE
+                ->where('t.metodo_php', 'isCampanhaIndicacao')
                 ->where('c.ativa', 1)
                 ->orderByDesc('c.prioridade')
                 ->value('c.id');
@@ -1010,6 +1070,7 @@ class PedidoVendaController extends Controller
             return null;
         }
     }
+
 
 
 

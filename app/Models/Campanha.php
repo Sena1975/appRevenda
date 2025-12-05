@@ -25,6 +25,7 @@ class Campanha extends Model
         'cumulativa',
         'aplicacao_automatica',
         'prioridade',
+        'perc_desc',
         'valor_base_cupom',
         'acumulativa_por_valor',
         'acumulativa_por_quantidade',

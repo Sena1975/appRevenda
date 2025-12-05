@@ -96,8 +96,9 @@
             {{-- ITENS --}}
             <div class="mb-3 flex items-center justify-between">
                 <h2 class="text-lg font-semibold">Itens do Pedido</h2>
-                <button type="button" id="btnAdd" class="px-3 py-2 bg-blue-600 text-white rounded text-sm">Adicionar
-                    item</button>
+                <button type="button" id="btnAdd" class="px-3 py-2 bg-blue-600 text-white rounded text-sm">
+                    Adicionar item
+                </button>
             </div>
 
             <div class="overflow-x-auto mb-4">
@@ -113,7 +114,7 @@
 
                     <thead class="bg-gray-50 text-sm">
                         <tr>
-                            <th class="px-2 py-2 text-left">Produto (CODFAB - Nome)</th>
+                            <th class="px-2 py-2 text-left max-w-md">Produto (CODFAB - Nome)</th>
                             <th class="px-2 py-2 text-right">Qtd</th>
                             <th class="px-2 py-2 text-right">Pontos</th>
                             <th class="px-2 py-2 text-right">R$ Unit</th>
@@ -124,7 +125,7 @@
                     <tbody id="linhas">
                         @foreach ($pedido->itens as $idx => $it)
                             <tr class="linha border-t">
-                                <td class="px-2 py-2">
+                                <td class="px-2 py-2 max-w-md align-top">
                                     <input type="hidden" name="itens[{{ $idx }}][produto_id]"
                                         class="produto-id-hidden" value="{{ $it->produto_id }}">
                                     <input type="hidden" name="itens[{{ $idx }}][codfabnumero]"
@@ -133,7 +134,7 @@
                                         class="pontos-unit-hidden" value="{{ (int) $it->pontuacao }}">
                                     <input type="hidden" name="itens[{{ $idx }}][pontuacao_total]"
                                         class="pontos-total-hidden" value="{{ (int) $it->pontuacao_total }}">
-                                    <select class="produtoSelect w-full border rounded" required>
+                                    <select class="produtoSelect w-full max-w-md border rounded" required>
                                         @foreach ($produtos as $p)
                                             <option value="{{ $p->id }}" data-codfab="{{ $p->codfabnumero }}"
                                                 data-nome="{{ $p->nome }}" @selected($p->id == $it->produto_id)>
@@ -211,7 +212,7 @@
                 {{-- TEMPLATE DA LINHA DE ITEM --}}
                 <template id="tplItem">
                     <tr class="linha border-t">
-                        <td class="px-2 py-2">
+                        <td class="px-2 py-2 max-w-md align-top">
                             <input type="hidden" name="itens[__IDX__][produto_id]" class="produto-id-hidden"
                                 value="">
                             <input type="hidden" name="itens[__IDX__][codfabnumero]" class="codfab-hidden"
@@ -221,7 +222,7 @@
                             <input type="hidden" name="itens[__IDX__][pontuacao_total]" class="pontos-total-hidden"
                                 value="0">
 
-                            <select class="produtoSelect w-full border rounded" required>
+                            <select class="produtoSelect w-full max-w-md border rounded" required>
                                 <option value="">Selecione...</option>
                                 @foreach ($produtos as $p)
                                     <option value="{{ $p->id }}" data-codfab="{{ $p->codfabnumero }}"
@@ -242,7 +243,6 @@
                             <input type="number" min="0" step="1"
                                 class="pontos-unit w-full border rounded text-right" value="0">
                         </td>
-
 
                         <td class="px-2 py-2">
                             <input type="number" min="0" step="0.01" value="0.00"
@@ -337,7 +337,7 @@
             class="hidden">
             @csrf
         </form>
-        {{-- Form oculto para confirmar entrega --}}
+        {{-- Form oculto para confirmar entrega (duplicado, mantido como estava) --}}
         <form id="form-confirmar-entrega" method="POST" action="{{ route('vendas.confirmarEntrega', $pedido->id) }}"
             class="hidden">
             @csrf
@@ -607,7 +607,7 @@
                 }
             });
 
-            // Boot: renomear já não é necessário aqui, mas recalcula tudo e carrega planos iniciais
+            // Boot: recalcula tudo e carrega planos iniciais
             window.addEventListener('load', () => {
                 atualizarContadorItens();
                 recalcularTotais();
@@ -632,16 +632,19 @@
             width: 100% !important;
         }
 
-        .select2-container .select2-selection--single {
-            height: 38px;
+        /* Quebra de linha na descrição do Select2, igual padrão de compras */
+        .select2-container--default .select2-selection--single {
+            min-height: 32px;
+            height: auto;
+            white-space: normal !important;
         }
 
-        .select2-container .select2-selection__rendered {
-            line-height: 36px;
-        }
-
-        .select2-container .select2-selection__arrow {
-            height: 36px;
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.2rem;
+            padding-top: 2px;
+            padding-bottom: 2px;
         }
     </style>
 
