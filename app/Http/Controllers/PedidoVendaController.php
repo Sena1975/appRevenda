@@ -26,12 +26,10 @@ use App\Models\ContasReceber;
 use App\Services\MensageriaService;
 use App\Services\Whatsapp\MensagensCampanhaService;
 
-
 use App\Services\EstoqueService;
 use App\Services\ContasReceberService;
 use App\Services\CampaignEvaluatorService;
 use App\Services\Importacao\PedidoWhatsappParser;
-
 
 use Illuminate\Http\JsonResponse;
 
@@ -43,7 +41,6 @@ class PedidoVendaController extends Controller
     public function __construct(
         EstoqueService $estoque,
         ContasReceberService $cr,
-
     ) {
         $this->estoque = $estoque;
         $this->cr      = $cr;
@@ -139,7 +136,6 @@ class PedidoVendaController extends Controller
      * Salva um novo pedido (status PENDENTE) e RESERVA estoque
      * + aplica campanhas no salvar (idempotente por reavaliação)
      */
-
     public function store(Request $request)
     {
         // ===== ajuste rápido de nomes, se seu legado usar outros =====
@@ -163,6 +159,8 @@ class PedidoVendaController extends Controller
             'observacao'          => 'nullable|string|max:1000',
             'desconto'            => 'nullable|numeric|min:0',
 
+            'enviar_msg_cliente'  => 'nullable|boolean',   // ✅ checkbox
+
             'itens'                        => 'required|array|min:1',
             'itens.*.produto_id'           => 'required|integer',
             'itens.*.codfabnumero'         => 'nullable|string',
@@ -171,7 +169,13 @@ class PedidoVendaController extends Controller
             'itens.*.pontuacao'            => 'nullable|integer|min:0',
         ]);
 
-        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA) {
+        // Flag de envio da mensagem para o cliente
+        // Se o campo não vier (form antigo, ou algo do tipo), default = true
+        $enviarMsgCliente = array_key_exists('enviar_msg_cliente', $data)
+            ? (bool)$data['enviar_msg_cliente']
+            : true;
+
+        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA, $enviarMsgCliente) {
 
             $totalBruto       = 0.0;
             $totalPontosUnit  = 0;
@@ -243,6 +247,7 @@ class PedidoVendaController extends Controller
                 'pontuacao_total'    => $totalPontosGeral,
                 'status'             => 'PENDENTE',
                 'indicador_id'       => $indicadorId,
+                'enviar_msg_cliente' => $enviarMsgCliente ? 1 : 0, // ✅ grava flag
             ]);
 
             // ============================================================
@@ -291,11 +296,9 @@ class PedidoVendaController extends Controller
                     // (opcional) registra na observação, com o percentual dinâmico
                     $obsOriginal = trim($pedido->observacao ?? '');
 
-                    // converte 0.05 → "5"
+                    // converte 0.05 → "5,00"
                     $percentualLabel = number_format($percentualDesconto * 100, 2, ',', '');
-                    // se quiser sem casas decimais, pode usar number_format(..., 0, ',', '')
                     $obsCampanha = "Desconto de {$percentualLabel}% aplicado (primeira compra indicada).";
-
 
                     $pedido->observacao = $obsOriginal
                         ? $obsOriginal . ' | ' . $obsCampanha
@@ -303,7 +306,7 @@ class PedidoVendaController extends Controller
 
                     $pedido->save();
 
-                    // valor do pedido para a indicação = já com 5% de desconto
+                    // valor do pedido para a indicação = já com desconto da campanha
                     $valorPedidoIndicacao = $novoValorLiquido;
 
                     if ($valorPedidoIndicacao > 0) {
@@ -349,8 +352,9 @@ class PedidoVendaController extends Controller
                     // >>> FIM CAMPANHA INDICAÇÃO <<<
 
                 }
+
                 // Após tratar campanha / indicação, envia mensagem para o CLIENTE
-                if ($pedido) {
+                if ($pedido && ($pedido->enviar_msg_cliente ?? true)) {
                     try {
                         $this->enviarAvisoClientePedidoCriado($pedido);
                     } catch (\Throwable $e) {
@@ -359,12 +363,18 @@ class PedidoVendaController extends Controller
                             'erro'      => $e->getMessage(),
                         ]);
                     }
+                } else {
+                    Log::info('Aviso cliente NÃO enviado (enviar_msg_cliente = false)', [
+                        'pedido_id'          => $pedido->id ?? null,
+                        'enviar_msg_cliente' => $pedido->enviar_msg_cliente ?? null,
+                    ]);
                 }
             }
 
             // ===== 4) Grava itens =====
             foreach ($itensCalc as $it) {
-                $precoTotal = ($it['total'] ?? ($it['preco_unitario'] * $it['quantidade']));
+                // Corrige o bug: usa 'preco_total' em vez de 'total'
+                $precoTotal = $it['preco_total'] ?? ($it['preco_unitario'] * $it['quantidade']);
 
                 DB::table($TAB_ITENS)->insert([
                     'pedido_id'        => $vendaId,
@@ -472,6 +482,7 @@ class PedidoVendaController extends Controller
             ], 500);
         }
     }
+
     /**
      * Editar pedido
      */
@@ -506,6 +517,8 @@ class PedidoVendaController extends Controller
             'previsao_entrega'    => 'nullable|date',
             'observacao'          => 'nullable|string',
             'valor_desconto'      => 'nullable|numeric|min:0',
+
+            'enviar_msg_cliente'  => 'nullable|boolean', // ✅ checkbox no edit
 
             'itens'                      => 'required|array|min:1',
             'itens.*.produto_id'         => 'required|integer|exists:appproduto,id',
@@ -557,6 +570,12 @@ class PedidoVendaController extends Controller
                 'pontuacao'          => $pontosUnitSomatorio,
                 'pontuacao_total'    => $pontosTotal,
                 'observacao'         => $request->observacao,
+
+                // Atualiza flag conforme o checkbox na tela (mantém valor anterior como default)
+                'enviar_msg_cliente' => $request->boolean(
+                    'enviar_msg_cliente',
+                    $pedido->enviar_msg_cliente ?? true
+                ),
             ]);
 
             // Recria itens
@@ -608,8 +627,7 @@ class PedidoVendaController extends Controller
             $campanhas = $service->reavaliarPedido($pedido);
             session()->flash('campanhas', $campanhas);
 
-            // 🔹 Atualiza indicação se existir (Etapa C)
-            // Não cria nova indicação aqui, só ajusta valores se já existir e estiver pendente
+            // Atualiza indicação se existir (Etapa C)
             $pedido->refresh();
             $this->atualizarIndicacaoParaPedido($pedido, false);
 
@@ -823,7 +841,7 @@ class PedidoVendaController extends Controller
                 ->where('status', '!=', 'pago')
                 ->update([
                     'status'        => 'cancelado',
-                    'valor_premio'  => 0,          // opcional: zerar o prêmio
+                    'valor_premio'  => 0,
                     'updated_at'    => now(),
                 ]);
         });
@@ -878,6 +896,7 @@ class PedidoVendaController extends Controller
         }
         return null;
     }
+
     private function enumValues(string $table, string $column): array
     {
         $row = DB::selectOne("
@@ -914,7 +933,7 @@ class PedidoVendaController extends Controller
         // origem_id = pedido_id (quando existir)
         if ($pedidoId !== null) {
             if (Schema::hasColumn($table, 'origem_id'))  $mov['origem_id'] = $pedidoId;
-            if (Schema::hasColumn($table, 'pedido_id'))  $mov['pedido_id'] = $pedidoId; // fallback se usa esse nome
+            if (Schema::hasColumn($table, 'pedido_id'))  $mov['pedido_id'] = $pedidoId;
         }
 
         // timestamps, se existirem
@@ -924,6 +943,7 @@ class PedidoVendaController extends Controller
 
         DB::table($table)->insert($mov);
     }
+
     private function isGeneratedColumn(string $table, string $column): bool
     {
         $row = DB::selectOne("
@@ -937,7 +957,7 @@ class PedidoVendaController extends Controller
 
         if (!$row || !isset($row->EXTRA)) return false;
         $extra = strtoupper($row->EXTRA);
-        return str_contains($extra, 'GENERATED'); // VIRTUAL/ STORED GENERATED
+        return str_contains($extra, 'GENERATED');
     }
 
     private function firstWritableColumn(string $table, array $candidates): ?string
@@ -949,7 +969,6 @@ class PedidoVendaController extends Controller
         }
         return null;
     }
-
 
     /**
      * Calcula o valor do prêmio de indicação pela faixa de valor do pedido,
@@ -995,7 +1014,6 @@ class PedidoVendaController extends Controller
         return round($valorPremio, 2);
     }
 
-
     /**
      * Retorna o percentual de desconto da campanha (campo perc_desc da appcampanha)
      * em formato decimal para cálculo.
@@ -1039,10 +1057,6 @@ class PedidoVendaController extends Controller
     }
 
     /**
-     * Busca o ID da campanha de indicação (se existir)
-     * Regra: campanha ativa cujo tipo tenha descricao relacionada a 'Indicação'
-     */
-    /**
      * Busca o ID da campanha de indicação (se existir).
      * Regra: campanha ativa cujo tipo tenha metodo_php = 'isCampanhaIndicacao'
      */
@@ -1071,9 +1085,6 @@ class PedidoVendaController extends Controller
         }
     }
 
-
-
-
     // Retorna true se ESTE pedido for a primeira compra concluída de um cliente indicado (indicador_id != 1).
     private function ehPrimeiraCompraIndicada(PedidoVenda $pedido): bool
     {
@@ -1096,7 +1107,6 @@ class PedidoVendaController extends Controller
         // Chegou aqui: cliente indicado e sem nenhum outro pedido cadastrado
         return true;
     }
-
 
     /**
      * Cria/atualiza o registro em appindicacao para este pedido.
@@ -1179,8 +1189,6 @@ class PedidoVendaController extends Controller
             return;
         }
 
-        // Telefone é resolvido dentro do BotConversaService via Mensageria,
-        // então não precisamos mais tratar aqui.
         $valor = (float) ($pedido->valor_liquido ?? $pedido->valor_total ?? 0);
 
         $dataPedido  = $pedido->data_pedido
@@ -1506,11 +1514,18 @@ class PedidoVendaController extends Controller
             return back()->with('error', 'Falha ao confirmar entrega: ' . $e->getMessage());
         }
 
-        // 7) 🔔 Envia recibo pelo WhatsApp FORA da transação
+        // 7) 🔔 Envia recibo pelo WhatsApp FORA da transação (respeitando flag)
         try {
-            // garante cliente carregado
             $pedido->loadMissing('cliente');
-            $this->enviarReciboWhatsApp($pedido);
+
+            if ($pedido->enviar_msg_cliente ?? true) {
+                $this->enviarReciboWhatsApp($pedido);
+            } else {
+                Log::info('Recibo WhatsApp NÃO enviado (enviar_msg_cliente = false)', [
+                    'pedido_id'          => $pedido->id,
+                    'enviar_msg_cliente' => $pedido->enviar_msg_cliente ?? null,
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::warning('Erro ao enviar recibo WhatsApp após confirmação de entrega', [
                 'pedido_id' => $pedido->id,
@@ -1519,6 +1534,6 @@ class PedidoVendaController extends Controller
         }
 
         return redirect()->route('vendas.index')
-            ->with('success', 'Entrega confirmada, CR gerado, campanhas/indicações processadas e recibo enviado pelo WhatsApp (quando possível).');
+            ->with('success', 'Entrega confirmada, CR gerado, campanhas/indicações processadas e recibo enviado pelo WhatsApp (quando permitido).');
     }
 }
