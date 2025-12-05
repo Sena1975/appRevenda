@@ -299,10 +299,22 @@
                 }
 
                 try {
+                    console.log('Consultando CEP:', cep);
+
                     const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+                    if (!res.ok) {
+                        console.error('Erro HTTP ViaCEP:', res.status);
+                        msg.textContent = 'Erro ao consultar CEP (HTTP).';
+                        msg.classList.add('text-red-600');
+                        return;
+                    }
+
                     const data = await res.json();
+                    console.log('Resposta ViaCEP:', data);
+
                     if (data.erro) {
-                        msg.textContent = 'CEP não encontrado.';
+                        msg.textContent = `CEP não encontrado no ViaCEP.`;
                         msg.classList.add('text-red-600');
                         return;
                     }
