@@ -34,6 +34,7 @@ class PedidoVenda extends Model
         'valor_liquido',
         'pontuacao', 
         'pontuacao_total',
+        'enviar_msg_cliente' => 'boolean',
         'observacao',
     ];
 
