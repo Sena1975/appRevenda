@@ -317,6 +317,16 @@
             <input type="hidden" name="valor_total" id="valor_total">
             <input type="hidden" name="valor_liquido" id="valor_liquido">
 
+            {{-- Opções de comunicação --}}
+            <div class="mt-4">
+                <label class="inline-flex items-center text-sm text-gray-700">
+                    <input type="checkbox" name="enviar_mensagem" value="1"
+                           class="rounded border-gray-300 mr-2"
+                           {{ old('enviar_mensagem', '1') ? 'checked' : '' }}>
+                    <span>Enviar mensagem de confirmação para o cliente no WhatsApp</span>
+                </label>
+            </div>
+
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="{{ route('vendas.index') }}"
                     class="px-4 py-2 bg-gray-300 text-gray-800 rounded shadow text-sm">
