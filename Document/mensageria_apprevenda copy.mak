@@ -1,12 +1,19 @@
+---
+id: mensageria-whatsapp
+title: Mensageria e Integração WhatsApp
+sidebar_label: Mensageria / WhatsApp
+sidebar_position: 40
+---
+
 # Mensageria e Integração WhatsApp (appRevenda)
 
 ## 1. Visão geral
 
-A mensageria do appRevenda integra:
+A mensageria do **appRevenda** integra:
 
 - **Sistema de Revenda** (Pedidos, Clientes, Campanhas)
 - **BotConversa** (envio de mensagens WhatsApp)
-- **Camada interna de mensageria**, responsável por:
+- Camada interna de **Mensageria**, responsável por:
   - Normalizar os envios
   - Registrar tudo na tabela `appmensagens`
   - Oferecer relatórios e rastreabilidade
@@ -23,6 +30,7 @@ A mensageria do appRevenda integra:
 - Manter **histórico detalhado** em banco:
   - Por cliente, pedido, campanha, tipo, status etc.
 - Permitir criação de **relatórios e filtros** de mensagens.
+- Permitir **envio manual de modelos de mensagem** para um ou vários clientes.
 
 ---
 
@@ -56,6 +64,8 @@ A mensageria do appRevenda integra:
     - `indicacao_premio_pix`
     - `recibo_entrega_cliente`
     - `convite_campanha_indicacao_primeira_compra`
+    - `envio_manual_boas_vindas_cliente`
+    - `envio_manual_convite_indicacao`  
     - etc.
 - `conteudo` (text)  
   - Texto efetivo da mensagem (WhatsApp).
@@ -133,6 +143,7 @@ class Mensagem extends Model
         return $this->belongsTo(Campanha::class, 'campanha_id');
     }
 }
+
 2.3 MensageriaService
 
 Arquivo: app/Services/MensageriaService.php
@@ -151,7 +162,7 @@ canal = 'whatsapp'
 
 direcao = 'outbound'
 
-tipo lógico (pedido_pendente_cliente, recibo_entrega_cliente, etc.)
+tipo lógico (pedido_pendente_cliente, recibo_entrega_cliente, envio_manual_xxx etc.)
 
 vínculos com cliente/pedido/campanha.
 
@@ -276,7 +287,7 @@ montarMensagemConviteIndicacaoPrimeiraCompra(...) (NOVO)
 
 4.2 Mensagem de “Pedido Pendente” para o cliente
 
-No PedidoVendaObserver@created, usamos o método privado:
+No PedidoVendaObserver@created, é usado o método privado:
 
 private function mensagemClientePedidoPendente(PedidoVenda $pedido): string
 {
@@ -371,7 +382,7 @@ Fluxo simplificado:
 
 PedidoVendaObserver@updated detecta mudança de status para 'ENTREGUE'.
 
-Usa CampanhaService::calcularPremioIndicacao($pedido) para obter o valor.
+Usa CampanhaService::calcularPremioIndicacao($pedido) para obter o valor (quando implementado).
 
 Chama MensagensCampanhaService::montarMensagemPremioDisponivel(...).
 
@@ -399,8 +410,22 @@ status do pedido = 'ENTREGUE'
 
 Essa mensagem é a base para o disparo posterior do convite da campanha de indicação.
 
-4.5 NOVO: Convite de Campanha de Indicação após a primeira compra
-4.5.1 Template: montarMensagemConviteIndicacaoPrimeiraCompra
+4.5 Convite de Campanha de Indicação após a primeira compra (NOVO)
+4.5.1 Regra de negócio
+
+Enviar uma mensagem para o cliente:
+
+Que comprou pela primeira vez (primeiro pedido com status ENTREGUE);
+
+Que já recebeu o recibo de entrega (tipo = 'recibo_entrega_cliente');
+
+Com pelo menos 24h de diferença desde o envio desse recibo;
+
+Convidando a participar da Campanha de Indicação;
+
+Apenas uma vez por cliente (não repetir convite).
+
+4.5.2 Template: montarMensagemConviteIndicacaoPrimeiraCompra
 
 Adicionado em MensagensCampanhaService:
 
@@ -436,9 +461,9 @@ public function montarMensagemConviteIndicacaoPrimeiraCompra(
 }
 
 
-O envio dessa mensagem é feito por um command agendado, descrito a seguir.
+O envio dessa mensagem é feito por um command agendado (seção 5.4).
 
-5. Gatilhos de envio
+5. Gatilhos de envio (Observers e Commands)
 5.1 ClienteObserver: mensagem de boas-vindas
 
 Arquivo: app/Observers/ClienteObserver.php
@@ -453,12 +478,6 @@ Verifica se já existe no BotConversa; se não, cria subscriber.
 
 Envia mensagem de boas-vindas via MensagensCampanhaService::enviarMensagemBoasVindas.
 
-Principais pontos:
-
-Usa origem_cadastro para diferenciar clientes vindos do app ou de fora.
-
-Pode adicionar TAG de origem usando origin_tag_id de config/services.php.
-
 5.2 PedidoVendaObserver@created
 
 Arquivo: app/Observers/PedidoVendaObserver.php
@@ -469,80 +488,7 @@ INDICADOR: mensagem de indicação, pedido pendente.
 
 CLIENTE: resumo do pedido pendente.
 
-Trechos importantes (resumido):
-
-public function created(PedidoVenda $pedido): void
-{
-    try {
-        $mensageria = app(MensageriaService::class);
-        $campanha = $pedido->campanha_id ? Campanha::find($pedido->campanha_id) : null;
-
-        // 1) INDICADOR
-        if ($this->deveDispararIndicacao($pedido) && $pedido->status === 'PENDENTE') {
-
-            $indicador = $pedido->indicador;
-            $indicado  = $pedido->cliente;
-
-            if ($indicador && $indicado) {
-                $msgCampanha = app(MensagensCampanhaService::class);
-
-                $valorPremio = null; // opcional, se já quiser calcular aqui
-
-                $textoIndicador = $msgCampanha
-                    ->montarMensagemPedidoPendente($indicador, $indicado, $pedido, $valorPremio);
-
-                $msgModel = $mensageria->enviarWhatsapp(
-                    cliente: $indicador,
-                    conteudo: $textoIndicador,
-                    tipo: 'indicacao_pedido_pendente',
-                    pedido: $pedido,
-                    campanha: $campanha,
-                    payloadExtra: [
-                        'evento' => 'indicacao_pedido_pendente',
-                    ],
-                );
-
-                Log::info('Campanha indicação: msg PENDENTE registrada/enviada ao indicador', [
-                    'pedido_id'    => $pedido->id,
-                    'indicador_id' => $indicador->id,
-                    'mensagem_id'  => $msgModel->id,
-                    'msg_status'   => $msgModel->status,
-                ]);
-            }
-        }
-
-        // 2) CLIENTE
-        $cliente = $pedido->cliente;
-
-        if ($cliente) {
-            $textoCliente = $this->mensagemClientePedidoPendente($pedido);
-
-            $msgModel = $mensageria->enviarWhatsapp(
-                cliente: $cliente,
-                conteudo: $textoCliente,
-                tipo: 'pedido_pendente_cliente',
-                pedido: $pedido,
-                campanha: $campanha,
-                payloadExtra: [
-                    'evento' => 'pedido_pendente_cliente',
-                ],
-            );
-
-            Log::info('Pedido pendente: mensagem registrada/enviada ao cliente', [
-                'pedido_id'   => $pedido->id,
-                'cliente_id'  => $cliente->id,
-                'mensagem_id' => $msgModel->id,
-                'msg_status'  => $msgModel->status,
-            ]);
-        }
-
-    } catch (\Throwable $e) {
-        Log::error('PedidoVendaObserver@created erro', [
-            'pedido_id' => $pedido->id,
-            'erro'      => $e->getMessage(),
-        ]);
-    }
-}
+Ver detalhes nas seções 4.2 e 4.3.1.
 
 5.3 PedidoVendaObserver@updated
 
@@ -552,98 +498,21 @@ Ao mudar status do pedido para ENTREGUE:
 
 Enviar mensagem de prêmio para o indicador (campanha de indicação).
 
-O recibo do cliente normalmente sai pelo controller, mas pode ser ajustado.
+O recibo do cliente normalmente sai pelo controller.
 
-Trecho chave:
-
-public function updated(PedidoVenda $pedido): void
-{
-    try {
-        if (!$pedido->wasChanged('status')) {
-            return;
-        }
-
-        if ($pedido->status !== 'ENTREGUE') {
-            return;
-        }
-
-        $cliente   = $pedido->cliente;
-        $indicador = $pedido->indicador;
-
-        if (!$cliente || !$indicador) {
-            return;
-        }
-
-        if (!$this->deveDispararIndicacao($pedido)) {
-            return;
-        }
-
-        $mensageria = app(MensageriaService::class);
-        $msgCampanha = app(MensagensCampanhaService::class);
-
-        $campanha = $pedido->campanha_id
-            ? Campanha::find($pedido->campanha_id)
-            : null;
-
-        $valorPremio = null; // ou calcular via CampanhaService
-
-        $textoIndicador = $msgCampanha
-            ->montarMensagemPremioDisponivel($indicador, $cliente, $pedido, $valorPremio);
-
-        $msgModel = $mensageria->enviarWhatsapp(
-            cliente: $indicador,
-            conteudo: $textoIndicador,
-            tipo: 'indicacao_premio_pix',
-            pedido: $pedido,
-            campanha: $campanha,
-            payloadExtra: [
-                'evento' => 'indicacao_premio_disponivel',
-            ],
-        );
-
-        Log::info('Campanha indicação: msg PRÊMIO registrada/enviada ao indicador', [
-            'pedido_id'    => $pedido->id,
-            'indicador_id' => $indicador->id,
-            'mensagem_id'  => $msgModel->id,
-            'msg_status'   => $msgModel->status,
-        ]);
-
-    } catch (\Throwable $e) {
-        Log::error('PedidoVendaObserver@updated erro', [
-            'pedido_id' => $pedido->id,
-            'erro'      => $e->getMessage(),
-        ]);
-    }
-}
-
+Ver detalhes na seção 4.3.2.
 
 A função deveDispararIndicacao usa o CampanhaService para conferir se o pedido está vinculado a campanha com metodo_php = 'isCampanhaIndicacao' e em vigência.
 
-6. Convite pós-primeira compra (24h depois da entrega)
-6.1 Regra de negócio
-
-Enviar uma mensagem para o cliente:
-
-Que comprou pela primeira vez (primeiro pedido com status ENTREGUE);
-
-Que já recebeu o recibo de entrega (tipo = 'recibo_entrega_cliente');
-
-Com pelo menos 24h de diferença desde o envio desse recibo;
-
-Convidando a participar da Campanha de Indicação;
-
-Apenas uma vez por cliente (não repetir convite).
-
-6.2 Command: EnviarConviteIndicacaoPrimeiraCompra
+5.4 Command: EnviarConviteIndicacaoPrimeiraCompra
 
 Arquivo: app/Console/Commands/EnviarConviteIndicacaoPrimeiraCompra.php
-
 Signature:
 
 protected $signature = 'campanhas:convite-indicacao-primeira-compra';
 
 
-Fluxo do command (resumo):
+Fluxo (resumo):
 
 Busca campanhas vigentes com metodo_php = 'isCampanhaIndicacao' (via CampanhaService).
 
@@ -684,7 +553,7 @@ campanha = campanha de indicação
 
 payloadExtra['origem_msg_id'] = id do recibo
 
-6.3 Scheduler (Laravel 11+)
+5.5 Scheduler (Laravel 11+)
 
 Arquivo: routes/console.php
 
@@ -702,7 +571,7 @@ Isso manda o Laravel rodar o comando 1 vez por hora.
 
 O comando só envia convites para quem já está no critério (24h após recibo da primeira compra entregue).
 
-6.4 Cron no servidor (VPS)
+5.6 Cron no servidor (VPS)
 
 No crontab do servidor (ex.: crontab -e):
 
@@ -711,10 +580,10 @@ No crontab do servidor (ex.: crontab -e):
 
 O cron chama o schedule:run a cada minuto.
 
-O Laravel identifica que o nosso comando é ->hourly() e dispara na hora certa.
+O Laravel identifica que os comandos agendados (->hourly(), ->daily(), etc.) devem rodar.
 
-7. Relatórios de Mensagens
-7.1 Objetivo
+6. Relatórios de Mensagens
+6.1 Objetivo
 
 Permitir análises como:
 
@@ -732,7 +601,7 @@ Mensagens por cliente/pedido.
 
 Mensagens com erro (status = failed).
 
-7.2 RelatorioMensagensController
+6.2 RelatorioMensagensController
 
 Rotas exemplo:
 
@@ -761,29 +630,23 @@ status
 
 data_de / data_ate (baseado em sent_at)
 
-7.3 View: resources/views/relatorios/mensagens_por_campanha.blade.php
+6.3 Relatório “Mensagens por Campanha”
 
-Essa view:
+View: resources/views/relatorios/mensagens_por_campanha.blade.php
 
-Mostra formulário de filtros (tipo, canal, status, direção, datas, campanha).
+Formulário de filtros (tipo, canal, status, direção, datas, campanha).
 
-Traz:
+Resumo por campanha (totais enviados/falha).
 
-Resumo por campanha
+Resumo por tipo.
 
-Resumo por tipo
+Lista detalhada com paginação.
 
-Lista detalhada de mensagens
+6.4 Relatório “Mensagens (geral)”
 
-(Ver implementação completa já definida anteriormente.)
+View: relatorios/mensagens/index.blade.php
 
-7.4 View: relatorios/mensagens/index.blade.php (resumo global)
-
-Lista paginada de mensagens com filtros básicos.
-
-Mostra: data envio, cliente, pedido, campanha, tipo, canal, status, trecho de conteúdo.
-
-Baseada em:
+Baseado em:
 
 public function index(Request $request)
 {
@@ -817,10 +680,286 @@ public function index(Request $request)
     ]);
 }
 
+7. Envio manual de modelos de mensagem (Tela de disparo)
+
+Além das mensagens automáticas, o sistema suporta o envio manual de mensagens pré-cadastradas (modelos) para um ou vários clientes.
+
+7.1 Tabela de modelos: appmensagem_modelo
+
+Tabela: appmensagem_modelo
+Objetivo: armazenar textos prontos que podem ser disparados manualmente.
+
+Campos sugeridos:
+
+id (bigint, PK auto-increment)
+
+codigo (string, unique)
+
+Ex.: boas_vindas_cliente, convite_indicacao_primeira_compra
+
+nome (string)
+
+Ex.: Boas-vindas para novo cliente
+
+canal (string, default 'whatsapp')
+
+conteudo (text)
+
+Texto com placeholders simples, se desejado.
+
+ativo (boolean, default true)
+
+created_at, updated_at
+
+7.2 Model MensagemModelo
+
+Arquivo: app/Models/MensagemModelo.php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class MensagemModelo extends Model
+{
+    protected $table = 'appmensagem_modelo';
+
+    protected $fillable = [
+        'codigo',
+        'nome',
+        'canal',
+        'conteudo',
+        'ativo',
+    ];
+}
+
+7.3 Rotas de envio manual
+
+Arquivo: routes/web.php
+
+use App\Http\Controllers\MensagensManuaisController;
+
+Route::prefix('mensageria')
+    ->name('mensageria.')
+    ->group(function () {
+        Route::get('modelos', [MensagensManuaisController::class, 'index'])
+            ->name('modelos.index');
+
+        Route::get('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'formEnviar'])
+            ->name('modelos.form_enviar');
+
+        Route::post('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'enviar'])
+            ->name('modelos.enviar');
+    });
+
+7.4 Controller MensagensManuaisController
+
+Arquivo: app/Http/Controllers/MensagensManuaisController.php
+
+namespace App\Http\Controllers;
+
+use App\Models\MensagemModelo;
+use App\Models\Cliente;
+use App\Services\MensageriaService;
+use Illuminate\Http\Request;
+
+class MensagensManuaisController extends Controller
+{
+    public function index()
+    {
+        $modelos = MensagemModelo::where('ativo', true)
+            ->orderBy('nome')
+            ->get();
+
+        return view('mensageria.modelos_index', compact('modelos'));
+    }
+
+    public function formEnviar(MensagemModelo $modelo)
+    {
+        // Futuro: adicionar filtros/busca. Por enquanto, lista simples.
+        $clientes = Cliente::orderBy('nome')->get();
+
+        return view('mensageria.modelos_enviar', [
+            'modelo'   => $modelo,
+            'clientes' => $clientes,
+        ]);
+    }
+
+    public function enviar(Request $request, MensagemModelo $modelo)
+    {
+        $request->validate([
+            'clientes' => ['required', 'array', 'min:1'],
+        ]);
+
+        $clienteIds = $request->input('clientes', []);
+
+        /** @var MensageriaService $mensageria */
+        $mensageria = app(MensageriaService::class);
+
+        $clientes = Cliente::whereIn('id', $clienteIds)->get();
+
+        $enviados = 0;
+
+        foreach ($clientes as $cliente) {
+
+            // Futuro: substituir placeholders no texto, se necessário.
+            $texto = $modelo->conteudo;
+
+            $mensageria->enviarWhatsapp(
+                cliente: $cliente,
+                conteudo: $texto,
+                tipo: 'envio_manual_' . $modelo->codigo,
+                pedido: null,
+                campanha: null,
+                payloadExtra: [
+                    'origem'      => 'envio_manual',
+                    'modelo_id'   => $modelo->id,
+                    'modelo_nome' => $modelo->nome,
+                ],
+            );
+
+            $enviados++;
+        }
+
+        return redirect()
+            ->route('mensageria.modelos.index')
+            ->with('success', "Mensagem '{$modelo->nome}' enviada para {$enviados} cliente(s).");
+    }
+}
+
+7.5 Tela: Lista de modelos
+
+Arquivo: resources/views/mensageria/modelos_index.blade.php
+
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="text-xl font-semibold text-gray-700">
+            Modelos de Mensagens
+        </h2>
+    </x-slot>
+
+    <div class="bg-white shadow rounded-lg p-6 max-w-5xl mx-auto">
+
+        @if (session('success'))
+            <div class="mb-4 p-3 rounded bg-green-100 text-green-700 text-sm">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        <table class="min-w-full text-sm">
+            <thead>
+                <tr class="border-b">
+                    <th class="text-left py-2">Nome</th>
+                    <th class="text-left py-2">Código</th>
+                    <th class="text-left py-2">Canal</th>
+                    <th class="text-right py-2">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($modelos as $modelo)
+                    <tr class="border-b">
+                        <td class="py-2">{{ $modelo->nome }}</td>
+                        <td class="py-2 text-xs text-gray-500">{{ $modelo->codigo }}</td>
+                        <td class="py-2">{{ $modelo->canal }}</td>
+                        <td class="py-2 text-right">
+                            <a href="{{ route('mensageria.modelos.form_enviar', $modelo) }}"
+                               class="inline-flex items-center px-3 py-1 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700">
+                                Enviar...
+                            </a>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-gray-500">
+                            Nenhum modelo cadastrado.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+    </div>
+</x-app-layout>
+
+7.6 Tela: Escolher clientes e enviar
+
+Arquivo: resources/views/mensageria/modelos_enviar.blade.php
+
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="text-xl font-semibold text-gray-700">
+            Enviar modelo: {{ $modelo->nome }}
+        </h2>
+    </x-slot>
+
+    <div class="bg-white shadow rounded-lg p-6 max-w-5xl mx-auto">
+
+        <p class="text-sm text-gray-600 mb-4">
+            <strong>Prévia do texto:</strong>
+        </p>
+        <pre class="bg-gray-50 border rounded p-3 text-sm whitespace-pre-wrap mb-6">
+{{ $modelo->conteudo }}
+        </pre>
+
+        <form action="{{ route('mensageria.modelos.enviar', $modelo) }}" method="POST">
+            @csrf
+
+            @if ($errors->any())
+                <div class="mb-4 p-3 rounded bg-red-100 text-red-700 text-sm">
+                    <strong>Ops! Verifique os erros abaixo:</strong>
+                    <ul class="mt-2 list-disc list-inside">
+                        @foreach ($errors->all() as $erro)
+                            <li>{{ $erro }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Selecione os clientes que vão receber esta mensagem:
+                </label>
+
+                <div class="border rounded max-h-64 overflow-y-auto p-2">
+                    @foreach ($clientes as $cliente)
+                        <label class="flex items-center space-x-2 text-sm py-1">
+                            <input type="checkbox"
+                                   name="clientes[]"
+                                   value="{{ $cliente->id }}"
+                                   class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                            <span>
+                                {{ $cliente->nome }}
+                                @if ($cliente->telefone)
+                                    <span class="text-xs text-gray-500">({{ $cliente->telefone }})</span>
+                                @endif
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+                <p class="text-xs text-gray-500 mt-1">
+                    (Melhoria futura: filtros, busca, grupos, segmentação etc.)
+                </p>
+            </div>
+
+            <div class="flex justify-end space-x-2">
+                <a href="{{ route('mensageria.modelos.index') }}"
+                   class="px-4 py-2 border rounded text-sm text-gray-700 hover:bg-gray-50">
+                    Voltar
+                </a>
+
+                <button type="submit"
+                        class="px-4 py-2 rounded text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+                    Enviar mensagem
+                </button>
+            </div>
+        </form>
+
+    </div>
+</x-app-layout>
+
 8. Boas práticas da mensageria
 
 Registrar tudo em appmensagens
-Toda mensagem automática deve ter:
+Toda mensagem automática ou manual deve ter:
 
 cliente_id (quando possível)
 
@@ -828,7 +967,7 @@ pedido_id (quando fizer sentido)
 
 campanha_id (quando estiver ligada a campanha)
 
-tipo bem definido
+tipo bem definido (envio_manual_xxx para disparos manuais)
 
 canal = 'whatsapp'
 
@@ -838,7 +977,7 @@ Templates centralizados
 Não espalhar texto de WhatsApp em controllers/observers.
 Em vez disso:
 
-Centralizar no MensagensCampanhaService.
+Centralizar no MensagensCampanhaService (automático) e na tabela appmensagem_modelo (manual).
 
 Métodos semânticos como:
 
@@ -881,3 +1020,7 @@ Cliente sem telefone
 Campanha de indicação não encontrada
 
 Falha ao enviar convite de indicação
+
+Disparos manuais grandes (para auditoria)
+
+Fim do documento mensageria-whatsapp.md (atualizado 06/12/2025).
