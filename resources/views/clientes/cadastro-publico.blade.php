@@ -58,7 +58,7 @@
                     {{-- E-mail (obrigatório) --}}
                     <div>
                         <label class="block text-sm font-medium text-gray-700">E-mail *</label>
-                        <input type="email" name="email" required
+                        <input type="email" name="email" 
                             class="w-full border-gray-300 rounded-md shadow-sm" value="{{ old('email') }}"
                             placeholder="voce@dominio.com">
                         @error('email')
