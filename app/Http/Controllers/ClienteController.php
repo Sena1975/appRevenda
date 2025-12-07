@@ -313,6 +313,10 @@ class ClienteController extends Controller
             $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
         }
 
+        // 👇 Pega a empresa do usuário logado usando o Request
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         // Monta dados finais (usa $dn!)
         $dados = [
             'nome'            => $request->nome,
@@ -335,6 +339,7 @@ class ClienteController extends Controller
             'status'          => $request->status,
             'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
             'indicador_id'    => (int) $request->input('indicador_id', 1),
+            'empresa_id'      => $empresaId,
         ];
 
         if ($request->hasFile('foto')) {

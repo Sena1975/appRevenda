@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Empresa;
 
 class Revendedora extends Model
 {
@@ -30,6 +31,7 @@ class Revendedora extends Model
         'datanascimento',
         'status',
         'revenda_padrao',
+        'empresa_id',
     ];
     protected $casts = [
         'revenda_padrao' => 'boolean',

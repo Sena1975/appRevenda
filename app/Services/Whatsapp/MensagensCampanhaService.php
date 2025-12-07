@@ -94,7 +94,7 @@ class MensagensCampanhaService
             '.'
         );
 
-        $nomeCampanha = $campanha?->nome ?? 'nossa campanha de indicação';
+        $nomeCampanha = $campanha?->nome ?? $campanha;
         $linkRegulamento = $campanha?->link_regulamento ?? null; // se tiver esse campo
         $linhaLink = $linkRegulamento
             ? "\n\n📄 Detalhes e regulamento: {$linkRegulamento}"

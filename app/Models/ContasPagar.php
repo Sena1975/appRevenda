@@ -4,7 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\PedidoCompra; // 👈 importa o model certo
+use App\Models\Empresa;
+use App\Models\Fornecedor;
+use App\Models\PedidoCompra;
+use Illuminate\Support\Facades\Auth;
 
 class ContasPagar extends Model
 {
@@ -32,6 +35,7 @@ class ContasPagar extends Model
         'valor_pago',
         'nosso_numero',
         'observacao',
+        'empresa_id',
     ];
 
     protected $casts = [
@@ -41,6 +45,11 @@ class ContasPagar extends Model
         'valor'           => 'decimal:2',
         'valor_pago'      => 'decimal:2',
     ];
+
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
 
     public function fornecedor()
     {
@@ -60,5 +69,16 @@ class ContasPagar extends Model
     public function baixas()
     {
         return $this->hasMany(BaixaPagar::class, 'conta_id');
+    }
+
+    public function scopeDaEmpresa($query)
+    {
+        $user = Auth::user();
+
+        if ($user) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+
+        return $query;
     }
 }

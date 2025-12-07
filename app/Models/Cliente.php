@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Empresa;
 
 class Cliente extends Model
 {
@@ -33,6 +34,7 @@ class Cliente extends Model
         'status',
         'origem_cadastro',
         'foto',
+        'empresa_id',
     ];
 
 

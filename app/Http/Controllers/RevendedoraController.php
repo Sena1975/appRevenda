@@ -20,6 +20,9 @@ class RevendedoraController extends Controller
 
     public function store(Request $request)
     {
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         $validated = $request->validate([
             'nome'           => 'required|string|max:255',
             'cpf'            => 'required|string|max:14|unique:apprevendedora,cpf',
@@ -31,6 +34,7 @@ class RevendedoraController extends Controller
         // defaults seguros no backend
         $validated['status']         = (int) ($request->input('status', 1));         // default 1
         $validated['revenda_padrao'] = $request->boolean('revenda_padrao') ? 1 : 0;  // default 0
+        $validated['empresa_id'] = $empresaId;
 
         $rev = \App\Models\Revendedora::create($validated);
 

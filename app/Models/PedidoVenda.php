@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Empresa;
+use Illuminate\Support\Facades\Auth;
+
 
 class PedidoVenda extends Model
 {
@@ -32,10 +35,11 @@ class PedidoVenda extends Model
         'valor_total',
         'valor_desconto',
         'valor_liquido',
-        'pontuacao', 
+        'pontuacao',
         'pontuacao_total',
         'enviar_msg_cliente' => 'boolean',
         'observacao',
+        'empresa_id',
     ];
 
     protected $casts = [
@@ -65,6 +69,21 @@ class PedidoVenda extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'cliente_id', 'id');
+    }
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
+    public function scopeDaEmpresa($query)
+    {
+        $user = Auth::user();
+
+        if ($user) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+
+        return $query;
     }
 
     public function revendedora()

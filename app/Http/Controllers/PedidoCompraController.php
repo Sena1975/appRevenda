@@ -25,7 +25,14 @@ class PedidoCompraController extends Controller
      */
     public function index(Request $request)
     {
-        $query = PedidoCompra::with('fornecedor')->orderByDesc('id');
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
+        $query = PedidoCompra::with('fornecedor')
+            ->when($empresaId, function ($q) use ($empresaId) {
+                $q->where('empresa_id', $empresaId);
+            })
+            ->orderByDesc('id');
 
         // Filtros
         if ($request->filled('fornecedor_id')) {
@@ -64,8 +71,10 @@ class PedidoCompraController extends Controller
             'lucro'         => $lucro,
         ];
 
-        // Fornecedores para o filtro
-        $fornecedores = Fornecedor::orderBy('nomefantasia')->get();
+        // Fornecedores para o filtro (somente da empresa)
+        $fornecedores = Fornecedor::daEmpresa()
+            ->orderBy('nomefantasia')
+            ->get();
 
         return view('compras.index', [
             'pedidos'      => $pedidos,
@@ -75,15 +84,23 @@ class PedidoCompraController extends Controller
         ]);
     }
 
-    /**
-     * Mostra o formulário de nova compra
-     */
-    public function create()
+    public function create(Request $request)
     {
-        $fornecedores      = Fornecedor::orderBy('razaosocial')->get();
-        $produtos          = Produto::orderBy('nome')->get();
-        $formasPagamento   = FormaPagamento::orderBy('nome')->get();
-        $planosPagamento   = PlanoPagamento::orderBy('descricao')->get();
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
+        // fornecedores e produtos apenas da empresa atual
+        $fornecedores = Fornecedor::daEmpresa()
+            ->orderBy('razaosocial')
+            ->get();
+
+        $produtos = Produto::daEmpresa()
+            ->orderBy('nome')
+            ->get();
+
+        // por enquanto, forma/plano de pagamento sem filtro de empresa
+        $formasPagamento = FormaPagamento::orderBy('nome')->get();
+        $planosPagamento = PlanoPagamento::orderBy('descricao')->get();
 
         return view('compras.create', compact(
             'fornecedores',
@@ -93,32 +110,30 @@ class PedidoCompraController extends Controller
         ));
     }
 
+
     /**
      * Grava o pedido de compra e seus itens
      */
     public function store(Request $request)
     {
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         $data = $request->validate([
             'fornecedor_id'        => 'required|integer',
             'data_pedido'          => 'required|date',
             'data_entrega'         => 'nullable|date',
             'encargos'             => 'nullable|numeric|min:0',
             'observacao'           => 'nullable|string|max:1000',
-
             'forma_pagamento_id'   => 'nullable|integer',
             'plano_pagamento_id'   => 'nullable|integer',
             'qt_parcelas'          => 'nullable|integer|min:1',
-
             'itens'                    => 'required|array|min:1',
             'itens.*.produto_id'       => 'required|integer',
             'itens.*.codfabnumero'     => 'nullable|string',
             'itens.*.quantidade'       => 'required|numeric|min:1',
             'itens.*.desconto'         => 'nullable|numeric|min:0',
-
-            // Tipo do item: N = Normal, B = Bonificado
             'itens.*.tipo_item'        => 'nullable|string|in:N,B',
-
-            // CAMPOS vindos da tela / importação
             'itens.*.preco_compra'     => 'nullable|numeric|min:0',
             'itens.*.preco_revenda'    => 'nullable|numeric|min:0',
             'itens.*.pontos'           => 'nullable|numeric|min:0',
@@ -132,113 +147,106 @@ class PedidoCompraController extends Controller
             $totalRevenda      = 0.0; // soma dos valores de revenda
             $totalPontosGeral  = 0.0; // soma de pontos
             $qtditens          = 0;   // quantidade de linhas
-
             $itensCalc         = [];
-
-            // Encargos financeiros informados no cabeçalho
             $encargosCompra    = isset($data['encargos']) ? (float) $data['encargos'] : 0.0;
 
-foreach ($data['itens'] as $idx => $item) {
+            foreach ($data['itens'] as $idx => $item) {
+                $tipoItem = $item['tipo_item'] ?? 'N';
+                $codfab    = $item['codfabnumero'] ?? null;
+                $produtoId = $item['produto_id']   ?? null;
 
-    // Tipo do item: N (Normal) ou B (Bonificado)
-    $tipoItem = $item['tipo_item'] ?? 'N';
+                $vp = $codfab
+                    ? ViewProduto::where('codigo_fabrica', $codfab)->first()
+                    : null;
 
-    $codfab    = $item['codfabnumero'] ?? null;
-    $produtoId = $item['produto_id']   ?? null;
+                if (! $vp) {
+                    abort(422, "Produto inválido na linha " . ($idx + 1) . " (código não encontrado na view).");
+                }
 
-    $vp = $codfab
-        ? ViewProduto::where('codigo_fabrica', $codfab)->first()
-        : null;
+                $qtd = (float) $item['quantidade'];
 
-    if (! $vp) {
-        abort(422, "Produto inválido na linha " . ($idx + 1) . " (código não encontrado na view).");
-    }
+                // PREÇOS DA TABELA (VIEW)
+                $precoTabelaCompra  = (float) $vp->preco_compra;
+                $precoTabelaRevenda = (float) $vp->preco_revenda;
+                $pontosTabela       = (float) $vp->pontos;
+                // VALORES INFORMADOS PELO FORMULÁRIO / IMPORTAÇÃO
+                $precoImportadoCompra  = isset($item['preco_compra'])     ? (float) $item['preco_compra']     : null;
+                $precoImportadoRevenda = isset($item['preco_revenda'])    ? (float) $item['preco_revenda']    : null;
+                $pontosInformados      = isset($item['pontos'])           ? (float) $item['pontos']           : null;
+                $descManualLinha       = isset($item['desconto'])         ? (float) $item['desconto']         : 0.0;
 
-    $qtd = (float) $item['quantidade'];
+                if ($descManualLinha < 0) {
+                    $descManualLinha = 0;
+                }
 
-    // PREÇOS DA TABELA (VIEW)
-    $precoTabelaCompra  = (float) $vp->preco_compra;
-    $precoTabelaRevenda = (float) $vp->preco_revenda;
-    $pontosTabela       = (float) $vp->pontos;
+                // PREÇO DE REVENDA: se veio um valor > 0, usa o informado; senão, o da tabela
+                $precoRevenda = ($precoImportadoRevenda && $precoImportadoRevenda > 0)
+                    ? $precoImportadoRevenda
+                    : $precoTabelaRevenda;
 
-    // VALORES INFORMADOS PELO FORMULÁRIO / IMPORTAÇÃO
-    $precoImportadoCompra  = isset($item['preco_compra'])     ? (float) $item['preco_compra']     : null;
-    $precoImportadoRevenda = isset($item['preco_revenda'])    ? (float) $item['preco_revenda']    : null;
-    $pontosInformados      = isset($item['pontos'])           ? (float) $item['pontos']           : null;
-    $descManualLinha       = isset($item['desconto'])         ? (float) $item['desconto']         : 0.0;
+                // PONTOS: se informado, usa; senão, o da tabela
+                $pontosUnit = ($pontosInformados !== null)
+                    ? $pontosInformados
+                    : $pontosTabela;
 
-    if ($descManualLinha < 0) {
-        $descManualLinha = 0;
-    }
+                // -----------------------------
+                // REGRA ESPECIAL PARA BONIFICADO
+                // -----------------------------
+                if ($tipoItem === 'B') {
+                    // Bonificado = sem custo
+                    $precoCompra         = 0.0;
+                    $descontoAuto        = 0.0;
+                    $valorDescontoLinha  = 0.0;
+                    $totalItemCustoBruto = 0.0;
+                    $totalItemLiquido    = 0.0;
+                } else {
+                    // Normal: preço de compra sempre o da tabela
+                    $precoCompra  = $precoTabelaCompra;
 
-    // PREÇO DE REVENDA: se veio um valor > 0, usa o informado; senão, o da tabela
-    $precoRevenda = ($precoImportadoRevenda && $precoImportadoRevenda > 0)
-        ? $precoImportadoRevenda
-        : $precoTabelaRevenda;
+                    // DESCONTO/Acréscimo AUTOMÁTICO (diferença entre tabela e importado)
+                    $descontoAuto = 0.0;
+                    if ($precoImportadoCompra && $precoImportadoCompra > 0) {
+                        $descontoAuto = ($precoTabelaCompra - $precoImportadoCompra) * $qtd;
+                    }
 
-    // PONTOS: se informado, usa; senão, o da tabela
-    $pontosUnit = ($pontosInformados !== null)
-        ? $pontosInformados
-        : $pontosTabela;
+                    // Desconto total da linha (pode ser negativo se importado > tabela)
+                    $valorDescontoLinha = $descManualLinha + $descontoAuto;
 
-    // -----------------------------
-    // REGRA ESPECIAL PARA BONIFICADO
-    // -----------------------------
-    if ($tipoItem === 'B') {
-        // Bonificado = sem custo
-        $precoCompra         = 0.0;
-        $descontoAuto        = 0.0;
-        $valorDescontoLinha  = 0.0;
-        $totalItemCustoBruto = 0.0;
-        $totalItemLiquido    = 0.0;
-    } else {
-        // Normal: preço de compra sempre o da tabela
-        $precoCompra  = $precoTabelaCompra;
+                    // CÁLCULOS DE TOTAIS
+                    $totalItemCustoBruto = $qtd * $precoCompra;                      // preço tabela * qtd
+                    $totalItemLiquido    = max(0, $totalItemCustoBruto - $valorDescontoLinha); // custo final sem encargo
+                }
 
-        // DESCONTO/Acréscimo AUTOMÁTICO (diferença entre tabela e importado)
-        $descontoAuto = 0.0;
-        if ($precoImportadoCompra && $precoImportadoCompra > 0) {
-            $descontoAuto = ($precoTabelaCompra - $precoImportadoCompra) * $qtd;
-        }
+                // TOTAL DE VENDA E PONTOS (valem para N e B)
+                $totalItemRevenda = $qtd * $precoRevenda;
+                $pontosLinha      = $qtd * $pontosUnit;
 
-        // Desconto total da linha (pode ser negativo se importado > tabela)
-        $valorDescontoLinha = $descManualLinha + $descontoAuto;
+                // ACUMULA PARA O CABEÇALHO (só N entra no custo)
+                if ($tipoItem !== 'B') {
+                    $totalBrutoCusto  += $totalItemCustoBruto;
+                    $totalDesconto    += $valorDescontoLinha;
+                    $totalLiquido     += $totalItemLiquido; // custo total sem encargos
+                }
 
-        // CÁLCULOS DE TOTAIS
-        $totalItemCustoBruto = $qtd * $precoCompra;                      // preço tabela * qtd
-        $totalItemLiquido    = max(0, $totalItemCustoBruto - $valorDescontoLinha); // custo final sem encargo
-    }
+                $totalRevenda     += $totalItemRevenda;
+                $totalPontosGeral += $pontosLinha;
+                $qtditens++;
 
-    // TOTAL DE VENDA E PONTOS (valem para N e B)
-    $totalItemRevenda = $qtd * $precoRevenda;
-    $pontosLinha      = $qtd * $pontosUnit;
-
-    // ACUMULA PARA O CABEÇALHO (só N entra no custo)
-    if ($tipoItem !== 'B') {
-        $totalBrutoCusto  += $totalItemCustoBruto;
-        $totalDesconto    += $valorDescontoLinha;
-        $totalLiquido     += $totalItemLiquido; // custo total sem encargos
-    }
-
-    $totalRevenda     += $totalItemRevenda;
-    $totalPontosGeral += $pontosLinha;
-    $qtditens++;
-
-    // GUARDA PARA INSERIR EM appcompraproduto
-    $itensCalc[] = [
-        'produto_id'      => $produtoId,
-        'quantidade'      => $qtd,
-        'preco_compra'    => $precoCompra,        // 0 se bonificado, tabela se normal
-        'preco_revenda'   => $precoRevenda,
-        'total_custo'     => $totalItemCustoBruto, // 0 se bonificado
-        'total_liquido'   => $totalItemLiquido,    // 0 se bonificado
-        'total_revenda'   => $totalItemRevenda,
-        'pontos_unit'     => $pontosUnit,
-        'pontos_total'    => $pontosLinha,
-        'valor_desconto'  => $valorDescontoLinha,  // 0 se bonificado
-        'tipo_item'       => $tipoItem,            // N ou B
-    ];
-}
+                // GUARDA PARA INSERIR EM appcompraproduto
+                $itensCalc[] = [
+                    'produto_id'      => $produtoId,
+                    'quantidade'      => $qtd,
+                    'preco_compra'    => $precoCompra,        // 0 se bonificado, tabela se normal
+                    'preco_revenda'   => $precoRevenda,
+                    'total_custo'     => $totalItemCustoBruto, // 0 se bonificado
+                    'total_liquido'   => $totalItemLiquido,    // 0 se bonificado
+                    'total_revenda'   => $totalItemRevenda,
+                    'pontos_unit'     => $pontosUnit,
+                    'pontos_total'    => $pontosLinha,
+                    'valor_desconto'  => $valorDescontoLinha,  // 0 se bonificado
+                    'tipo_item'       => $tipoItem,            // N ou B
+                ];
+            }
 
             // ==== RATEIO DOS ENCARGOS POR ITEM ====
             $valorCustoTotal = $totalLiquido; // custo total sem encargos (todos os itens)
@@ -307,27 +315,23 @@ foreach ($data['itens'] as $idx => $item) {
                 'data_emissao'       => $data['data_entrega'] ?? null,
                 'numpedcompra'       => null,
                 'numero_nota'        => null,
-
                 'valor_total'        => $totalBrutoCusto,
                 'valor_desconto'     => $totalDesconto,
-
                 'valorcusto'         => $valorCustoTotal,   // custo sem encargos
                 'encargos'           => $encargosCompra,    // encargos financeiros
                 'valor_liquido'      => $valorComEncargos,  // custo + encargos
-
                 'preco_venda_total'  => $totalRevenda,
                 'pontostotal'        => $totalPontosGeral,
                 'qtditens'           => $qtditens,
-
                 'forma_pagamento_id' => $data['forma_pagamento_id'] ?? null,
                 'plano_pagamento_id' => $data['plano_pagamento_id'] ?? null,
                 'qt_parcelas'        => $data['qt_parcelas'] ?? null,
-
                 'formapgto'          => null,
                 'observacao'         => $data['observacao'] ?? null,
                 'status'             => 'PENDENTE',
                 'created_at'         => now(),
                 'updated_at'         => now(),
+                'empresa_id' 
             ]);
 
             // ==== ITENS: tabela appcompraproduto ====
@@ -390,8 +394,8 @@ foreach ($data['itens'] as $idx => $item) {
         return view('compras.edit', [
             'pedido'         => $pedido,
             'fornecedores'   => $fornecedores,
-            'formasPagamento'=> $formasPagamento,
-            'planosPagamento'=> $planosPagamento,
+            'formasPagamento' => $formasPagamento,
+            'planosPagamento' => $planosPagamento,
             'produtos'       => $produtos,
             'numeroPedido'   => $pedido->numpedcompra ?? '(sem número)',
         ]);
@@ -881,7 +885,7 @@ foreach ($data['itens'] as $idx => $item) {
                             'codigo_fabrica'   => $produto->codfabnumero ?? null,
                             'estoque_atual'    => $estoqueAtual,
                             'qtd_estornar'     => $qtdEstornar,
-                            'saldo_pos_estorno'=> $saldoPosEstorno,
+                            'saldo_pos_estorno' => $saldoPosEstorno,
                         ];
                     }
                 }

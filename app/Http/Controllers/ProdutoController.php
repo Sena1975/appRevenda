@@ -71,7 +71,7 @@ class ProdutoController extends Controller
         return view('produtos.create', compact('categorias', 'subcategorias', 'fornecedores'));
     }
 
-        /**
+    /**
      * Formulário para importar preços a partir de arquivo do fornecedor.
      * Formato esperado:
      * codigo;preco_compra;preco_revenda;pontuacao
@@ -184,7 +184,6 @@ class ProdutoController extends Controller
             }
 
             DB::commit();
-
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -214,8 +213,8 @@ class ProdutoController extends Controller
         }
 
         $msg = "Importação concluída. Linhas lidas: {$totalLinhas}. "
-             . "Produtos atualizados: {$totalAtualizados}. "
-             . "Códigos não encontrados: {$totalNaoEncontrados}.";
+            . "Produtos atualizados: {$totalAtualizados}. "
+            . "Códigos não encontrados: {$totalNaoEncontrados}.";
 
         return redirect()
             ->route('produtos.importar_precos.form')
@@ -439,6 +438,9 @@ class ProdutoController extends Controller
             'imagem' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         $dados = $request->all();
 
         if ($request->hasFile('imagem')) {
@@ -446,7 +448,8 @@ class ProdutoController extends Controller
             $request->imagem->move(public_path('imagens/produtos'), $nomeArquivo);
             $dados['imagem'] = 'imagens/produtos/' . $nomeArquivo;
         }
-
+        $dados['empresa_id'] = $empresaId;
+        
         Produto::create($dados);
 
         return redirect()->route('produtos.index')->with('success', 'Produto cadastrado com sucesso!');

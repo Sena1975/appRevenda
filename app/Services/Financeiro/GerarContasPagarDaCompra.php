@@ -31,6 +31,9 @@ class GerarContasPagarDaCompra
             return;
         }
 
+        // >>> EMPRESA DA COMPRA (para multiempresa)
+        $empresaId = $compra->empresa_id ?? null;
+
         // ---------------- VALOR BASE DA COMPRA ----------------
         $valorTotalBruto = (float) ($compra->valor_total ?? 0);
         $encargos        = (float) ($compra->encargos ?? 0);
@@ -127,6 +130,7 @@ class GerarContasPagarDaCompra
                 'data_vencimento'    => $dataVencimento,
                 'valor'              => $valorParcela,
                 'status'             => 'ABERTO',
+                'empresa_id'         => $empresaId,
             ]);
         }
     }

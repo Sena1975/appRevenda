@@ -114,23 +114,35 @@ class PedidoVendaController extends Controller
     /**
      * Formulário de novo pedido
      */
-    public function create()
-    {
-        $clientes     = Cliente::orderBy('nome')->get(['id', 'nome', 'indicador_id']);
-        $revendedoras = Revendedora::orderBy('nome')->get(['id', 'nome']);
-        $formas       = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
-        $produtos     = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
+public function create(Request $request)
+{
+    $usuario   = $request->user();
+    $empresaId = $usuario?->empresa_id;
 
-        $revendedoraPadraoId = Revendedora::where('revenda_padrao', 1)->value('id'); // pode retornar null
+    // Clientes e revendedoras apenas da empresa atual
+    $clientes     = Cliente::daEmpresa()
+        ->orderBy('nome')
+        ->get(['id', 'nome', 'indicador_id']);
 
-        return view('vendas.create', compact(
-            'clientes',
-            'revendedoras',
-            'formas',
-            'produtos',
-            'revendedoraPadraoId'
-        ));
-    }
+    $revendedoras = Revendedora::daEmpresa()
+        ->orderBy('nome')
+        ->get(['id', 'nome']);
+
+    // Por enquanto, formas e produtos sem filtro de empresa
+    $formas   = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
+    $produtos = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
+
+    $revendedoraPadraoId = Revendedora::where('revenda_padrao', 1)->value('id');
+
+    return view('vendas.create', compact(
+        'clientes',
+        'revendedoras',
+        'formas',
+        'produtos',
+        'revendedoraPadraoId'
+    ));
+}
+
 
     /**
      * Salva um novo pedido (status PENDENTE) e RESERVA estoque
@@ -138,7 +150,6 @@ class PedidoVendaController extends Controller
      */
     public function store(Request $request)
     {
-        // ===== ajuste rápido de nomes, se seu legado usar outros =====
         $TAB_PEDIDO  = 'apppedidovenda'; // cabeçalho do pedido
         $TAB_ITENS   = 'appitemvenda';   // itens do pedido
         $TAB_ESTOQUE = 'appestoque';     // estoque atual
@@ -147,6 +158,10 @@ class PedidoVendaController extends Controller
         // colunas de estoque
         $COL_DISP    = 'disponivel';
         $COL_RESERVA = 'reservado';
+
+        // ===== 0) Empresa do usuário logado =====
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
 
         // ===== 1) Validação =====
         $data = $request->validate([
@@ -158,9 +173,7 @@ class PedidoVendaController extends Controller
             'previsao_entrega'    => 'nullable|date',
             'observacao'          => 'nullable|string|max:1000',
             'desconto'            => 'nullable|numeric|min:0',
-
             'enviar_msg_cliente'  => 'nullable|boolean',   // ✅ checkbox
-
             'itens'                        => 'required|array|min:1',
             'itens.*.produto_id'           => 'required|integer',
             'itens.*.codfabnumero'         => 'nullable|string',
@@ -169,13 +182,12 @@ class PedidoVendaController extends Controller
             'itens.*.pontuacao'            => 'nullable|integer|min:0',
         ]);
 
-        // Flag de envio da mensagem para o cliente
-        // Se o campo não vier (form antigo, ou algo do tipo), default = true
+        // Flag de envio da mensagem para o cliente. Se o campo não vier (form antigo, ou algo do tipo), default = true
         $enviarMsgCliente = array_key_exists('enviar_msg_cliente', $data)
             ? (bool)$data['enviar_msg_cliente']
             : true;
 
-        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA, $enviarMsgCliente) {
+        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA, $enviarMsgCliente, $empresaId) {
 
             $totalBruto       = 0.0;
             $totalPontosUnit  = 0;
@@ -248,6 +260,7 @@ class PedidoVendaController extends Controller
                 'status'             => 'PENDENTE',
                 'indicador_id'       => $indicadorId,
                 'enviar_msg_cliente' => $enviarMsgCliente ? 1 : 0, // ✅ grava flag
+                'empresa_id'         => $empresaId,
             ]);
 
             // ============================================================
@@ -348,9 +361,7 @@ class PedidoVendaController extends Controller
                             'pedido_id' => $pedido->id,
                         ]);
                     }
-
                     // >>> FIM CAMPANHA INDICAÇÃO <<<
-
                 }
 
                 // Após tratar campanha / indicação, envia mensagem para o CLIENTE
