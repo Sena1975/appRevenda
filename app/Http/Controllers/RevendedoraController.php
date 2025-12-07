@@ -7,9 +7,29 @@ use Illuminate\Http\Request;
 
 class RevendedoraController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $revendedoras = Revendedora::orderBy('nome')->paginate(10);
+        // Sempre começa pela empresa do usuário
+        $q = Revendedora::daEmpresa();
+
+        if ($request->filled('busca')) {
+            $busca = trim($request->busca);
+
+            $q->where(function ($w) use ($busca) {
+                $w->where('nome', 'like', "%{$busca}%")
+                    ->orWhere('cpf', 'like', "%{$busca}%")
+                    ->orWhere('telefone', 'like', "%{$busca}%")
+                    ->orWhere('whatsapp', 'like', "%{$busca}%");
+            });
+        }
+
+        // se tiver filtro de status, dá pra manter:
+        // if ($request->filled('status')) { ... }
+
+        $revendedoras = $q->orderBy('nome')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('revendedoras.index', compact('revendedoras'));
     }
 
@@ -45,11 +65,22 @@ class RevendedoraController extends Controller
         return redirect()->route('revendedoras.index')->with('success', 'Revendedora cadastrada com sucesso!');
     }
 
-    public function edit($id)
+    protected function autorizarEmpresa(Request $request, Revendedora $revendedora): void
     {
-        $revendedora = Revendedora::findOrFail($id);
+        $user = $request->user();
+
+        if (!$user || $user->empresa_id !== $revendedora->empresa_id) {
+            abort(403, 'Revendedora não pertence à sua empresa.');
+        }
+    }
+
+    public function edit(Request $request, Revendedora $revendedora)
+    {
+        $this->autorizarEmpresa($request, $revendedora);
+
         return view('revendedoras.edit', compact('revendedora'));
     }
+
 
     public function update(Request $request, $id)
     {
@@ -74,12 +105,14 @@ class RevendedoraController extends Controller
 
         return redirect()->route('revendedoras.index')->with('success', 'Dados atualizados com sucesso!');
     }
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $revendedora = Revendedora::findOrFail($id);
+        $this->autorizarEmpresa($request, $revendedora);
         $revendedora->delete();
 
-        return redirect()->route('revendedoras.index')
+        return redirect()
+            ->route('revendedoras.index')
             ->with('success', 'Revendedora excluída com sucesso!');
     }
 }

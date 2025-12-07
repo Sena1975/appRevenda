@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Empresa;
+use Illuminate\Support\Facades\Auth;
 
 class Revendedora extends Model
 {
@@ -37,4 +37,15 @@ class Revendedora extends Model
         'revenda_padrao' => 'boolean',
         'status'         => 'integer',
     ];
+    public function scopeDaEmpresa($query)
+    {
+        /** @var \App\Models\AppUsuario|null $user */
+        $user = Auth::user();
+
+        if ($user) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+
+        return $query;
+    }
 }

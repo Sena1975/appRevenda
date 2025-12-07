@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Empresa;
+use Illuminate\Support\Facades\Auth;
 
 class Cliente extends Model
 {
@@ -182,5 +182,16 @@ class Cliente extends Model
     public function indicador()
     {
         return $this->belongsTo(Cliente::class, 'indicador_id');
+    }
+
+        public function scopeDaEmpresa($query)
+    {
+        $user = Auth::user();
+
+        if ($user) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+
+        return $query;
     }
 }

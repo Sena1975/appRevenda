@@ -12,9 +12,26 @@ use Illuminate\Support\Facades\DB;
 
 class ProdutoController extends Controller
 {
+    /**
+     * Garante que o produto pertence à mesma empresa do usuário logado.
+     */
+    protected function autorizarEmpresa(Request $request, Produto $produto): void
+    {
+        $user = $request->user();
+
+        if (!$user || $user->empresa_id !== $produto->empresa_id) {
+            abort(403, 'Produto não pertence à sua empresa.');
+        }
+    }
+
     public function index(Request $request)
     {
-        $query = Produto::with(['categoria', 'subcategoria', 'fornecedor']);
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
+        // Sempre começa pelos produtos da empresa do usuário
+        $query = Produto::daEmpresa()
+            ->with(['categoria', 'subcategoria', 'fornecedor']);
 
         // Filtros
         if ($request->filled('busca')) {
@@ -31,13 +48,18 @@ class ProdutoController extends Controller
         }
 
         // Itens por página (somente valores permitidos)
-        $allowed = [10, 25, 50, 100];
+        $allowed   = [10, 25, 50, 100];
         $porPagina = (int) $request->get('por_pagina', 10);
         if (! in_array($porPagina, $allowed)) {
             $porPagina = 10;
         }
 
-        $produtos   = $query->orderBy('nome')->paginate($porPagina)->withQueryString();
+        $produtos = $query
+            ->orderBy('nome')
+            ->paginate($porPagina)
+            ->withQueryString();
+
+        // Categorias podem ser globais; fornecedores precisam respeitar empresa
         $categorias = Categoria::orderBy('nome')->get();
 
         return view('produtos.index', compact('produtos', 'categorias'));
@@ -63,11 +85,17 @@ class ProdutoController extends Controller
         return (float) $valor;
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $categorias = Categoria::all();
-        $subcategorias = Subcategoria::all();
-        $fornecedores = Fornecedor::all();
+        // Categorias/Subcategorias provavelmente globais
+        $categorias    = Categoria::orderBy('nome')->get();
+        $subcategorias = Subcategoria::orderBy('nome')->get();
+
+        // Fornecedores da empresa do usuário
+        $fornecedores  = Fornecedor::daEmpresa()
+            ->orderBy('nomefantasia')
+            ->get();
+
         return view('produtos.create', compact('categorias', 'subcategorias', 'fornecedores'));
     }
 
@@ -90,15 +118,18 @@ class ProdutoController extends Controller
             'arquivo_precos' => 'required|file|mimes:csv,txt,text',
         ]);
 
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         $arquivo  = $request->file('arquivo_precos');
         $conteudo = file_get_contents($arquivo->getRealPath()) ?: '';
 
         $linhas = preg_split('/\r\n|\r|\n/', $conteudo);
         $hoje   = now()->toDateString();
 
-        $totalLinhas       = 0;
-        $totalAtualizados  = 0;
-        $totalNaoEncontrados = 0;
+        $totalLinhas          = 0;
+        $totalAtualizados     = 0;
+        $totalNaoEncontrados  = 0;
         $codigosNaoEncontrados = [];
 
         DB::beginTransaction();
@@ -145,9 +176,11 @@ class ProdutoController extends Controller
                 $precoVenda  = $this->brToFloat($precoVendB);
                 $pontos      = $this->brToFloat($pontosB);
 
-                // Procura produto pelo codfabnumero
+                // Procura produto pelo codfabnumero, mas SOMENTE da empresa
                 /** @var \App\Models\Produto|null $produto */
-                $produto = Produto::where('codfabnumero', $codigo)->first();
+                $produto = Produto::daEmpresa()
+                    ->where('codfabnumero', $codigo)
+                    ->first();
 
                 if (! $produto) {
                     $totalNaoEncontrados++;
@@ -162,12 +195,11 @@ class ProdutoController extends Controller
                 $produto->save();
 
                 // Fecha tabela de preço vigente e cria nova
-                // Ajuste os nomes dos campos conforme seu migration/model de Tabelapreco
                 Tabelapreco::where('produto_id', $produto->id)
                     ->where('status', 1)
                     ->update([
-                        'status'    => 0,
-                        'data_fim'  => $hoje,
+                        'status'   => 0,
+                        'data_fim' => $hoje,
                     ]);
 
                 Tabelapreco::create([
@@ -208,13 +240,12 @@ class ProdutoController extends Controller
 
             file_put_contents($caminho, implode(PHP_EOL, $linhasTxt));
 
-            // Podemos mandar um link pra download (via Storage::download)
             session()->flash('arquivo_nao_encontrados', $nomeArquivo);
         }
 
         $msg = "Importação concluída. Linhas lidas: {$totalLinhas}. "
-            . "Produtos atualizados: {$totalAtualizados}. "
-            . "Códigos não encontrados: {$totalNaoEncontrados}.";
+             . "Produtos atualizados: {$totalAtualizados}. "
+             . "Códigos não encontrados: {$totalNaoEncontrados}.";
 
         return redirect()
             ->route('produtos.importar_precos.form')
@@ -243,29 +274,32 @@ class ProdutoController extends Controller
                 $itens[] = [
                     'codigo_fabrica' => $codigo,
                     'descricao'      => $desc,
-                    // 👇 agora converte corretamente "112,25" em 112.25
                     'preco_revenda'  => $this->brToFloat($precoBr),
                 ];
             }
         }
 
-        // fornecedor/categoria/sub etc que você já está passando
-        $fornecedores  = \App\Models\Fornecedor::orderBy('nomefantasia')->get();
-        $categorias    = \App\Models\Categoria::orderBy('nome')->get();
-        $subcategorias = \App\Models\Subcategoria::orderBy('nome')->get();
+        $fornecedores  = Fornecedor::daEmpresa()
+            ->orderBy('nomefantasia')
+            ->get();
+
+        $categorias    = Categoria::orderBy('nome')->get();
+        $subcategorias = Subcategoria::orderBy('nome')->get();
 
         return view('produtos.importar_missing', compact('itens', 'fornecedores', 'categorias', 'subcategorias'));
     }
-
 
     /**
      * Processa o TXT e/ou grava os produtos.
      */
     public function importarMissingStore(Request $request)
     {
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
         // PASSO 2: SALVAR PRODUTOS
         if ($request->has('salvar')) {
-            $dados = $request->input('itens', []);
+            $dados     = $request->input('itens', []);
             $criados   = 0;
             $ignorados = 0;
 
@@ -286,6 +320,7 @@ class ProdutoController extends Controller
                     if ($precoCompra <= 0 && $precoRevenda > 0) {
                         $precoCompra = round($precoRevenda * 0.7, 2);
                     }
+
                     // Pontuação
                     $pontuacaoStr  = (string) ($item['pontuacao'] ?? '0');
                     $pontuacaoStr  = str_replace('.', '', $pontuacaoStr);
@@ -301,7 +336,8 @@ class ProdutoController extends Controller
                         continue;
                     }
 
-                    if (Produto::where('codfabnumero', $codigo)->exists()) {
+                    // Verifica duplicidade apenas dentro da mesma empresa
+                    if (Produto::daEmpresa()->where('codfabnumero', $codigo)->exists()) {
                         $ignorados++;
                         continue;
                     }
@@ -316,16 +352,17 @@ class ProdutoController extends Controller
                         'fornecedor_id'   => $fornecedorId ?: null,
                         'categoria_id'    => $categoriaId ?: null,
                         'subcategoria_id' => $subcategoriaId ?: null,
+                        'empresa_id'      => $empresaId,
                     ]);
 
                     // 2) Cria registro de tabela de preço vigente
                     Tabelapreco::create([
-                        'produto_id'   => $produto->id,
-                        'preco_compra' => $precoCompra,
+                        'produto_id'    => $produto->id,
+                        'preco_compra'  => $precoCompra,
                         'preco_revenda' => $precoRevenda,
-                        'pontuacao'    => $pontuacao,   // campo da tabela apptabelapreco
-                        'status'       => 1,
-                        'data_inicio'  => now()->toDateString(),
+                        'pontuacao'     => $pontuacao,
+                        'status'        => 1,
+                        'data_inicio'   => now()->toDateString(),
                     ]);
 
                     $criados++;
@@ -374,21 +411,15 @@ class ProdutoController extends Controller
             $descricao = trim($m[4] ?? '');
             $precoStr  = trim($m[3] ?? '');
 
-            // Nosso TXT gerado no front usa ponto como decimal (toFixed(2)), mas
-            // vamos tratar vírgula também por segurança.
             if ($precoStr !== '') {
-                // TXT gerado pelo sistema usa ponto como decimal (ex: 112.25).
-                // Se vier com vírgula por algum motivo, só trocamos por ponto.
                 $precoStr = str_replace('R$', '', $precoStr);
                 $precoStr = str_replace(' ', '', $precoStr);
                 $precoStr = str_replace(',', '.', $precoStr);
 
-                // NÃO removemos o ponto, porque aqui ele é decimal e não milhar
                 $precoRevenda = (float) $precoStr;
             } else {
                 $precoRevenda = 0.0;
             }
-
 
             if ($codigo === '') {
                 continue;
@@ -407,10 +438,12 @@ class ProdutoController extends Controller
                 ->withInput();
         }
 
-        // Carrega listas pra sugerir fornecedor/categoria/subcategoria
-        $fornecedores   = Fornecedor::orderBy('nomefantasia')->get();
-        $categorias     = Categoria::orderBy('nome')->get();
-        $subcategorias  = Subcategoria::orderBy('nome')->get();
+        $fornecedores  = Fornecedor::daEmpresa()
+            ->orderBy('nomefantasia')
+            ->get();
+
+        $categorias    = Categoria::orderBy('nome')->get();
+        $subcategorias = Subcategoria::orderBy('nome')->get();
 
         $fornecedorPadraoId   = optional($fornecedores->first())->id;
         $categoriaPadraoId    = optional($categorias->first())->id;
@@ -427,15 +460,14 @@ class ProdutoController extends Controller
         ]);
     }
 
-
     public function store(Request $request)
     {
         $request->validate([
-            'nome' => 'required|string|max:150',
-            'categoria_id' => 'required',
-            'subcategoria_id' => 'required',
-            'fornecedor_id' => 'required',
-            'imagem' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'nome'           => 'required|string|max:150',
+            'categoria_id'   => 'required',
+            'subcategoria_id'=> 'required',
+            'fornecedor_id'  => 'required',
+            'imagem'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $usuario   = $request->user();
@@ -448,23 +480,31 @@ class ProdutoController extends Controller
             $request->imagem->move(public_path('imagens/produtos'), $nomeArquivo);
             $dados['imagem'] = 'imagens/produtos/' . $nomeArquivo;
         }
+
         $dados['empresa_id'] = $empresaId;
-        
+
         Produto::create($dados);
 
-        return redirect()->route('produtos.index')->with('success', 'Produto cadastrado com sucesso!');
+        return redirect()
+            ->route('produtos.index')
+            ->with('success', 'Produto cadastrado com sucesso!');
     }
 
     /**
      * Retorna preço e pontuação pelo codfabnumero
      */
-    public function getPreco($codfabnumero)
+    public function getPreco(Request $request, $codfabnumero)
     {
-        $hoje = now()->toDateString();
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+        $hoje      = now()->toDateString();
 
         $preco = DB::table('apptabelapreco')
             ->join('appproduto', 'apptabelapreco.produto_id', '=', 'appproduto.id')
             ->where('appproduto.codfabnumero', $codfabnumero)
+            ->when($empresaId, function ($q) use ($empresaId) {
+                $q->where('appproduto.empresa_id', $empresaId);
+            })
             ->where('apptabelapreco.status', 1)
             ->whereDate('apptabelapreco.data_inicio', '<=', $hoje)
             ->whereDate('apptabelapreco.data_fim', '>=', $hoje)
@@ -475,36 +515,44 @@ class ProdutoController extends Controller
         if ($preco) {
             return response()->json([
                 'preco_revenda' => (float) $preco->preco_revenda,
-                'pontuacao' => (float) $preco->pontuacao,
+                'pontuacao'     => (float) $preco->pontuacao,
             ]);
         }
 
         return response()->json(['preco_revenda' => 0, 'pontuacao' => 0]);
     }
 
-    public function edit(Produto $produto)
+    public function edit(Request $request, Produto $produto)
     {
-        $categorias = Categoria::all();
-        $subcategorias = Subcategoria::all();
-        $fornecedores = Fornecedor::all();
+        $this->autorizarEmpresa($request, $produto);
+
+        $categorias    = Categoria::orderBy('nome')->get();
+        $subcategorias = Subcategoria::orderBy('nome')->get();
+        $fornecedores  = Fornecedor::daEmpresa()
+            ->orderBy('nomefantasia')
+            ->get();
+
         return view('produtos.edit', compact('produto', 'categorias', 'subcategorias', 'fornecedores'));
     }
 
     public function update(Request $request, Produto $produto)
     {
+        $this->autorizarEmpresa($request, $produto);
+
         $request->validate([
-            'nome' => 'required|string|max:150',
-            'categoria_id' => 'required',
-            'subcategoria_id' => 'required',
-            'fornecedor_id' => 'required',
-            'imagem' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'nome'           => 'required|string|max:150',
+            'categoria_id'   => 'required',
+            'subcategoria_id'=> 'required',
+            'fornecedor_id'  => 'required',
+            'imagem'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $dados = $request->all();
+        unset($dados['empresa_id']); // não deixa mudar empresa do produto
 
         if ($request->hasFile('imagem')) {
             if ($produto->imagem && file_exists(public_path($produto->imagem))) {
-                unlink(public_path($produto->imagem));
+                @unlink(public_path($produto->imagem));
             }
 
             $nomeArquivo = time() . '.' . $request->imagem->extension();
@@ -514,12 +562,19 @@ class ProdutoController extends Controller
 
         $produto->update($dados);
 
-        return redirect()->route('produtos.index')->with('success', 'Produto atualizado com sucesso!');
+        return redirect()
+            ->route('produtos.index')
+            ->with('success', 'Produto atualizado com sucesso!');
     }
 
-    public function destroy(Produto $produto)
+    public function destroy(Request $request, Produto $produto)
     {
+        $this->autorizarEmpresa($request, $produto);
+
         $produto->delete();
-        return redirect()->route('produtos.index')->with('success', 'Produto excluído com sucesso!');
+
+        return redirect()
+            ->route('produtos.index')
+            ->with('success', 'Produto excluído com sucesso!');
     }
 }

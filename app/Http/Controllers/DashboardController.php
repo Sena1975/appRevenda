@@ -18,21 +18,47 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $totClientes = Cliente::count();
+        $user = $request->user();
+
+        if (!$user || !$user->empresa_id) {
+            abort(403, 'Usuário sem empresa vinculada.');
+        }
+
+        $empresaId = $user->empresa_id;
 
         /*
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
+        | CLIENTES
+        |--------------------------------------------------------------------------|
+        */
+        // Só clientes da empresa atual
+        $totClientes = Cliente::where('empresa_id', $empresaId)->count();
+
+        /*
+        |--------------------------------------------------------------------------|
         | PRODUTOS / ESTOQUE
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
         */
         $produtoTable = (new Produto())->getTable();   // normalmente "appproduto"
         $estoqueTable = (new Estoque())->getTable();   // normalmente "appestoque"
 
-        // Detecta coluna de quantidade no estoque
-        $valorPremiosPendentes = Indicacao::where('status', 'pendente')->sum('valor_premio');
-        $valorPremiosPagos     = Indicacao::where('status', 'pago')->sum('valor_premio');
+        // INDICAÇÕES (premiação) filtradas por empresa se existir empresa_id na tabela
+        $indicacaoTable = (new Indicacao())->getTable();
+        $indicacaoBase  = Indicacao::query();
+
+        if (Schema::hasColumn($indicacaoTable, 'empresa_id')) {
+            $indicacaoBase->where('empresa_id', $empresaId);
+        }
+
+        $valorPremiosPendentes = (clone $indicacaoBase)
+            ->where('status', 'pendente')
+            ->sum('valor_premio');
+
+        $valorPremiosPagos = (clone $indicacaoBase)
+            ->where('status', 'pago')
+            ->sum('valor_premio');
 
         // Detecta coluna de quantidade no estoque
         $colQtd = Schema::hasColumn($estoqueTable, 'disponivel') ? 'disponivel'
@@ -43,11 +69,20 @@ class DashboardController extends Controller
         $colPreco = Schema::hasColumn($produtoTable, 'preco_compra') ? 'preco_compra'
             : (Schema::hasColumn($produtoTable, 'preco_revenda') ? 'preco_revenda' : null);
 
+        // Base de consulta de estoque (se tiver empresa_id em estoque, filtra por ele;
+        // senão, se tiver empresa_id em produto, filtra lá)
+        $estoqueBase = Estoque::query();
+        $estoqueTemEmpresa = Schema::hasColumn($estoqueTable, 'empresa_id');
+        $produtoTemEmpresa = Schema::hasColumn($produtoTable, 'empresa_id');
+
+        if ($estoqueTemEmpresa) {
+            $estoqueBase->where('empresa_id', $empresaId);
+        }
+
         // Quantidade de produtos com estoque > 0 (contando produtos distintos)
         if ($colQtd) {
-            $totProdutosEstoque = Estoque::where($colQtd, '>', 0)
-                ->distinct('produto_id')
-                ->count('produto_id');
+            $q = (clone $estoqueBase)->where($colQtd, '>', 0);
+            $totProdutosEstoque = $q->distinct('produto_id')->count('produto_id');
         } else {
             $totProdutosEstoque = 0;
         }
@@ -55,94 +90,116 @@ class DashboardController extends Controller
         // Valor do estoque = SUM(qtd * preço)
         $valorEstoque = 0;
         if ($colQtd && $colPreco) {
-            $valorEstoque = (float) (
-                DB::table($estoqueTable . ' as e')
+            $estoqueJoin = DB::table($estoqueTable . ' as e')
                 ->join($produtoTable . ' as p', 'p.id', '=', 'e.produto_id')
-                ->where('e.' . $colQtd, '>', 0)
+                ->where('e.' . $colQtd, '>', 0);
+
+            if ($estoqueTemEmpresa) {
+                $estoqueJoin->where('e.empresa_id', $empresaId);
+            } elseif ($produtoTemEmpresa) {
+                $estoqueJoin->where('p.empresa_id', $empresaId);
+            }
+
+            $valorEstoque = (float) ($estoqueJoin
                 ->selectRaw("SUM(e.$colQtd * p.$colPreco) as total")
-                ->value('total') ?? 0
-            );
+                ->value('total') ?? 0);
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | CONTAS A RECEBER EM ABERTO
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
+        | CONTAS A RECEBER EM ABERTO (opcionalmente multiempresa)
+        |--------------------------------------------------------------------------|
         */
-        $query = ContasReceber::query();
         $crTable = (new ContasReceber())->getTable();
+
+        $queryCR = ContasReceber::query();
+
+        // Se a tabela appcontasreceber já tiver empresa_id, filtra por ele
+        if (Schema::hasColumn($crTable, 'empresa_id')) {
+            $queryCR->where('empresa_id', $empresaId);
+        }
 
         // 1) status = 'aberto'
         if (Schema::hasColumn($crTable, 'status')) {
-            $query->where('status', 'aberto');
+            $queryCR->where('status', 'aberto');
         }
         // 2) pago = 0
         elseif (Schema::hasColumn($crTable, 'pago')) {
-            $query->where('pago', 0);
+            $queryCR->where('pago', 0);
         }
         // 3) data_baixa IS NULL
         elseif (Schema::hasColumn($crTable, 'data_baixa')) {
-            $query->whereNull('data_baixa');
+            $queryCR->whereNull('data_baixa');
         }
 
         // Nome da coluna do valor
         $colValor = Schema::hasColumn($crTable, 'valor') ? 'valor'
             : (Schema::hasColumn($crTable, 'valor_titulo') ? 'valor_titulo' : null);
 
-        $crEmAberto  = (clone $query)->count();
-        $valorAberto = $colValor ? (clone $query)->sum($colValor) : 0;
+        $crEmAberto  = (clone $queryCR)->count();
+        $valorAberto = $colValor ? (clone $queryCR)->sum($colValor) : 0;
 
         /*
-        |--------------------------------------------------------------------------
-        | COMPRAS E VENDAS (MÊS ATUAL)
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
+        | COMPRAS E VENDAS (MÊS ATUAL) - SEMPRE POR EMPRESA
+        |--------------------------------------------------------------------------|
         */
         $inicioMes = Carbon::now()->startOfMonth();
         $hoje      = Carbon::now()->endOfDay();
 
-        // VENDAS do mês
-        $vendasMesQuery = PedidoVenda::whereBetween('data_pedido', [$inicioMes, $hoje]);
+        // VENDAS do mês (da empresa)
+        $vendasMesQuery = PedidoVenda::where('empresa_id', $empresaId)
+            ->whereBetween('data_pedido', [$inicioMes, $hoje]);
+
         $totVendasMes   = (clone $vendasMesQuery)->count();
         $faturamentoMes = (clone $vendasMesQuery)->sum('valor_liquido');
 
-        // COMPRAS do mês
-        $comprasMesQuery = PedidoCompra::whereBetween('data_compra', [$inicioMes, $hoje]);
+        // COMPRAS do mês (da empresa)
+        $comprasMesQuery = PedidoCompra::where('empresa_id', $empresaId)
+            ->whereBetween('data_compra', [$inicioMes, $hoje]);
+
         $totComprasMes   = (clone $comprasMesQuery)->count();
         $valorComprasMes = (clone $comprasMesQuery)->sum('valor_total');
 
         /*
-        |--------------------------------------------------------------------------
-        | PENDENTES (SEM FILTRO DE DATA)
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
+        | PENDENTES (SEM FILTRO DE DATA) - POR EMPRESA
+        |--------------------------------------------------------------------------|
         */
         // Vendas com status PENDENTE
-        $vendasPendentesQuery   = PedidoVenda::where('status', 'PENDENTE');
-        $totVendasPendentes     = (clone $vendasPendentesQuery)->count();
-        $valorVendasPendentes   = (clone $vendasPendentesQuery)->sum('valor_liquido');
+        $vendasPendentesQuery = PedidoVenda::where('empresa_id', $empresaId)
+            ->where('status', 'PENDENTE');
+
+        $totVendasPendentes   = (clone $vendasPendentesQuery)->count();
+        $valorVendasPendentes = (clone $vendasPendentesQuery)->sum('valor_liquido');
 
         // Compras com status PENDENTE
-        $comprasPendentesQuery  = PedidoCompra::where('status', 'PENDENTE');
-        $totComprasPendentes    = (clone $comprasPendentesQuery)->count();
-        $valorComprasPendentes  = (clone $comprasPendentesQuery)->sum('valor_total');
+        $comprasPendentesQuery = PedidoCompra::where('empresa_id', $empresaId)
+            ->where('status', 'PENDENTE');
+
+        $totComprasPendentes   = (clone $comprasPendentesQuery)->count();
+        $valorComprasPendentes = (clone $comprasPendentesQuery)->sum('valor_total');
 
         /*
-        |--------------------------------------------------------------------------
-        | VISÃO RÁPIDA: últimas vendas/compras (lista)
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
+        | VISÃO RÁPIDA: últimas vendas/compras (lista) - POR EMPRESA
+        |--------------------------------------------------------------------------|
         */
-        $ultimasVendas = PedidoVenda::orderByDesc('data_pedido')
+        $ultimasVendas = PedidoVenda::where('empresa_id', $empresaId)
+            ->orderByDesc('data_pedido')
             ->limit(5)
             ->get(['id', 'data_pedido', 'valor_liquido']);
 
-        $ultimasCompras = PedidoCompra::orderByDesc('data_compra')
+        $ultimasCompras = PedidoCompra::where('empresa_id', $empresaId)
+            ->orderByDesc('data_compra')
             ->limit(5)
             ->get(['id', 'data_compra', 'valor_total']);
 
         /*
-        |--------------------------------------------------------------------------
-        | GRÁFICO DE EVOLUÇÃO - ÚLTIMAS COMPRAS
+        |--------------------------------------------------------------------------|
+        | GRÁFICO DE EVOLUÇÃO - ÚLTIMAS COMPRAS (POR EMPRESA)
         | Agrupa as compras por dia (R$ total/dia) nos últimos X dias
-        |--------------------------------------------------------------------------
+        |--------------------------------------------------------------------------|
         */
         $periodoEvolucaoDias = 180; // ajuste se quiser mais/menos dias
 
@@ -150,7 +207,8 @@ class DashboardController extends Controller
             ->subDays($periodoEvolucaoDias)
             ->startOfDay();
 
-        $comprasEvolucao = PedidoCompra::selectRaw('DATE(data_compra) as dia, SUM(valor_total) as total')
+        $comprasEvolucao = PedidoCompra::where('empresa_id', $empresaId)
+            ->selectRaw('DATE(data_compra) as dia, SUM(valor_total) as total')
             ->whereBetween('data_compra', [$inicioPeriodo, $hoje])
             ->groupBy('dia')
             ->orderBy('dia')
@@ -179,9 +237,9 @@ class DashboardController extends Controller
             'totVendasPendentes'          => $totVendasPendentes,
             'valorVendasPendentes'        => $valorVendasPendentes,
             'totComprasPendentes'         => $totComprasPendentes,
-            'valorPremiosPendentes' => $valorPremiosPendentes,
-            'valorPremiosPagos'     => $valorPremiosPagos,
             'valorComprasPendentes'       => $valorComprasPendentes,
+            'valorPremiosPendentes'       => $valorPremiosPendentes,
+            'valorPremiosPagos'           => $valorPremiosPagos,
             'comprasEvolucaoLabels'       => $comprasEvolucaoLabels,
             'comprasEvolucaoValores'      => $comprasEvolucaoValores,
             'periodoEvolucaoComprasDias'  => $periodoEvolucaoDias,

@@ -11,8 +11,7 @@ class PedidoCompra extends Model
 {
     use HasFactory;
 
-    protected $table = 'appcompra'; // nome real da tabela no banco
-
+    protected $table = 'appcompra'; 
     protected $fillable = [
         'fornecedor_id',
         'data_compra',
@@ -51,17 +50,6 @@ class PedidoCompra extends Model
         return $this->belongsTo(Fornecedor::class, 'fornecedor_id');
     }
 
-    public function scopeDaEmpresa($query)
-    {
-        $user = Auth::user();
-
-        if ($user) {
-            return $query->where('empresa_id', $user->empresa_id);
-        }
-
-        return $query;
-    }
-
     // 🔗 Relacionamento com os itens da compra
     public function itens()
     {
@@ -71,5 +59,16 @@ class PedidoCompra extends Model
     public function contasPagar()
     {
         return $this->hasMany(ContasPagar::class, 'compra_id');
+    }
+    
+    public function scopeDaEmpresa($query)
+    {
+        $user = Auth::user();
+
+        if ($user) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+
+        return $query;
     }
 }

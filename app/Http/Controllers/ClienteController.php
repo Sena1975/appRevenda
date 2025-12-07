@@ -13,11 +13,18 @@ class ClienteController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        $empresaId = $user?->empresa_id;
+
+        if (!$empresaId) {
+            abort(403, 'Usuário sem empresa vinculada.');
+        }
+
         // filtros vindos da tela (GET)
         $filtroOrigem = $request->input('origem_cadastro');
         $filtroStatus = $request->input('status');
 
-        // Subquery com estatísticas por cliente
+        // Subquery com estatísticas por cliente (APENAS da empresa)
         $statsSub = DB::table('apppedidovenda as p')
             ->join('appitemvenda as i', 'i.pedido_id', '=', 'p.id')
             ->selectRaw('
@@ -31,18 +38,20 @@ class ClienteController extends Controller
             )                                             as ticket_medio
         ')
             ->whereNotNull('p.cliente_id')
+            ->where('p.empresa_id', $empresaId) // 👈 só pedidos da empresa do usuário
             ->groupBy('p.cliente_id');
 
+        // Clientes da empresa + join com as stats
         $clientesQuery = Cliente::query()
             ->from('appcliente as c')
+            ->where('c.empresa_id', $empresaId) // 👈 só clientes da empresa
             ->leftJoinSub($statsSub, 's', 's.cliente_id', '=', 'c.id')
             ->selectRaw('
-        c.*,
-        COALESCE(s.mix, 0)            as mix,
-        COALESCE(s.total_compras, 0)  as total_compras,
-        COALESCE(s.ticket_medio, 0)   as ticket_medio
-    ');
-
+            c.*,
+            COALESCE(s.mix, 0)            as mix,
+            COALESCE(s.total_compras, 0)  as total_compras,
+            COALESCE(s.ticket_medio, 0)   as ticket_medio
+        ');
 
         // === aplica filtro por origem_cadastro, se informado ===
         if (!empty($filtroOrigem)) {
@@ -60,15 +69,16 @@ class ClienteController extends Controller
             ->appends($request->only('origem_cadastro', 'status'));
 
         // ==========================
-        // ESTATÍSTICAS POR ORIGEM
+        // ESTATÍSTICAS POR ORIGEM (APENAS da empresa)
         // ==========================
-        $origensStats = DB::table('appcliente')
+        $origensStats = DB::table('appcliente as c')
             ->selectRaw("
-            COALESCE(origem_cadastro, 'Não informada') as origem_cadastro,
-            COUNT(*)                                    as total,
-            SUM(CASE WHEN status = 'Ativo' THEN 1 ELSE 0 END) as ativos
+            COALESCE(c.origem_cadastro, 'Não informada') as origem_cadastro,
+            COUNT(*)                                      as total,
+            SUM(CASE WHEN c.status = 'Ativo' THEN 1 ELSE 0 END) as ativos
         ")
-            ->groupBy(DB::raw("COALESCE(origem_cadastro, 'Não informada')"))
+            ->where('c.empresa_id', $empresaId) // 👈 só clientes da empresa
+            ->groupBy(DB::raw("COALESCE(c.origem_cadastro, 'Não informada')"))
             ->get();
 
         $totalClientes = $origensStats->sum('total');
@@ -83,7 +93,6 @@ class ClienteController extends Controller
             'totalAtivos'   => $totalAtivos,
         ]);
     }
-
 
     public function create()
     {
