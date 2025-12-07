@@ -37,6 +37,8 @@ use App\Http\Controllers\RelatorioMensagensController;
 
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Http\Controllers\MensagemController;
+use App\Http\Controllers\MensagensManuaisController;
+
 
 
 /*
@@ -353,7 +355,20 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/relatorios/campanhas/indicacao', [RelatorioMensagensController::class, 'campanhasIndicacao'])
         ->name('relatorios.campanhas.indicacao');
+    
+    /* envio manual*/
+    Route::prefix('mensageria')
+        ->name('mensageria.')
+        ->group(function () {
+            Route::get('modelos', [MensagensManuaisController::class, 'index'])
+                ->name('modelos.index');
 
+            Route::get('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'formEnviar'])
+                ->name('modelos.form_enviar');
+
+            Route::post('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'enviar'])
+                ->name('modelos.enviar');
+        });
     /*
     |--------------------------------------------------------------------------
     | CAMPANHAS
