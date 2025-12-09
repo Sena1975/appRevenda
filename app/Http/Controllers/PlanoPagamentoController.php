@@ -12,9 +12,12 @@ class PlanoPagamentoController extends Controller
     /**
      * Lista de planos com a forma relacionada.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $empresaId = $request->user()->empresa_id ?? null;
+
         $planos = PlanoPagamento::with('formaPagamento')
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->orderByDesc('id')
             ->paginate(10);
 
@@ -24,9 +27,15 @@ class PlanoPagamentoController extends Controller
     /**
      * Formulário de criação.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $formas = FormaPagamento::orderBy('nome')->get(['id','nome']);
+        $empresaId = $request->user()->empresa_id ?? null;
+
+        $formas = FormaPagamento::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
         return view('planopagamento.create', compact('formas'));
     }
 
@@ -35,6 +44,8 @@ class PlanoPagamentoController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+
         $data = $request->validate([
             'codplano'           => ['required','string','max:20', 'unique:appplanopagamento,codplano'],
             'descricao'          => ['required','string','max:100'],
@@ -48,7 +59,8 @@ class PlanoPagamentoController extends Controller
         ]);
 
         // checkbox pode vir null => trata como 0/1
-        $data['ativo'] = (int)($data['ativo'] ?? 1);
+        $data['ativo']      = (int)($data['ativo'] ?? 1);
+        $data['empresa_id'] = $user->empresa_id ?? null;
 
         PlanoPagamento::create($data);
 
@@ -60,12 +72,23 @@ class PlanoPagamentoController extends Controller
     /**
      * Formulário de edição.
      */
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
-        $plano  = PlanoPagamento::findOrFail($id);
-        $formas = FormaPagamento::orderBy('nome')->get(['id','nome']);
+        $user  = $request->user();
+        $plano = PlanoPagamento::findOrFail($id);
 
-        return view('planopagamento.edit', compact('plano','formas'));
+        if ($user && $plano->empresa_id !== $user->empresa_id) {
+            abort(403, 'Este plano de pagamento não pertence à sua empresa.');
+        }
+
+        $empresaId = $user->empresa_id ?? null;
+
+        $formas = FormaPagamento::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        return view('planopagamento.edit', compact('plano', 'formas'));
     }
 
     /**
@@ -73,7 +96,12 @@ class PlanoPagamentoController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $user  = $request->user();
         $plano = PlanoPagamento::findOrFail($id);
+
+        if ($user && $plano->empresa_id !== $user->empresa_id) {
+            abort(403, 'Este plano de pagamento não pertence à sua empresa.');
+        }
 
         $data = $request->validate([
             'codplano'           => [
@@ -92,6 +120,9 @@ class PlanoPagamentoController extends Controller
 
         $data['ativo'] = (int)($data['ativo'] ?? 1);
 
+        // não deixa mudar empresa_id por update
+        unset($data['empresa_id']);
+
         $plano->update($data);
 
         return redirect()
@@ -102,9 +133,15 @@ class PlanoPagamentoController extends Controller
     /**
      * Remove um plano.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        $user  = $request->user();
         $plano = PlanoPagamento::findOrFail($id);
+
+        if ($user && $plano->empresa_id !== $user->empresa_id) {
+            abort(403, 'Este plano de pagamento não pertence à sua empresa.');
+        }
+
         $plano->delete();
 
         return redirect()
@@ -123,12 +160,15 @@ class PlanoPagamentoController extends Controller
      *   { id, descricao, codigo, parcelas, prazo1, prazo2, prazo3 }
      * ]
      */
-    public function getByForma($forma_id)
+    public function getByForma(Request $request, $forma_id)
     {
+        $empresaId = $request->user()->empresa_id ?? null;
+
         $planos = PlanoPagamento::query()
             ->where('formapagamento_id', $forma_id)
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->where(function ($q) {
-                // Se sua coluna "ativo" pode ser null, considere null como ativo
+                // Se sua coluna "ativo" pode ser null, considera null como ativo
                 $q->where('ativo', 1)->orWhereNull('ativo');
             })
             ->orderBy('descricao')
@@ -143,14 +183,13 @@ class PlanoPagamentoController extends Controller
             ])
             ->map(function ($p) {
                 return [
-                    'id'        => (int)$p->id,
+                    'id'        => (int) $p->id,
                     'descricao' => $p->descricao,
-                    // o front espera "codigo" — mapeamos de codplano
-                    'codigo'    => $p->codplano,
-                    'parcelas'  => (int)($p->parcelas ?? 0),
-                    'prazo1'    => (int)($p->prazo1   ?? 0),
-                    'prazo2'    => (int)($p->prazo2   ?? 0),
-                    'prazo3'    => (int)($p->prazo3   ?? 0),
+                    'codigo'    => $p->codplano, // o front espera "codigo"
+                    'parcelas'  => (int) ($p->parcelas ?? 0),
+                    'prazo1'    => (int) ($p->prazo1 ?? 0),
+                    'prazo2'    => (int) ($p->prazo2 ?? 0),
+                    'prazo3'    => (int) ($p->prazo3 ?? 0),
                 ];
             })
             ->values();

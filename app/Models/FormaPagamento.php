@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Support\Facades\Auth;
 class FormaPagamento extends Model
 {
     protected $table = 'appformapagamento';
@@ -13,6 +13,7 @@ class FormaPagamento extends Model
     public const UPDATED_AT = 'atualizado_em';
 
     protected $fillable = [
+        'empresa_id',
         'nome',
         'gera_receber',   // bool (0/1)
         'max_parcelas',   // int
@@ -41,5 +42,23 @@ class FormaPagamento extends Model
     public function scopeAtivo($q)
     {
         return $q->where('ativo', 1);
+    }
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
+    /**
+     * Escopo para filtrar por empresa logada.
+     */
+    public function scopeDaEmpresa($query, ?int $empresaId = null)
+    {
+        $empresaId = $empresaId ?? Auth::user()?->empresa_id;
+
+        if ($empresaId) {
+            $query->where('empresa_id', $empresaId);
+        }
+
+        return $query;
     }
 }
