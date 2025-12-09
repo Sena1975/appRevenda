@@ -1,10 +1,11 @@
+{{-- resources/views/layouts/partials/sidebar.blade.php --}}
 @php
     use Illuminate\Support\Facades\DB;
     use Illuminate\Support\Facades\Auth;
     use Illuminate\Support\Str;
 
     // Descobre empresa atual (usuário logado ou middleware EmpresaAtiva)
-    $user    = Auth::user();
+    $user = Auth::user();
     $empresa = $user?->empresa;
 
     if (!$empresa && app()->bound('empresa')) {
@@ -15,17 +16,17 @@
 
     // Contadores dinâmicos (agora por empresa)
     $qtdPedidosPendentes = DB::table('apppedidovenda')
-        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
         ->where('status', 'PENDENTE')
         ->count();
 
     $qtdContasAbertas = DB::table('appcontasreceber')
-        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
         ->where('status', 'ABERTO')
         ->count();
 
     $qtdIndicacoesPendentes = DB::table('appindicacao')
-        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
         ->where('status', 'pendente')
         ->count();
 
@@ -59,6 +60,9 @@
         'participacoes.*',
         'indicacoes.*', // 👈 inclui indicações no grupo
     );
+
+    // 👇 NOVO: grupo WhatsApp / Mensageria
+    $isWhatsapp = request()->routeIs('whatsapp-config.*', 'mensageria.*', 'relatorios.mensagens.*');
 @endphp
 
 <div x-data="{ openSidebar: true }" class="flex flex-col h-full border-r bg-white shadow-sm transition-all duration-300"
@@ -157,11 +161,17 @@
 
         {{-- PEDIDOS --}}
         @php
-            $pedidosAbertosCompra = \App\Models\PedidoCompra::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            $pedidosAbertosCompra = \App\Models\PedidoCompra::when(
+                $empresaId,
+                fn($q) => $q->where('empresa_id', $empresaId),
+            )
                 ->where('status', 'ABERTO')
                 ->count();
 
-            $qtdPendentesVenda = \App\Models\PedidoVenda::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            $qtdPendentesVenda = \App\Models\PedidoVenda::when(
+                $empresaId,
+                fn($q) => $q->where('empresa_id', $empresaId),
+            )
                 ->whereIn('status', ['PENDENTE', 'ABERTO'])
                 ->count();
         @endphp
@@ -298,12 +308,12 @@
                         ? \App\Models\PlanoPagamento::count()
                         : 0;
                     $qtdReceber = class_exists(\App\Models\ContasReceber::class)
-                        ? \App\Models\ContasReceber::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                        ? \App\Models\ContasReceber::when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
                             ->where('status', 'ABERTO')
                             ->count()
                         : 0;
                     $qtdPagar = class_exists(\App\Models\ContasPagar::class)
-                        ? \App\Models\ContasPagar::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                        ? \App\Models\ContasPagar::when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
                             ->where('status', 'ABERTO')
                             ->count()
                         : 0;
@@ -383,7 +393,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                         stroke="currentColor" class="w-4 h-4 text-blue-500">
                         <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+                            d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 7.034a48.536 48.536 0 0 1 10.5 0M6.34 7.034c-.652.06-1.3.134-1.94.223C3.768 7.44 3 8.375 3 9.456v6.294A2.25 2.25 0 0 0 5.25 18h1.09" />
                     </svg>
                     <span class="ml-2">Relatórios</span>
                 </div>
@@ -528,6 +538,67 @@
 
             </div>
         </div>
+
+        <!-- WHATSAPP / MENSAGERIA -->
+        @if (Route::has('whatsapp-config.index') ||
+                Route::has('mensageria.modelos.index') ||
+                Route::has('relatorios.mensagens.index'))
+            <div class="mt-2">
+
+                {{-- Configuração WhatsApp / Mensageria --}}
+                @if (Route::has('whatsapp-config.index'))
+                    <a href="{{ route('whatsapp-config.index') }}"
+                        class="flex items-center px-3 py-2 rounded hover:bg-green-50 transition-all duration-200
+                        {{ $isWhatsapp ? 'bg-green-100 text-green-700 font-semibold' : 'text-gray-700' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            {{-- Ícone "bolha de mensagem" + "telefone" --}}
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 8h10M7 12h6M5 20l2.5-2.5H17a2 2 0 002-2V8a2 2 0 00-2-2H7A2 2 0 005 8v12z" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-3 flex-1 text-left">
+                            WhatsApp / Mensageria
+                        </span>
+                    </a>
+                @endif
+
+                {{-- Modelos de Mensagens (envio manual) --}}
+                @if (Route::has('mensageria.modelos.index'))
+                    <a href="{{ route('mensageria.modelos.index') }}"
+                        class="mt-1 flex items-center px-8 py-1 rounded hover:bg-green-50 transition-all duration-200
+                        {{ request()->routeIs('mensageria.modelos.*') ? 'text-green-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            {{-- Ícone "documento / texto" --}}
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 8h10M7 12h10M7 16h6M5 5a2 2 0 012-2h8l4 4v13H5a2 2 0 01-2-2V7z" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2 text-sm">
+                            Modelos de Mensagens
+                        </span>
+                    </a>
+                @endif
+
+                {{-- Relatório de Mensagens --}}
+                @if (Route::has('relatorios.mensagens.index'))
+                    <a href="{{ route('relatorios.mensagens.index') }}"
+                        class="mt-1 flex items-center px-8 py-1 rounded hover:bg-green-50 transition-all duration-200
+                        {{ request()->routeIs('relatorios.mensagens.*') ? 'text-green-700 font-semibold' : 'text-gray-600' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            {{-- Ícone "gráfico / relatório" --}}
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h4l3 8 4-16 3 8h4" />
+                        </svg>
+                        <span x-show="openSidebar" class="ml-2 text-sm">
+                            Relatório de Mensagens
+                        </span>
+                    </a>
+                @endif
+
+            </div>
+        @endif
+
     </nav>
 
     <!-- RODAPÉ: Sair -->
