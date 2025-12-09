@@ -18,6 +18,7 @@ class WhatsappConfig extends Model
         'api_key',
         'token',
         'instance_id',
+        'origin_tag_id',   // 👈 NOVO
         'is_default',
         'ativo',
         'extras',

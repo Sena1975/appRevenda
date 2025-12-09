@@ -117,7 +117,7 @@
                                 <input type="text" id="api_url" name="api_url"
                                        value="{{ old('api_url') }}"
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                       placeholder="Ex.: https://api.z-api.io/instances/xxxxx/token/xxxx">
+                                       placeholder="Ex.: https://api.botconversa.com.br/v1/...">
                             </div>
 
                             <div>
@@ -145,6 +145,22 @@
                                 <input type="text" id="instance_id" name="instance_id"
                                        value="{{ old('instance_id') }}"
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                            </div>
+
+                            {{-- ID da TAG de Origem (BotConversa) --}}
+                            <div class="md:col-span-2">
+                                <label for="origin_tag_id" class="block text-sm font-medium text-gray-700">
+                                    ID da TAG de Origem (BotConversa)
+                                </label>
+                                <input type="text" id="origin_tag_id" name="origin_tag_id"
+                                       value="{{ old('origin_tag_id') }}"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                       placeholder="Ex.: 123456">
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Informe o <strong>ID</strong> da TAG criada no painel do BotConversa
+                                    (ex.: “Origem: App Revenda”). Essa TAG será aplicada automaticamente
+                                    aos contatos criados/sincronizados. Se não quiser usar TAG agora, deixe em branco.
+                                </p>
                             </div>
                         </div>
                     </div>

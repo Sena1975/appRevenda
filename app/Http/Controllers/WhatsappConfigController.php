@@ -28,7 +28,6 @@ class WhatsappConfigController extends Controller
 
     public function create()
     {
-        // opções de provider que você vai suportar
         $providers = [
             'botconversa' => 'BotConversa',
             'zapi'        => 'Z-API',
@@ -51,6 +50,8 @@ class WhatsappConfigController extends Controller
             'api_key'       => 'nullable|string|max:255',
             'token'         => 'nullable|string|max:255',
             'instance_id'   => 'nullable|string|max:255',
+
+            'origin_tag_id' => 'nullable|string|max:100', // 👈 NOVO
 
             'is_default'    => 'nullable|boolean',
             'ativo'         => 'nullable|boolean',
@@ -102,6 +103,8 @@ class WhatsappConfigController extends Controller
             'api_key'       => 'nullable|string|max:255',
             'token'         => 'nullable|string|max:255',
             'instance_id'   => 'nullable|string|max:255',
+
+            'origin_tag_id' => 'nullable|string|max:100', // 👈 NOVO
 
             'is_default'    => 'nullable|boolean',
             'ativo'         => 'nullable|boolean',

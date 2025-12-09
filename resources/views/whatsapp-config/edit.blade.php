@@ -148,6 +148,21 @@
                                        value="{{ old('instance_id', $config->instance_id) }}"
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                             </div>
+
+                            {{-- ID da TAG de Origem (BotConversa) --}}
+                            <div class="md:col-span-2">
+                                <label for="origin_tag_id" class="block text-sm font-medium text-gray-700">
+                                    ID da TAG de Origem (BotConversa)
+                                </label>
+                                <input type="text" id="origin_tag_id" name="origin_tag_id"
+                                       value="{{ old('origin_tag_id', $config->origin_tag_id) }}"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                       placeholder="Ex.: 123456">
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Informe o <strong>ID</strong> da TAG criada no painel do BotConversa
+                                    (ex.: “Origem: App Revenda”). Se não quiser usar TAG agora, pode deixar em branco.
+                                </p>
+                            </div>
                         </div>
                     </div>
 

@@ -318,6 +318,14 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
     Route::get('/mensagens', [MensagemController::class, 'index'])
         ->name('mensagens.index');
 
+    // lista (index) - você já deve ter algo assim:
+    Route::get('/mensagens', [MensagemController::class, 'index'])
+        ->name('mensagens.index');
+
+    // show (detalhes)
+    Route::get('/mensagens/{mensagem}', [MensagemController::class, 'show'])
+        ->name('mensagens.show');
+
     Route::get('/relatorios/mensagens/campanhas', [RelatorioMensagensController::class, 'porCampanha'])
         ->name('relatorios.mensagens.por_campanha');
 

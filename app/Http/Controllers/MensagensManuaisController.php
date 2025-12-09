@@ -6,6 +6,8 @@ use App\Models\MensagemModelo;
 use App\Models\Cliente;
 use App\Services\MensageriaService;
 use Illuminate\Http\Request;
+use App\Models\Mensagem;
+
 
 class MensagensManuaisController extends Controller
 {
@@ -25,6 +27,14 @@ class MensagensManuaisController extends Controller
             'modelo'   => $modelo,
             'clientes' => $clientes,
         ]);
+    }
+
+    public function show(Mensagem $mensagem)
+    {
+        // Se quiser garantir que sempre venha com relações carregadas:
+        $mensagem->load(['cliente', 'pedido', 'campanha']);
+
+        return view('mensagens.show', compact('mensagem'));
     }
 
     public function enviar(Request $request, MensagemModelo $modelo)

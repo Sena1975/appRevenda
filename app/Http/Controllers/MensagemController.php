@@ -44,8 +44,8 @@ class MensagemController extends Controller
         $mensagens = $query->paginate(20)->appends($request->query());
 
         // Para combos de filtro
-        $clientes  = Cliente::orderBy('nome')->get(['id','nome']);
-        $campanhas = Campanha::orderBy('nome')->get(['id','nome']);
+        $clientes  = Cliente::orderBy('nome')->get(['id', 'nome']);
+        $campanhas = Campanha::orderBy('nome')->get(['id', 'nome']);
 
         // Lista de tipos conhecidos (opcional; você pode preencher manualmente)
         $tiposConhecidos = Mensagem::select('tipo')
@@ -58,8 +58,16 @@ class MensagemController extends Controller
             'mensagens'      => $mensagens,
             'clientes'       => $clientes,
             'campanhas'      => $campanhas,
-            'tiposConhecidos'=> $tiposConhecidos,
+            'tiposConhecidos' => $tiposConhecidos,
             'filtros'        => $filtros,
         ]);
+    }
+
+    public function show(Mensagem $mensagem)
+    {
+        // carrega relações para usar na view
+        $mensagem->load(['cliente', 'pedido', 'campanha']);
+
+        return view('mensagens.show', compact('mensagem'));
     }
 }
