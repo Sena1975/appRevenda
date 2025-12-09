@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProdutoController;
@@ -34,18 +35,12 @@ use App\Http\Controllers\RelatorioFinanceiroController;
 use App\Http\Controllers\TextoPedidoController;
 use App\Http\Controllers\IndicacaoController;
 use App\Http\Controllers\RelatorioMensagensController;
-
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Http\Controllers\MensagemController;
 use App\Http\Controllers\MensagensManuaisController;
+use App\Http\Controllers\WhatsappConfigController;
 
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-*/
 // DEBUG: descobrir de onde está rodando o app
 Route::get('/whoami', function () {
     return base_path();
@@ -62,34 +57,24 @@ Route::post('/cadastro-cliente', [ClienteController::class, 'storePublic'])
     ->name('clientes.public.store');
 
 
-
-Route::middleware(['auth'])->group(function () {
+// 👇 aqui entra também o middleware da empresa
+Route::middleware(['auth', 'empresa.ativa'])->group(function () {
 
     Route::prefix('relatorios')->name('relatorios.')->group(function () {
-        // (já existiam)
-        Route::get('/recebimentos/previsao', [RelatorioFinanceiroController::class, 'previsaoRecebimentos'])
-            ->name('recebimentos.previsao');
-
-        Route::get('/pagamentos/previsao', [RelatorioFinanceiroController::class, 'previsaoPagamentos'])
-            ->name('pagamentos.previsao');
-
-        Route::get('/recebimentos/inadimplencia', [RelatorioFinanceiroController::class, 'inadimplenciaReceber'])
-            ->name('recebimentos.inadimplencia');
-
+        Route::get('/recebimentos/previsao', [RelatorioFinanceiroController::class, 'previsaoRecebimentos'])->name('recebimentos.previsao');
+        Route::get('/pagamentos/previsao', [RelatorioFinanceiroController::class, 'previsaoPagamentos'])->name('pagamentos.previsao');
+        Route::get('/recebimentos/inadimplencia', [RelatorioFinanceiroController::class, 'inadimplenciaReceber'])->name('recebimentos.inadimplencia');
         // ✅ Extrato Financeiro do Cliente (já criamos antes)
-        Route::get('/recebimentos/extrato-cliente', [RelatorioFinanceiroController::class, 'extratoCliente'])
-            ->name('recebimentos.extrato_cliente');
-
+        Route::get('/recebimentos/extrato-cliente', [RelatorioFinanceiroController::class, 'extratoCliente'])->name('recebimentos.extrato_cliente');
         // ✅ Novos (podem ser stubs por enquanto)
-        Route::get('/clientes/{cliente}/extrato-pedidos', [RelatorioFinanceiroController::class, 'extratoPedidosCliente'])
-            ->name('clientes.extrato_pedidos');
-
-        Route::get('/clientes/{cliente}/extrato-produtos', [RelatorioFinanceiroController::class, 'extratoProdutosCliente'])
-            ->name('clientes.extrato_produtos');
+        Route::get('/clientes/{cliente}/extrato-pedidos', [RelatorioFinanceiroController::class, 'extratoPedidosCliente'])->name('clientes.extrato_pedidos');
+        Route::get('/clientes/{cliente}/extrato-produtos', [RelatorioFinanceiroController::class, 'extratoProdutosCliente'])->name('clientes.extrato_produtos');
     });
+
     Route::get('/clientes/qrcode', function () {
         return view('clientes.qrcode');
     })->name('clientes.qrcode');
+
     Route::get('/clientes/qrcode.png', function () {
         $png = QrCode::format('png')
             ->size(600)
@@ -103,35 +88,26 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/clientes/{cliente}/indicador-info', [ClienteController::class, 'indicadorInfo'])
         ->name('clientes.indicador.info');
+
     /*
     |--------------------------------------------------------------------------
     | DASHBOARD
     |--------------------------------------------------------------------------
     */
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    /*
-    |--------------------------------------------------------------------------
-    | CADASTROS BÁSICOS
-    |--------------------------------------------------------------------------
-    | ROTA PARA VIEW DE PRODUTOS COM ESTOQUE E PREÇO
-    |--------------------------------------------------------------------------
-    */
     // 1) LOOKUP PRIMEIRO
     Route::get('/produtos/lookup', [ProdutoLookupController::class, 'buscar'])
         ->name('produtos.lookup');
 
     Route::prefix('api')->group(function () {
-        Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])
-            ->name('api.produtos.buscar');
+        Route::get('/produtos/buscar', [ProdutoLookupController::class, 'buscar'])->name('api.produtos.buscar');
     });
 
     // Importar produtos a partir do TXT de itens não importados
-    Route::get('/produtos/importar-missing', [ProdutoController::class, 'importarMissingForm'])
-        ->name('produtos.importar_missing.form');
+    Route::get('/produtos/importar-missing', [ProdutoController::class, 'importarMissingForm'])->name('produtos.importar_missing.form');
 
-    Route::post('/produtos/importar-missing', [ProdutoController::class, 'importarMissingStore'])
-        ->name('produtos.importar_missing.store');
+    Route::post('/produtos/importar-missing', [ProdutoController::class, 'importarMissingStore'])->name('produtos.importar_missing.store');
+
     // 2) RESOURCE SEM SHOW (você não tem método show no controller)
     Route::resource('produtos', ProdutoController::class)->except(['show']);
 
@@ -140,30 +116,22 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('categorias', CategoriaController::class);
     Route::resource('subcategorias', SubcategoriaController::class);
     Route::resource('revendedoras', RevendedoraController::class);
-    Route::resource('equiperevenda', \App\Http\Controllers\EquipeRevendaController::class);
+    Route::resource('equiperevenda', EquipeRevendaController::class);
     Route::resource('supervisores', SupervisorController::class);
 
-    Route::get('/clientes/mesclar', [ClienteController::class, 'mergeForm'])
-        ->name('clientes.merge.form');
-
-    Route::post('/clientes/mesclar', [ClienteController::class, 'mergeStore'])
-        ->name('clientes.merge.store');
-
+    // 👇 Painel de configurações de WhatsApp por empresa
+    Route::resource('whatsapp-config', WhatsappConfigController::class)->parameters(['whatsapp-config' => 'whatsappConfig']);
+    Route::get('/clientes/mesclar', [ClienteController::class, 'mergeForm'])->name('clientes.merge.form');
+    Route::post('/clientes/mesclar', [ClienteController::class, 'mergeStore'])->name('clientes.merge.store');
     Route::resource('clientes', ClienteController::class);
-
-    Route::get('tabelapreco/importar', [TabelaPrecoController::class, 'formImport'])
-        ->name('tabelapreco.formImport');
-
-    Route::post('tabelapreco/importar', [TabelaPrecoController::class, 'processImport'])
-        ->name('tabelapreco.processImport');
-
+    Route::get('tabelapreco/importar', [TabelaPrecoController::class, 'formImport'])->name('tabelapreco.formImport');
+    Route::post('tabelapreco/importar', [TabelaPrecoController::class, 'processImport'])->name('tabelapreco.processImport');
     Route::resource('tabelapreco', TabelaprecoController::class);
 
     /*
     |--------------------------------------------------------------------------
     | LOCALIZAÇÃO (UF, CIDADES, BAIRROS)
     |--------------------------------------------------------------------------
-    | Mantemos APENAS as rotas do controller para evitar duplicidade de URIs.
     */
     Route::get('/get-cidades/{uf_id}',   [LocalizacaoController::class, 'getCidades'])->name('get.cidades');
     Route::get('/get-bairros/{cidade_id}', [LocalizacaoController::class, 'getBairros'])->name('get.bairros');
@@ -181,6 +149,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('estoque', EstoqueController::class);
     Route::resource('movestoque', MovEstoqueController::class);
+
     /*
     |--------------------------------------------------------------------------
     | VENDAS
@@ -190,18 +159,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('vendas/{id}/exportar', [PedidoVendaController::class, 'exportar'])->name('vendas.exportar');
     Route::post('/vendas/{id}/cancelar', [PedidoVendaController::class, 'cancelar'])
         ->name('vendas.cancelar');
-    // Route::get('vendas/confirmar/{id}', [PedidoVendaController::class, 'confirmar'])->name('vendas.confirmar');
-    Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])->name('vendas.confirmarEntrega');
+    Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
+        ->name('vendas.confirmarEntrega');
+
     /*
     |--------------------------------------------------------------------------
     | CAMPANHA – INDICAÇÕES
     |--------------------------------------------------------------------------
     */
-
     Route::get('/indicacoes', [IndicacaoController::class, 'index'])->name('indicacoes.index');
     Route::post('/indicacoes/{id}/pagar', [IndicacaoController::class, 'pagar'])->name('indicacoes.pagar');
-    // Route::post('/indicacoes/{indicacao}/pagar', [IndicacaoController::class, 'pagar'])->name('indicacoes.pagar');
-
 
     /*
     |--------------------------------------------------------------------------
@@ -226,26 +193,24 @@ Route::middleware(['auth'])->group(function () {
 
         return Storage::download($path);
     })->name('produtos.download_nao_encontrados');
+
     /*
     |--------------------------------------------------------------------------
     | FINANCEIRO – CONTAS A RECEBER
     |--------------------------------------------------------------------------
-    | Alinhado ao ContasReceberController (métodos: baixa [GET], baixar [POST], recibo).
-    | Mantemos um alias baixaForm() no controller para compatibilidade, se algum
-    | link antigo chamar.
     */
-
-    Route::resource('contasreceber', \App\Http\Controllers\ContasReceberController::class);
+    Route::resource('contasreceber', ContasReceberController::class);
 
     // Baixa (GET formulário / POST efetiva)
-    Route::get('contasreceber/{id}/baixa',  [\App\Http\Controllers\ContasReceberController::class, 'baixar'])
+    Route::get('contasreceber/{id}/baixa',  [ContasReceberController::class, 'baixar'])
         ->name('contasreceber.baixa');
-    Route::post('contasreceber/{id}/baixa', [\App\Http\Controllers\ContasReceberController::class, 'baixarStore'])
+    Route::post('contasreceber/{id}/baixa', [ContasReceberController::class, 'baixarStore'])
         ->name('contasreceber.baixa.store');
+
     // Estorno + Recibo
-    Route::post('contasreceber/{id}/estornar', [\App\Http\Controllers\ContasReceberController::class, 'estornar'])
+    Route::post('contasreceber/{id}/estornar', [ContasReceberController::class, 'estornar'])
         ->name('contasreceber.estornar');
-    Route::get('contasreceber/{id}/recibo',   [\App\Http\Controllers\ContasReceberController::class, 'recibo'])
+    Route::get('contasreceber/{id}/recibo',   [ContasReceberController::class, 'recibo'])
         ->name('contasreceber.recibo');
 
     /*
@@ -253,12 +218,9 @@ Route::middleware(['auth'])->group(function () {
     | FINANCEIRO – CONTAS A PAGAR
     |--------------------------------------------------------------------------
     */
-
-    // Listar + editar dados da conta
     Route::resource('contaspagar', ContasPagarController::class)
         ->only(['index', 'edit', 'update']);
 
-    // Tela de baixa (GET) + ação de baixa (POST)
     Route::get('contaspagar/{conta}/baixar', [ContasPagarController::class, 'formBaixa'])
         ->name('contaspagar.formBaixa');
 
@@ -267,6 +229,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('contaspagar/{conta}/estornar', [ContasPagarController::class, 'estornar'])
         ->name('contaspagar.estornar');
+
     /*
     |--------------------------------------------------------------------------
     | PRODUTO: buscar por CODFAB (preço/pontos da tabela vigente)
@@ -274,6 +237,9 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::get('/produto/bycod/{codfabnumero}', function ($codfabnumero) {
         $hoje = now()->toDateString();
+        /** @var \App\Models\Usuario|null $user */
+        $user = Auth::user();
+        $empresaId = $user?->empresa_id;
 
         $produto = DB::table('appproduto as p')
             ->leftJoin('apptabelapreco as t', function ($join) use ($hoje) {
@@ -284,6 +250,9 @@ Route::middleware(['auth'])->group(function () {
                         $q->whereNull('t.data_fim')
                             ->orWhereDate('t.data_fim', '>=', $hoje);
                     });
+            })
+            ->when($empresaId, function ($q) use ($empresaId) {
+                $q->where('p.empresa_id', $empresaId);
             })
             ->where('p.codfabnumero', $codfabnumero)
             ->select(
@@ -298,12 +267,14 @@ Route::middleware(['auth'])->group(function () {
 
         return response()->json($produto ?? []);
     });
+
     // IMPORTAÇÃO DE PREÇOS (arquivo do fornecedor)
     Route::get('produtos/importar-precos', [ProdutoController::class, 'importarPrecosForm'])
         ->name('produtos.importar_precos.form');
 
     Route::post('produtos/importar-precos', [ProdutoController::class, 'importarPrecosStore'])
         ->name('produtos.importar_precos.store');
+
     /*
     |--------------------------------------------------------------------------
     | FORMAS E PLANOS DE PAGAMENTO
@@ -334,7 +305,7 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('mes')
         ->name('aniversariantes.json');
 
-    // routes/web.php
+    // teste WhatsApp (ainda usando BotConversaService direto)
     Route::get('/teste-whatsapp', function (\App\Services\Whatsapp\BotConversaService $whatsapp) {
         $telefone = '557196720776';
         $mensagem = "Teste de BotConversa via appRevenda\nPedido #123\nValor: R$ 50,00";
@@ -355,7 +326,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/relatorios/campanhas/indicacao', [RelatorioMensagensController::class, 'campanhasIndicacao'])
         ->name('relatorios.campanhas.indicacao');
-    
+
     /* envio manual*/
     Route::prefix('mensageria')
         ->name('mensageria.')
@@ -369,6 +340,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'enviar'])
                 ->name('modelos.enviar');
         });
+
     /*
     |--------------------------------------------------------------------------
     | CAMPANHAS

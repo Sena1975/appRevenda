@@ -2,27 +2,31 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Empresa;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Auth;
 
 class EmpresaAtiva
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        // Pega o usuário logado a partir do Request
-        $user = $request->user();
+        $usuario = Auth::user();
 
-        if ($user) {
-            $empresa = $user->empresa;
-
-            if (!$empresa || !$empresa->ativo) {
-                abort(403, 'Sua empresa está inativa ou não está configurada.');
-            }
-
-            // Opcional: deixar a empresa disponível globalmente
-            app()->instance('empresa', $empresa);
+        if (!$usuario || !$usuario->empresa_id) {
+            abort(403, 'Sua empresa não está configurada.');
         }
+
+        $empresa = Empresa::where('id', $usuario->empresa_id)
+            ->where('ativo', 1)
+            ->first();
+
+        if (!$empresa) {
+            abort(403, 'Sua empresa está inativa ou não está configurada.');
+        }
+
+        // opcional: deixar acessível globalmente
+        app()->instance('empresa', $empresa);
 
         return $next($request);
     }

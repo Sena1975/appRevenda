@@ -160,7 +160,28 @@ class ClienteController extends Controller
             // Foto
             'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'origem_cadastro' => 'nullable|string|max:50',
+
+            // se quiser mandar empresa_id via formulário/link público
+            'empresa_id'      => 'nullable|integer|exists:appempresas,id',
         ]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | DEFINE EMPRESA E CÓDIGO SEQUENCIAL POR EMPRESA
+    |--------------------------------------------------------------------------
+    */
+        // 1) tenta pegar empresa do container (middleware EmpresaAtiva)
+        $empresaAtiva = app()->bound('empresa') ? app('empresa') : null;
+
+        // 2) prioridade: empresa do request > empresa ativa > fallback = 1
+        $empresaId = (int) ($request->input('empresa_id')
+            ?: ($empresaAtiva->id ?? 1));
+
+        // 3) próximo código sequencial por empresa
+        $ultimoCodigo = \App\Models\Cliente::where('empresa_id', $empresaId)
+            ->max('codigo_empresa');
+
+        $proximoCodigo = $ultimoCodigo ? ($ultimoCodigo + 1) : 1;
 
         // --- Normaliza data de nascimento (mesma lógica do store) ---
         $dn = $request->input('data_nascimento');
@@ -193,10 +214,11 @@ class ClienteController extends Controller
         if ($bairroId === 'custom') {
             $bairroNome = $request->input('bairro_nome');
         } elseif (is_numeric($bairroId)) {
-            $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
+            $bairroNome = DB::table('appbairro')->where('id', (int) $bairroId)->value('nome');
         }
 
         $telefone = $request->input('telefone') ?: $request->input('whatsapp');
+
         // --- Monta dados para gravar ---
         $dados = [
             'nome'            => $request->nome,
@@ -216,10 +238,15 @@ class ClienteController extends Controller
             'sexo'            => $request->sexo,
             'filhos'          => $request->filhos,
             'timecoracao'     => $request->timecoracao,
+
             // ⚠ status fixo para cadastros públicos
             'status'          => 'Em Aprovação',
             'origem_cadastro' => 'Público',
             'indicador_id'    => (int) $request->input('indicador_id', 1),
+
+            // 🔹 multiempresa
+            'empresa_id'      => $empresaId,
+            'codigo_empresa'  => $proximoCodigo,
         ];
 
         // Foto (se enviada)
@@ -227,13 +254,13 @@ class ClienteController extends Controller
             $dados['foto'] = $request->file('foto')->store('clientes', 'public');
         }
 
-        $cliente = Cliente::create($dados);
+        $cliente = \App\Models\Cliente::create($dados);
 
         // Número da Dani em formato internacional (55 + DDD + número)
         $daniNumber = '5571993420874'; // 71 99342-0874
 
-        // Mensagem que vai aparecer no WhatsApp
-        $texto = "Olá Dani, já fiz meu cadastro, segue ID-{$cliente->id}";
+        // 👉 Agora usa o código da empresa, não o ID global:
+        $texto = "Olá Dani, já fiz meu cadastro, segue ID-{$cliente->codigo_empresa}";
 
         // Monta o link do WhatsApp com a mensagem
         $whatsappLink = 'https://wa.me/' . $daniNumber . '?' . http_build_query([
@@ -241,12 +268,10 @@ class ClienteController extends Controller
         ]);
 
         return view('clientes.cadastro-publico-ok', [
-            'cliente'       => $cliente,
-            'whatsappLink'  => $whatsappLink,
+            'cliente'      => $cliente,
+            'whatsappLink' => $whatsappLink,
         ]);
     }
-
-
 
     public function edit(Cliente $cliente)
     {
@@ -259,106 +284,123 @@ class ClienteController extends Controller
     }
 
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'nome'            => 'required|string|max:255',
-            'email'           => ['nullable', 'string', 'email:rfc,dns', 'max:255'],
-            'telefone'        => 'nullable|string|max:20',
-            'cep'             => 'nullable|string|max:9',
-            'endereco'        => 'nullable|string|max:255',
-            'uf_id'           => 'nullable|integer',
-            'cidade_id'       => 'nullable|integer',
-            'bairro_id'       => 'nullable',
-            'bairro_nome'     => 'nullable|string|max:100',
-            'bairro'          => 'nullable|string|max:100',
-            'cidade'          => 'nullable|string|max:100',
-            'uf'              => 'nullable|string|max:2',
-            'whatsapp'        => 'nullable|string|max:30',
-            'telegram'        => 'nullable|string|max:50',
-            'instagram'       => 'nullable|string|max:50',
-            'facebook'        => 'nullable|string|max:100',
-            'cpf'             => 'nullable|string|max:20',
-            'data_nascimento' => ['nullable', 'date', 'before:today'],
-            'sexo'            => 'nullable|string|max:20',
-            'filhos'          => 'nullable|integer|min:0',
-            'timecoracao'     => 'nullable|string|max:60',
-            'status'          => ['nullable', 'in:Ativo,Inativo'],
-            'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'origem_cadastro' => 'nullable|string|max:50',
-        ]);
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'nome'            => 'required|string|max:255',
+        'email'           => ['nullable', 'string', 'email:rfc,dns', 'max:255'],
+        'telefone'        => 'nullable|string|max:20',
+        'cep'             => 'nullable|string|max:9',
+        'endereco'        => 'nullable|string|max:255',
+        'uf_id'           => 'nullable|integer',
+        'cidade_id'       => 'nullable|integer',
+        'bairro_id'       => 'nullable',
+        'bairro_nome'     => 'nullable|string|max:100',
+        'bairro'          => 'nullable|string|max:100',
+        'cidade'          => 'nullable|string|max:100',
+        'uf'              => 'nullable|string|max:2',
+        'whatsapp'        => 'nullable|string|max:30',
+        'telegram'        => 'nullable|string|max:50',
+        'instagram'       => 'nullable|string|max:50',
+        'facebook'        => 'nullable|string|max:100',
+        'cpf'             => 'nullable|string|max:20',
+        'data_nascimento' => ['nullable', 'date', 'before:today'],
+        'sexo'            => 'nullable|string|max:20',
+        'filhos'          => 'nullable|integer|min:0',
+        'timecoracao'     => 'nullable|string|max:60',
+        'status'          => ['nullable', 'in:Ativo,Inativo'],
+        'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        'origem_cadastro' => 'nullable|string|max:50',
+    ]);
 
-        // Normaliza data para YYYY-MM-DD ou null
-        $dn = $request->input('data_nascimento');
-        if ($dn) {
-            $dn = trim($dn);
-            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
-                try {
-                    $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
-                } catch (\Throwable $e) {
-                    $dn = null;
-                }
-            } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
+    // Normaliza data para YYYY-MM-DD ou null
+    $dn = $request->input('data_nascimento');
+    if ($dn) {
+        $dn = trim($dn);
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
+            try {
+                $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
+            } catch (\Throwable $e) {
                 $dn = null;
             }
-        } else {
+        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
             $dn = null;
         }
-
-        // Traduz UF/Cidade/Bairro por ID
-        $ufSigla = $request->filled('uf_id')
-            ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
-            : null;
-
-        $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
-            ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
-            : null;
-
-        $bairroNome = null;
-        $bairroId = $request->input('bairro_id');
-        if ($bairroId === 'custom') {
-            $bairroNome = $request->input('bairro_nome');
-        } elseif (is_numeric($bairroId)) {
-            $bairroNome = DB::table('appbairro')->where('id', (int)$bairroId)->value('nome');
-        }
-
-        // 👇 Pega a empresa do usuário logado usando o Request
-        $usuario   = $request->user();
-        $empresaId = $usuario?->empresa_id;
-
-        // Monta dados finais (usa $dn!)
-        $dados = [
-            'nome'            => $request->nome,
-            'email'           => $request->email,
-            'telefone'        => $request->telefone,
-            'cep'             => $request->cep,
-            'endereco'        => $request->endereco,
-            'uf'              => $ufSigla ?? $request->uf,
-            'cidade'          => $cidadeNome ?? $request->cidade,
-            'bairro'          => $bairroNome ?? $request->bairro,
-            'whatsapp'        => $request->whatsapp,
-            'telegram'        => $request->telegram,
-            'instagram'       => $request->instagram,
-            'facebook'        => $request->facebook,
-            'cpf'             => $request->cpf,
-            'data_nascimento' => $dn,
-            'sexo'            => $request->sexo,
-            'filhos'          => $request->filhos,
-            'timecoracao'     => $request->timecoracao,
-            'status'          => $request->status,
-            'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
-            'indicador_id'    => (int) $request->input('indicador_id', 1),
-            'empresa_id'      => $empresaId,
-        ];
-
-        if ($request->hasFile('foto')) {
-            $dados['foto'] = $request->file('foto')->store('clientes', 'public');
-        }
-
-        Cliente::create($dados);
-
-        return redirect()->route('clientes.index')->with('success', 'Cliente cadastrado com sucesso!');
+    } else {
+        $dn = null;
     }
+
+    // Traduz UF/Cidade/Bairro por ID
+    $ufSigla = $request->filled('uf_id')
+        ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
+        : null;
+
+    $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
+        ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
+        : null;
+
+    $bairroNome = null;
+    $bairroId = $request->input('bairro_id');
+    if ($bairroId === 'custom') {
+        $bairroNome = $request->input('bairro_nome');
+    } elseif (is_numeric($bairroId)) {
+        $bairroNome = DB::table('appbairro')->where('id', (int) $bairroId)->value('nome');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EMPRESA + CÓDIGO SEQUENCIAL POR EMPRESA
+    |--------------------------------------------------------------------------
+    */
+    $usuario      = $request->user();
+    $empresaAtiva = app()->bound('empresa') ? app('empresa') : null;
+
+    // prioridade: usuário logado > empresa ativa do middleware > fallback 1
+    $empresaId = (int) ($usuario?->empresa_id ?? $empresaAtiva?->id ?? 1);
+
+    // pega o último codigo_empresa daquela empresa e soma 1
+    $ultimoCodigo = \App\Models\Cliente::where('empresa_id', $empresaId)
+        ->max('codigo_empresa');
+
+    $proximoCodigo = $ultimoCodigo ? ($ultimoCodigo + 1) : 1;
+
+    // Monta dados finais
+    $dados = [
+        'nome'            => $request->nome,
+        'email'           => $request->email,
+        'telefone'        => $request->telefone,
+        'cep'             => $request->cep,
+        'endereco'        => $request->endereco,
+        'uf'              => $ufSigla ?? $request->uf,
+        'cidade'          => $cidadeNome ?? $request->cidade,
+        'bairro'          => $bairroNome ?? $request->bairro,
+        'whatsapp'        => $request->whatsapp,
+        'telegram'        => $request->telegram,
+        'instagram'       => $request->instagram,
+        'facebook'        => $request->facebook,
+        'cpf'             => $request->cpf,
+        'data_nascimento' => $dn,
+        'sexo'            => $request->sexo,
+        'filhos'          => $request->filhos,
+        'timecoracao'     => $request->timecoracao,
+        'status'          => $request->status,
+        'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
+        'indicador_id'    => (int) $request->input('indicador_id', 1),
+
+        // 🔹 multiempresa
+        'empresa_id'      => $empresaId,
+        'codigo_empresa'  => $proximoCodigo,
+    ];
+
+    if ($request->hasFile('foto')) {
+        $dados['foto'] = $request->file('foto')->store('clientes', 'public');
+    }
+
+    \App\Models\Cliente::create($dados);
+
+    return redirect()->route('clientes.index')->with('success', 'Cliente cadastrado com sucesso!');
+}
+
     public function update(Request $request, Cliente $cliente)
     {
         $validated = $request->validate([

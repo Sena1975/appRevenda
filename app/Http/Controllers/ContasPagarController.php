@@ -7,17 +7,39 @@ use App\Models\Fornecedor;
 use App\Models\BaixaPagar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 class ContasPagarController extends Controller
 {
+    /**
+     * Descobre o ID da empresa atual.
+     */
+    private function getEmpresaId(): ?int
+    {
+        $user    = Auth::user(); 
+        $empresa = $user?->empresa;
+
+        if (!$empresa && app()->bound('empresa')) {
+            $empresa = app('empresa');
+        }
+
+        return $empresa?->id;
+    }
+
     /**
      * Lista de contas a pagar com filtros.
      */
     public function index(Request $request)
     {
+        $empresaId = $this->getEmpresaId();
+
         $query = ContasPagar::with(['fornecedor', 'compra'])
             ->orderBy('data_vencimento')
             ->orderBy('parcela');
+
+        // 🔹 Filtro por empresa
+        if ($empresaId) {
+            $query->where('empresa_id', $empresaId);
+        }
 
         // Filtro por fornecedor
         if ($request->filled('fornecedor_id')) {
@@ -51,13 +73,18 @@ class ContasPagarController extends Controller
             'total_geral'  => $totalGeral,
         ];
 
-        $fornecedores = Fornecedor::orderBy('nomefantasia')->get();
+        // Fornecedores da empresa
+        $fornecedoresQuery = Fornecedor::orderBy('nomefantasia');
+        if ($empresaId && $fornecedoresQuery->getModel()->isFillable('empresa_id')) {
+            $fornecedoresQuery->where('empresa_id', $empresaId);
+        }
+        $fornecedores = $fornecedoresQuery->get();
 
         return view('contaspagar.index', [
-            'contas'      => $contas,
+            'contas'       => $contas,
             'fornecedores' => $fornecedores,
-            'resumo'      => $resumo,
-            'filtros'     => $request->only(['fornecedor_id', 'status', 'data_ini', 'data_fim']),
+            'resumo'       => $resumo,
+            'filtros'      => $request->only(['fornecedor_id', 'status', 'data_ini', 'data_fim']),
         ]);
     }
 
@@ -66,7 +93,12 @@ class ContasPagarController extends Controller
      */
     public function edit($id)
     {
-        $conta = ContasPagar::with(['fornecedor', 'compra', 'baixas'])->findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        $conta = ContasPagar::with(['fornecedor', 'compra', 'baixas'])
+            ->where('id', $id)
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->firstOrFail();
 
         if ($conta->status === 'PAGO' || $conta->status === 'CANCELADO') {
             return redirect()
@@ -89,7 +121,11 @@ class ContasPagarController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $conta = ContasPagar::findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        $conta = ContasPagar::where('id', $id)
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->firstOrFail();
 
         $data = $request->validate([
             'data_vencimento' => 'required|date',
@@ -113,7 +149,12 @@ class ContasPagarController extends Controller
      */
     public function formBaixa($id)
     {
-        $conta = ContasPagar::with(['fornecedor', 'compra', 'baixas'])->findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        $conta = ContasPagar::with(['fornecedor', 'compra', 'baixas'])
+            ->where('id', $id)
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->firstOrFail();
 
         if ($conta->status !== 'ABERTO') {
             return redirect()
@@ -137,7 +178,12 @@ class ContasPagarController extends Controller
      */
     public function baixar(Request $request, $id)
     {
-        $conta = ContasPagar::with('baixas')->findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        $conta = ContasPagar::with('baixas')
+            ->where('id', $id)
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->firstOrFail();
 
         $data = $request->validate([
             'data_baixa'      => 'required|date',
@@ -159,14 +205,14 @@ class ContasPagarController extends Controller
 
             // 1) Grava a nova baixa
             BaixaPagar::create([
-                'conta_id'       => $conta->id,
-                'numero_nota'    => $conta->numero_nota,
-                'parcela'        => $conta->parcela,
-                'data_baixa'     => $data['data_baixa'],
-                'valor_baixado'  => $data['valor_baixado'],
+                'conta_id'        => $conta->id,
+                'numero_nota'     => $conta->numero_nota,
+                'parcela'         => $conta->parcela,
+                'data_baixa'      => $data['data_baixa'],
+                'valor_baixado'   => $data['valor_baixado'],
                 'forma_pagamento' => $data['forma_pagamento'],
-                'observacao'     => $data['observacao'] ?? null,
-                'recibo_enviado' => false,
+                'observacao'      => $data['observacao'] ?? null,
+                'recibo_enviado'  => false,
             ]);
 
             // 2) Recalcula total baixado e saldo
@@ -190,9 +236,15 @@ class ContasPagarController extends Controller
                 ->with('success', 'Baixa registrada com sucesso!');
         });
     }
+
     public function estornar($id)
     {
-        $conta = ContasPagar::with('baixas')->findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        $conta = ContasPagar::with('baixas')
+            ->where('id', $id)
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->firstOrFail();
 
         if ($conta->status !== 'PAGO') {
             return redirect()
@@ -208,8 +260,8 @@ class ContasPagarController extends Controller
             }
 
             // Zera informações de pagamento na conta
-            $conta->status        = 'ABERTO';
-            $conta->valor_pago    = null;
+            $conta->status         = 'ABERTO';
+            $conta->valor_pago     = null;
             $conta->data_pagamento = null;
             $conta->save();
 

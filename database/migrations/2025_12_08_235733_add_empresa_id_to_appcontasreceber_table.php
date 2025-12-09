@@ -3,32 +3,27 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('appproduto', function (Blueprint $table) {
+        Schema::table('appcontasreceber', function (Blueprint $table) {
+            // adiciona a coluna
             $table->unsignedBigInteger('empresa_id')
                 ->nullable()
-                ->after('id');
+                ->after('revendedora_id');
 
+            // se quiser FK (opcional agora; pode adicionar depois)
             $table->foreign('empresa_id')
                 ->references('id')
-                ->on('appempresas')
-                ->onDelete('cascade');
+                ->on('appempresas');
         });
-
-        // Por enquanto, tudo da empresa 1
-        DB::table('appproduto')
-            ->whereNull('empresa_id')
-            ->update(['empresa_id' => 1]);
     }
 
     public function down(): void
     {
-        Schema::table('appproduto', function (Blueprint $table) {
+        Schema::table('appcontasreceber', function (Blueprint $table) {
             $table->dropForeign(['empresa_id']);
             $table->dropColumn('empresa_id');
         });

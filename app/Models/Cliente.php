@@ -35,6 +35,7 @@ class Cliente extends Model
         'origem_cadastro',
         'foto',
         'empresa_id',
+        'codigo_empresa',
     ];
 
 

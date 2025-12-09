@@ -79,13 +79,12 @@ class PedidoVenda extends Model
     {
         $user = Auth::user();
 
-        if ($user) {
-            return $query->where('empresa_id', $user->empresa_id);
+        if ($user && $user->empresa_id) {
+            $query->where('empresa_id', $user->empresa_id);
         }
 
         return $query;
     }
-
     public function revendedora()
     {
         return $this->belongsTo(Revendedora::class, 'revendedora_id', 'id');

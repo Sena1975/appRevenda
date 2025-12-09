@@ -51,18 +51,46 @@ class PedidoVendaController extends Controller
      */
     public function index(Request $request)
     {
-        $q = PedidoVenda::with(['cliente:id,nome', 'revendedora:id,nome']);
+        // pega empresa do usuário logado
+        $empresaId = $request->user()->empresa_id ?? null;
 
-        // Filtro por status
-        $status = strtoupper((string)$request->query('status', ''));
-        if ($status === 'PENDENTES') {
-            $q->whereIn('status', ['PENDENTE', 'ABERTO']);
-        } elseif (in_array($status, ['PENDENTE', 'ABERTO', 'ENTREGUE', 'CANCELADO'])) {
-            $q->where('status', $status);
+        $query = \App\Models\PedidoVenda::with(['cliente', 'revendedora'])
+            ->when($empresaId, function ($q) use ($empresaId) {
+                $q->where('empresa_id', $empresaId);
+            });
+
+        // OU, se preferir, usando o scope:
+        // $query = \App\Models\PedidoVenda::daEmpresa()
+        //     ->with(['cliente', 'revendedora']);
+
+        // Filtro por cliente (nome)
+        if ($request->filled('cliente')) {
+            $busca = trim($request->cliente);
+            $query->whereHas('cliente', function ($q) use ($busca) {
+                $q->where('nome', 'like', "%{$busca}%");
+            });
         }
 
-        // (espaço pra filtros extras no futuro, ex: cliente, datas etc.)
-        $pedidos = $q->orderByDesc('id')->paginate(10)->appends($request->query());
+        // Filtro por período
+        if ($request->filled('data_ini')) {
+            $query->whereDate('data_pedido', '>=', $request->data_ini);
+        }
+
+        if ($request->filled('data_fim')) {
+            $query->whereDate('data_pedido', '<=', $request->data_fim);
+        }
+
+        // Filtro por status
+        if ($request->filled('status')) {
+            $status = strtoupper($request->status);
+            $query->where('status', $status);
+        }
+
+        $pedidos = $query
+            ->orderByDesc('data_pedido')
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('vendas.index', compact('pedidos'));
     }
@@ -114,34 +142,34 @@ class PedidoVendaController extends Controller
     /**
      * Formulário de novo pedido
      */
-public function create(Request $request)
-{
-    $usuario   = $request->user();
-    $empresaId = $usuario?->empresa_id;
+    public function create(Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
 
-    // Clientes e revendedoras apenas da empresa atual
-    $clientes     = Cliente::daEmpresa()
-        ->orderBy('nome')
-        ->get(['id', 'nome', 'indicador_id']);
+        // Clientes e revendedoras apenas da empresa atual
+        $clientes     = Cliente::daEmpresa()
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'indicador_id']);
 
-    $revendedoras = Revendedora::daEmpresa()
-        ->orderBy('nome')
-        ->get(['id', 'nome']);
+        $revendedoras = Revendedora::daEmpresa()
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
 
-    // Por enquanto, formas e produtos sem filtro de empresa
-    $formas   = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
-    $produtos = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
+        // Por enquanto, formas e produtos sem filtro de empresa
+        $formas   = FormaPagamento::orderBy('nome')->get(['id', 'nome']);
+        $produtos = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']);
 
-    $revendedoraPadraoId = Revendedora::where('revenda_padrao', 1)->value('id');
+        $revendedoraPadraoId = Revendedora::where('revenda_padrao', 1)->value('id');
 
-    return view('vendas.create', compact(
-        'clientes',
-        'revendedoras',
-        'formas',
-        'produtos',
-        'revendedoraPadraoId'
-    ));
-}
+        return view('vendas.create', compact(
+            'clientes',
+            'revendedoras',
+            'formas',
+            'produtos',
+            'revendedoraPadraoId'
+        ));
+    }
 
 
     /**

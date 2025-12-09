@@ -23,24 +23,21 @@ class MovEstoqueController extends Controller
     public function index(Request $request)
     {
         // Datas padrão: 1º dia do mês até hoje
-        $hoje = Carbon::today()->toDateString();
+        $hoje          = Carbon::today()->toDateString();
         $primeiroDiaMes = Carbon::today()->startOfMonth()->toDateString();
 
         // Se vier na requisição, usa; senão, fica o default
-        if ($request->filled('data_ini')) {
-            $dataIni = $request->input('data_ini');
-        } else {
-            $dataIni = $primeiroDiaMes;
-        }
+        $dataIni = $request->filled('data_ini')
+            ? $request->input('data_ini')
+            : $primeiroDiaMes;
 
-        if ($request->filled('data_fim')) {
-            $dataFim = $request->input('data_fim');
-        } else {
-            $dataFim = $hoje;
-        }
+        $dataFim = $request->filled('data_fim')
+            ? $request->input('data_fim')
+            : $hoje;
 
-        // Query base
+        // Query base (já filtrando por empresa)
         $query = MovEstoque::with('produto')
+            ->daEmpresa() // 👈 escopo por empresa
             ->orderBy('data_mov', 'desc');
 
         // Filtro por produto (código/descrição)
@@ -82,13 +79,16 @@ class MovEstoqueController extends Controller
         ));
     }
 
-
     /**
      * Mostra o formulário para registrar nova movimentação
      */
-    public function create()
+    public function create(Request $request)
     {
-        $produtos = Produto::orderBy('nome')->get(['id','nome','codfabnumero']);
+        // Produtos da empresa do usuário
+        $produtos = Produto::daEmpresa()
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'codfabnumero']);
+
         return view('movestoque.create', compact('produtos'));
     }
 
@@ -98,39 +98,53 @@ class MovEstoqueController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'produto_id'    => 'required|integer|exists:appproduto,id',
-            'tipo_mov'      => 'required|string|in:ENTRADA,SAIDA,AJUSTE',
-            'quantidade'    => 'required|numeric|min:0.01',
-            'preco_unitario'=> 'nullable|numeric|min:0',
-            'observacao'    => 'nullable|string|max:255',
+            'produto_id'     => 'required|integer|exists:appproduto,id',
+            'tipo_mov'       => 'required|string|in:ENTRADA,SAIDA,AJUSTE',
+            'quantidade'     => 'required|numeric|min:0.01',
+            'preco_unitario' => 'nullable|numeric|min:0',
+            'observacao'     => 'nullable|string|max:255',
         ],[
             'produto_id.required' => 'Selecione um produto.',
             'tipo_mov.in'         => 'Tipo inválido. Use ENTRADA, SAIDA ou AJUSTE.',
         ]);
 
+        // Descobre empresa do usuário / middleware
+        $usuario  = $request->user();
+        $empresa  = $usuario?->empresa;
+
+        if (!$empresa && app()->bound('empresa')) {
+            $empresa = app('empresa');
+        }
+
+        $empresaId = $empresa?->id;
+
         // Atualiza saldo + registra a movimentação (via service)
         $this->estoque->registrarMovimentoManual(
-            (int)$request->produto_id,
+            (int) $request->produto_id,
             $request->tipo_mov,
-            (float)$request->quantidade,
-            (float)($request->preco_unitario ?? 0),
-            (string)($request->observacao ?? '')
+            (float) $request->quantidade,
+            (float) ($request->preco_unitario ?? 0),
+            (string) ($request->observacao ?? '')
         );
 
-        // Observação: também mantemos um registro pelo Model caso você liste por Eloquent:
+        // Também mantemos um registro pelo Model caso você liste por Eloquent:
         MovEstoque::create([
+            'empresa_id'     => $empresaId,
             'produto_id'     => $request->produto_id,
             'tipo_mov'       => $request->tipo_mov === 'AJUSTE'
-                                  ? ((float)$request->quantidade >= 0 ? 'ENTRADA' : 'SAIDA')
+                                  ? ((float) $request->quantidade >= 0 ? 'ENTRADA' : 'SAIDA')
                                   : $request->tipo_mov,
-            'quantidade'     => $request->tipo_mov === 'SAIDA' ? -abs($request->quantidade) : abs($request->quantidade),
+            'quantidade'     => $request->tipo_mov === 'SAIDA'
+                                  ? -abs($request->quantidade)
+                                  : abs($request->quantidade),
             'preco_unitario' => $request->preco_unitario ?? 0,
             'observacao'     => $request->observacao ?? '',
             'status'         => 'CONFIRMADO',
             'data_mov'       => now(),
         ]);
 
-        return redirect()->route('movestoque.index')->with('success', 'Movimentação registrada com sucesso!');
+        return redirect()->route('movestoque.index')
+            ->with('success', 'Movimentação registrada com sucesso!');
     }
 
     /**
@@ -138,7 +152,10 @@ class MovEstoqueController extends Controller
      */
     public function show($id)
     {
-        $mov = MovEstoque::with('produto')->findOrFail($id);
+        $mov = MovEstoque::daEmpresa()
+            ->with('produto')
+            ->findOrFail($id);
+
         return view('movestoque.show', compact('mov'));
     }
 }

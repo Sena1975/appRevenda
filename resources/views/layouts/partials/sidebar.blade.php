@@ -1,11 +1,33 @@
 @php
     use Illuminate\Support\Facades\DB;
+    use Illuminate\Support\Facades\Auth;
     use Illuminate\Support\Str;
 
-    // Contadores dinâmicos (opcional)
-    $qtdPedidosPendentes = DB::table('apppedidovenda')->where('status', 'PENDENTE')->count();
-    $qtdContasAbertas = DB::table('appcontasreceber')->where('status', 'ABERTO')->count();
-    $qtdIndicacoesPendentes = DB::table('appindicacao')->where('status', 'pendente')->count();
+    // Descobre empresa atual (usuário logado ou middleware EmpresaAtiva)
+    $user    = Auth::user();
+    $empresa = $user?->empresa;
+
+    if (!$empresa && app()->bound('empresa')) {
+        $empresa = app('empresa');
+    }
+
+    $empresaId = $empresa->id ?? null;
+
+    // Contadores dinâmicos (agora por empresa)
+    $qtdPedidosPendentes = DB::table('apppedidovenda')
+        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->where('status', 'PENDENTE')
+        ->count();
+
+    $qtdContasAbertas = DB::table('appcontasreceber')
+        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->where('status', 'ABERTO')
+        ->count();
+
+    $qtdIndicacoesPendentes = DB::table('appindicacao')
+        ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+        ->where('status', 'pendente')
+        ->count();
 
     // Helpers para saber se a rota atual pertence a um grupo
     $isCadastro = request()->routeIs(
@@ -135,8 +157,13 @@
 
         {{-- PEDIDOS --}}
         @php
-            $pedidosAbertosCompra = \App\Models\PedidoCompra::where('status', 'ABERTO')->count();
-            $qtdPendentesVenda = \App\Models\PedidoVenda::whereIn('status', ['PENDENTE', 'ABERTO'])->count();
+            $pedidosAbertosCompra = \App\Models\PedidoCompra::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                ->where('status', 'ABERTO')
+                ->count();
+
+            $qtdPendentesVenda = \App\Models\PedidoVenda::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                ->whereIn('status', ['PENDENTE', 'ABERTO'])
+                ->count();
         @endphp
 
         <div x-data="{ open: {{ $isPedidos ? 'true' : 'false' }} }" class="mt-2">
@@ -271,10 +298,14 @@
                         ? \App\Models\PlanoPagamento::count()
                         : 0;
                     $qtdReceber = class_exists(\App\Models\ContasReceber::class)
-                        ? \App\Models\ContasReceber::where('status', 'ABERTO')->count()
+                        ? \App\Models\ContasReceber::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                            ->where('status', 'ABERTO')
+                            ->count()
                         : 0;
                     $qtdPagar = class_exists(\App\Models\ContasPagar::class)
-                        ? \App\Models\ContasPagar::where('status', 'ABERTO')->count()
+                        ? \App\Models\ContasPagar::when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                            ->where('status', 'ABERTO')
+                            ->count()
                         : 0;
                 @endphp
 
@@ -356,7 +387,6 @@
                     </svg>
                     <span class="ml-2">Relatórios</span>
                 </div>
-
 
                 {{-- Previsão de Recebimentos --}}
                 @if (Route::has('relatorios.recebimentos.previsao'))

@@ -4,24 +4,45 @@ namespace App\Http\Controllers;
 
 use App\Models\Indicacao;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class IndicacaoController extends Controller
 {
+    /**
+     * Descobre o ID da empresa atual (usuário logado ou middleware EmpresaAtiva)
+     */
+    private function getEmpresaId(): int
+    {
+        $user    = Auth::user();
+        $empresa = $user?->empresa;
+
+        if (!$empresa && app()->bound('empresa')) {
+            $empresa = app('empresa');
+        }
+
+        if (!$empresa) {
+            abort(500, 'Empresa não definida para o usuário atual.');
+        }
+
+        return (int) $empresa->id;
+    }
+
     /**
      * Lista indicações (pendentes ou pagas) para controle de pagamento
      */
     public function index(Request $request)
     {
-        $status = $request->query('status', 'pendente');
+        $empresaId = $this->getEmpresaId();
+        $status    = $request->query('status', 'pendente');
 
-        $query = Indicacao::with(['indicador', 'indicado', 'pedido']);
+        $query = Indicacao::daEmpresa($empresaId)
+            ->with(['indicador', 'indicado', 'pedido']);
 
         if ($status === 'pendente' || $status === 'pago') {
             $query->where('status', $status);
         }
 
-        // >>> AQUI: soma do prêmio das indicações do filtro atual
-        // TROQUE 'valor_premio' PELO NOME REAL DO CAMPO NA SUA TABELA
+        // Soma do prêmio das indicações do filtro atual
         $totalPremio = (clone $query)->sum('valor_premio');
 
         $indicacoes = $query
@@ -29,17 +50,22 @@ class IndicacaoController extends Controller
             ->paginate(15)
             ->appends($request->query());
 
+        // Totais também por empresa
         $totais = [
-            'pendentes' => Indicacao::where('status', 'pendente')->count(),
-            'pagas'     => Indicacao::where('status', 'pago')->count(),
-            'todas'     => Indicacao::count(),
+            'pendentes' => Indicacao::daEmpresa($empresaId)
+                ->where('status', 'pendente')
+                ->count(),
+            'pagas' => Indicacao::daEmpresa($empresaId)
+                ->where('status', 'pago')
+                ->count(),
+            'todas' => Indicacao::daEmpresa($empresaId)->count(),
         ];
 
         return view('indicacoes.index', compact(
             'indicacoes',
             'status',
             'totais',
-            'totalPremio',   // <<< não esquece de enviar isso
+            'totalPremio',
         ));
     }
 
@@ -48,15 +74,19 @@ class IndicacaoController extends Controller
      */
     public function pagar($id)
     {
-        $indicacao = Indicacao::with(['indicador', 'indicado'])->findOrFail($id);
+        $empresaId = $this->getEmpresaId();
+
+        // Garante que só pega indicação da empresa atual
+        $indicacao = Indicacao::daEmpresa($empresaId)
+            ->with(['indicador', 'indicado'])
+            ->findOrFail($id);
 
         if ($indicacao->status === 'pago') {
             return back()->with('info', 'Esta indicação já está marcada como paga.');
         }
 
         $indicacao->status = 'pago';
-
-        // Se depois você criar uma coluna data_pagamento/pago_em, pode setar aqui:
+        // Se tiver campo data_pagamento, aproveita aqui:
         // $indicacao->data_pagamento = now();
 
         $indicacao->save();

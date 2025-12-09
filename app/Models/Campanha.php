@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Campanha extends Model
 {
@@ -15,6 +16,7 @@ class Campanha extends Model
     const UPDATED_AT = 'atualizado_em';
 
     protected $fillable = [
+        'empresa_id',
         'nome',
         'descricao',
         'metodo_php',
@@ -35,19 +37,24 @@ class Campanha extends Model
     ];
 
     protected $casts = [
-        'ativa' => 'boolean',
-        'cumulativa' => 'boolean',
-        'aplicacao_automatica' => 'boolean',
-        'acumulativa_por_valor' => 'boolean',
-        'acumulativa_por_quantidade' => 'boolean',
-        'data_inicio' => 'date',
-        'data_fim' => 'date',
-        'valor_base_cupom' => 'decimal:2',
-        'prioridade' => 'integer',
-        'quantidade_minima_cupom' => 'integer',
+        'empresa_id'                  => 'integer',
+        'ativa'                       => 'boolean',
+        'cumulativa'                  => 'boolean',
+        'aplicacao_automatica'        => 'boolean',
+        'acumulativa_por_valor'       => 'boolean',
+        'acumulativa_por_quantidade'  => 'boolean',
+        'data_inicio'                 => 'date',
+        'data_fim'                    => 'date',
+        'valor_base_cupom'            => 'decimal:2',
+        'prioridade'                  => 'integer',
+        'quantidade_minima_cupom'     => 'integer',
     ];
 
-    // Convenções úteis
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
     public function tipo()
     {
         return $this->belongsTo(CampanhaTipo::class, 'tipo_id', 'id');
@@ -78,11 +85,33 @@ class Campanha extends Model
         return $this->hasMany(\App\Models\Indicacao::class, 'campanha_id');
     }
 
+    public function scopeDaEmpresa($query, ?int $empresaId = null)
+    {
+        if ($empresaId) {
+            return $query->where('empresa_id', $empresaId);
+        }
+
+        $user    = Auth::user();
+        $empresa = $user?->empresa;
+
+        if (!$empresa && app()->bound('empresa')) {
+            $empresa = app('empresa');
+        }
+
+        if ($empresa) {
+            $query->where('empresa_id', $empresa->id);
+        }
+
+        return $query;
+    }
+
     // Regras auxiliares
     public function emVigencia(): bool
     {
         $hoje = now()->toDateString();
-        return $this->ativa && $this->data_inicio->toDateString() <= $hoje && $hoje <= $this->data_fim->toDateString();
+        return $this->ativa
+            && $this->data_inicio->toDateString() <= $hoje
+            && $hoje <= $this->data_fim->toDateString();
     }
 
     public function isCumulativa(): bool

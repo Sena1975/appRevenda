@@ -4,7 +4,10 @@
 @section('content')
     <div class="max-w-6xl mx-auto p-6">
         <div class="flex items-center justify-between mb-4">
-            <h1 class="text-2xl font-bold text-gray-700">Pedidos de Venda</h1>
+            <h1 class="text-2xl font-bold text-gray-700">
+                Pedidos de Venda
+            </h1>
+
             <a href="{{ route('vendas.create') }}"
                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium shadow">
                 Novo Pedido
@@ -28,23 +31,35 @@
                 {{-- Cliente --}}
                 <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Cliente (nome)</label>
-                    <input type="text" name="cliente" value="{{ request('cliente') }}"
-                           class="w-full border rounded px-3 py-2 text-sm"
-                           placeholder="Ex.: Maria Silva">
+                    <input
+                        type="text"
+                        name="cliente"
+                        value="{{ request('cliente') }}"
+                        class="w-full border rounded px-3 py-2 text-sm"
+                        placeholder="Ex.: Maria Silva"
+                    >
                 </div>
 
                 {{-- Data inicial --}}
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Data inicial</label>
-                    <input type="date" name="data_ini" value="{{ request('data_ini') }}"
-                           class="w-full border rounded px-3 py-2 text-sm">
+                    <input
+                        type="date"
+                        name="data_ini"
+                        value="{{ request('data_ini') }}"
+                        class="w-full border rounded px-3 py-2 text-sm"
+                    >
                 </div>
 
                 {{-- Data final --}}
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Data final</label>
-                    <input type="date" name="data_fim" value="{{ request('data_fim') }}"
-                           class="w-full border rounded px-3 py-2 text-sm">
+                    <input
+                        type="date"
+                        name="data_fim"
+                        value="{{ request('data_fim') }}"
+                        class="w-full border rounded px-3 py-2 text-sm"
+                    >
                 </div>
 
                 {{-- Status --}}
@@ -82,7 +97,7 @@
             <table class="min-w-full">
                 <thead class="bg-gray-50 text-sm text-gray-600">
                     <tr>
-                        <th class="px-3 py-2 text-left w-16">#</th>
+                        <th class="px-3 py-2 text-left w-20">Nº</th>
                         <th class="px-3 py-2 text-left">Cliente</th>
                         <th class="px-3 py-2 text-left">Revendedora</th>
                         <th class="px-3 py-2 text-left w-36">Data</th>
@@ -94,12 +109,28 @@
                 <tbody class="text-sm">
                     @forelse ($pedidos as $p)
                         <tr class="border-t hover:bg-gray-50">
-                            <td class="px-3 py-2">{{ $p->id }}</td>
-                            <td class="px-3 py-2">{{ $p->cliente->nome ?? '-' }}</td>
-                            <td class="px-3 py-2">{{ $p->revendedora->nome ?? '-' }}</td>
+                            {{-- Número do pedido por empresa --}}
                             <td class="px-3 py-2">
-                                {{ \Carbon\Carbon::parse($p->data_pedido)->format('d/m/Y') }}
+                                {{-- mostra o código da empresa se existir, senão cai pro ID --}}
+                                {{ $p->codigo_empresa ?? $p->id }}
                             </td>
+
+                            <td class="px-3 py-2">
+                                {{ $p->cliente->nome ?? '-' }}
+                            </td>
+
+                            <td class="px-3 py-2">
+                                {{ $p->revendedora->nome ?? '-' }}
+                            </td>
+
+                            <td class="px-3 py-2">
+                                @if($p->data_pedido)
+                                    {{ \Carbon\Carbon::parse($p->data_pedido)->format('d/m/Y') }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+
                             <td class="px-3 py-2">
                                 @php
                                     $status = strtoupper($p->status ?? 'PENDENTE');
@@ -110,8 +141,11 @@
                                         default     => 'bg-yellow-100 text-yellow-800',
                                     };
                                 @endphp
-                                <span class="px-2 py-1 rounded text-xs {{ $badge }}">{{ $status }}</span>
+                                <span class="px-2 py-1 rounded text-xs {{ $badge }}">
+                                    {{ $status }}
+                                </span>
                             </td>
+
                             <td class="px-3 py-2 text-right">
                                 {{ number_format((float) ($p->valor_liquido ?? ($p->valor_total ?? 0)), 2, ',', '.') }}
                             </td>
@@ -139,7 +173,7 @@
                                         <form method="POST"
                                               action="{{ route('vendas.confirmarEntrega', $p->id) }}"
                                               class="inline"
-                                              onsubmit="return confirm('Confirmar entrega do pedido #{{ $p->id }}?');">
+                                              onsubmit="return confirm('Confirmar entrega do pedido #{{ $p->codigo_empresa ?? $p->id }}?');">
                                             @csrf
                                             <button type="submit"
                                                     class="text-green-600 hover:text-green-800"
@@ -161,50 +195,63 @@
                                     </a>
 
                                     {{-- Cancelar (abre modal) --}}
-                                    <button type="button"
-                                            x-data
-                                            @click="$dispatch('open-cancel-{{ $p->id }}')"
-                                            class="text-red-600 hover:text-red-800"
-                                            title="Cancelar pedido">
+                                    <button
+                                        type="button"
+                                        x-data
+                                        @click="$dispatch('open-cancel-{{ $p->id }}')"
+                                        class="text-red-600 hover:text-red-800"
+                                        title="Cancelar pedido"
+                                    >
                                         🗑️
                                     </button>
 
                                     {{-- Modal Cancelar --}}
-                                    <div x-data="{ open: false }"
-                                         x-on:open-cancel-{{ $p->id }}.window="open=true"
-                                         x-show="open"
-                                         x-cloak
-                                         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                                    <div
+                                        x-data="{ open: false }"
+                                        x-on:open-cancel-{{ $p->id }}.window="open=true"
+                                        x-show="open"
+                                        x-cloak
+                                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                    >
                                         <div class="bg-white rounded-lg shadow max-w-md w-full p-4">
                                             <h3 class="text-lg font-semibold mb-2">
-                                                Cancelar pedido #{{ $p->id }}
+                                                Cancelar pedido #{{ $p->codigo_empresa ?? $p->id }}
                                             </h3>
                                             <p class="text-sm text-gray-600 mb-2">
                                                 Informe o motivo do cancelamento:
                                             </p>
+
                                             <form method="POST" action="{{ route('vendas.cancelar', $p->id) }}">
                                                 @csrf
-                                                <textarea name="observacao"
-                                                          class="w-full border rounded p-2 mb-3 text-sm"
-                                                          rows="4"
-                                                          required
-                                                          minlength="5"
-                                                          placeholder="Ex.: Cliente desistiu, pedido duplicado, etc."></textarea>
+                                                <textarea
+                                                    name="observacao"
+                                                    class="w-full border rounded p-2 mb-3 text-sm"
+                                                    rows="4"
+                                                    required
+                                                    minlength="5"
+                                                    placeholder="Ex.: Cliente desistiu, pedido duplicado, etc."
+                                                ></textarea>
 
                                                 <div class="flex justify-end gap-2">
-                                                    <button type="button"
-                                                            class="px-3 py-2 border rounded text-sm"
-                                                            @click="open=false">
+                                                    <button
+                                                        type="button"
+                                                        class="px-3 py-2 border rounded text-sm"
+                                                        @click="open=false"
+                                                    >
                                                         Voltar
                                                     </button>
-                                                    <button type="submit"
-                                                            class="px-3 py-2 bg-red-600 text-white rounded text-sm">
+
+                                                    <button
+                                                        type="submit"
+                                                        class="px-3 py-2 bg-red-600 text-white rounded text-sm"
+                                                    >
                                                         Confirmar cancelamento
                                                     </button>
                                                 </div>
                                             </form>
                                         </div>
                                     </div>
+
                                 </div>
                             </td>
                         </tr>

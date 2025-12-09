@@ -7,49 +7,80 @@ use App\Models\Campanha;
 use App\Models\CampanhaTipo;
 use App\Models\Produto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CampanhaController extends Controller
 {
-    public function index()
+    /**
+     * Descobre o ID da empresa atual (usuário logado ou middleware EmpresaAtiva).
+     */
+    private function getEmpresaId(): int
     {
-        $campanhas = Campanha::with('tipo')->orderBy('prioridade')->paginate(20);
-        return view('campanhas.index', compact('campanhas')); // opcional agora
+        $user    = Auth::user();
+        $empresa = $user?->empresa;
+
+        if (!$empresa && app()->bound('empresa')) {
+            $empresa = app('empresa');
+        }
+
+        if (!$empresa) {
+            abort(500, 'Empresa não definida para o usuário atual.');
+        }
+
+        return (int) $empresa->id;
     }
 
-public function create()
-{
-    $tipos = CampanhaTipo::orderBy('descricao')->get();
-    $produtos = Produto::orderBy('nome')->get(['id','nome','codfabnumero']); // para eventual brinde
-    return view('campanhas.create', compact('tipos','produtos'));
-}
+    public function index()
+    {
+        $empresaId = $this->getEmpresaId();
+
+        $campanhas = Campanha::with('tipo')
+            ->daEmpresa($empresaId)         // 👈 FILTRO POR EMPRESA
+            ->orderBy('prioridade')
+            ->paginate(20);
+
+        return view('campanhas.index', compact('campanhas'));
+    }
+
+    public function create()
+    {
+        $tipos    = CampanhaTipo::orderBy('descricao')->get();
+        $produtos = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']); // para eventual brinde
+
+        return view('campanhas.create', compact('tipos', 'produtos'));
+    }
 
     public function store(CampanhaRequest $request)
     {
+        $empresaId = $this->getEmpresaId();
+
         $dados = $request->validated();
 
-        $dados['ativa'] = $request->boolean('ativa');
-        $dados['cumulativa'] = $request->boolean('cumulativa');
-        $dados['aplicacao_automatica'] = $request->boolean('aplicacao_automatica');
-        $dados['acumulativa_por_valor'] = $request->boolean('acumulativa_por_valor');
-        $dados['acumulativa_por_quantidade'] = $request->boolean('acumulativa_por_quantidade');
+        // Sempre vincula à empresa atual
+        $dados['empresa_id'] = $empresaId;
 
-        // Ajuste de campos que podem vir vazios a depender do tipo
-        if ((int)$dados['tipo_id'] === 1) {
+        $dados['ativa']                       = $request->boolean('ativa');
+        $dados['cumulativa']                  = $request->boolean('cumulativa');
+        $dados['aplicacao_automatica']        = $request->boolean('aplicacao_automatica');
+        $dados['acumulativa_por_valor']       = $request->boolean('acumulativa_por_valor');
+        $dados['acumulativa_por_quantidade']  = $request->boolean('acumulativa_por_quantidade');
+
+        // Ajuste de campos conforme tipo
+        if ((int) $dados['tipo_id'] === 1) {
             // Cupom por valor
             $dados['quantidade_minima_cupom'] = null;
-            $dados['tipo_acumulacao'] = 'valor';
-        } elseif ((int)$dados['tipo_id'] === 2) {
+            $dados['tipo_acumulacao']        = 'valor';
+        } elseif ((int) $dados['tipo_id'] === 2) {
             // Cupom por quantidade
-            $dados['valor_base_cupom'] = null;
-            $dados['tipo_acumulacao'] = 'quantidade';
+            $dados['valor_base_cupom']       = null;
+            $dados['tipo_acumulacao']        = 'quantidade';
         } else {
             // Brinde
-            $dados['valor_base_cupom'] = null;
+            $dados['valor_base_cupom']        = null;
             $dados['quantidade_minima_cupom'] = null;
-            $dados['tipo_acumulacao'] = null;
+            $dados['tipo_acumulacao']         = null;
         }
 
-        // timestamps customizados são tratados pelo Model (CRiado/ATualizado)
         $campanha = Campanha::create($dados);
 
         return redirect()

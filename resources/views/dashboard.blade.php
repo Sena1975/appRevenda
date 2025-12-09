@@ -1,10 +1,42 @@
 {{-- resources/views/dashboard.blade.php --}}
 <x-app-layout>
-    <x-slot name="header">
+<x-slot name="header">
+    @php
+        $user    = auth()->user();
+        $empresa = app()->bound('empresa') ? app('empresa') : null;
+
+        $nomeEmpresa = $empresa->nome_fantasia
+            ?? $empresa->razao_social
+            ?? $empresa->nome
+            ?? null;
+    @endphp
+
+    <div class="flex flex-col gap-2">
         <h2 class="text-xl font-semibold text-gray-700">
             Painel Administrativo
         </h2>
-    </x-slot>
+
+        <div class="flex flex-wrap items-center text-sm text-gray-600 gap-x-8 gap-y-2">
+            @if ($user)
+                <span>
+                    <span class="font-semibold">Usuário:</span>
+                    {{ $user->nome ?? $user->name ?? $user->email }}
+                </span>
+            @endif
+
+            @if ($nomeEmpresa)
+                {{-- divisor visual entre usuário e empresa --}}
+                <span class="hidden sm:inline text-gray-300">|</span>
+
+                <span>
+                    <span class="font-semibold">-></span>
+                    {{ $nomeEmpresa }}
+                </span>
+            @endif
+        </div>
+    </div>
+</x-slot>
+
 
     <div class="max-w-7xl mx-auto space-y-6">
 
