@@ -21,7 +21,7 @@ class CampanhaRequest extends FormRequest
     {
         return [
             'nome'                   => 'required|string|max:100',
-            'tipo_id'                => 'required|integer|exists:appcampanhatipo,id',
+            'tipo_id'                => 'required|integer|exists:appcampanha_tipo,id',
 
             'data_inicio'            => 'required|date',
             'data_fim'               => 'required|date|after_or_equal:data_inicio',

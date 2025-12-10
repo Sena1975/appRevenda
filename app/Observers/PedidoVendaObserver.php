@@ -6,7 +6,7 @@ use App\Models\PedidoVenda;
 use App\Models\Campanha;
 use App\Services\CampanhaService;
 use App\Services\MensageriaService;
-use App\Services\Whatsapp\MensagensCampanhaService;
+use App\Services\DisparadorCampanhaMensagemService;
 use Illuminate\Support\Facades\Log;
 
 class PedidoVendaObserver
@@ -22,6 +22,9 @@ class PedidoVendaObserver
             /** @var MensageriaService $mensageria */
             $mensageria = app(MensageriaService::class);
 
+            /** @var DisparadorCampanhaMensagemService $disparador */
+            $disparador = app(DisparadorCampanhaMensagemService::class);
+
             // Campanha vinculada (se existir)
             $campanha = $pedido->campanha_id
                 ? Campanha::find($pedido->campanha_id)
@@ -33,37 +36,40 @@ class PedidoVendaObserver
                 $indicador = $pedido->indicador;
                 $indicado  = $pedido->cliente;
 
-                if ($indicador && $indicado) {
-                    /** @var MensagensCampanhaService $msgCampanha */
-                    $msgCampanha = app(MensagensCampanhaService::class);
+                if ($indicador && $indicado && $campanha) {
 
-                    // TODO: calcule aqui o valor real do prêmio, se já tiver regra
-                    $valorPremio = null;
+                    // Contexto extra para placeholders do modelo
+                    $contextoExtra = [
+                        'nome_indicador' => $indicador->nome,
+                        'nome_indicado'  => $indicado->nome,
+                    ];
 
-                    $textoIndicador = $msgCampanha
-                        ->montarMensagemPedidoPendente($indicador, $indicado, $pedido, $valorPremio);
-
-                    $msgModel = $mensageria->enviarWhatsapp(
-                        cliente: $indicador,
-                        conteudo: $textoIndicador,
-                        tipo: 'indicacao_pedido_pendente',
+                    $msgModel = $disparador->dispararPorEvento(
+                        evento: 'indicacao_pedido_pendente',
+                        cliente: $indicador, // quem recebe é o INDICADOR
                         pedido: $pedido,
                         campanha: $campanha,
-                        payloadExtra: [
-                            'evento' => 'indicacao_pedido_pendente',
-                        ],
+                        contextoExtra: $contextoExtra,
                     );
 
-                    Log::info('Campanha indicação: msg PENDENTE registrada/enviada ao indicador', [
-                        'pedido_id'    => $pedido->id,
-                        'indicador_id' => $indicador->id,
-                        'mensagem_id'  => $msgModel->id,
-                        'msg_status'   => $msgModel->status,
-                    ]);
+                    if ($msgModel) {
+                        Log::info('Campanha indicação: msg PENDENTE registrada/enviada ao indicador', [
+                            'pedido_id'    => $pedido->id,
+                            'indicador_id' => $indicador->id,
+                            'mensagem_id'  => $msgModel->id,
+                            'msg_status'   => $msgModel->status,
+                        ]);
+                    } else {
+                        Log::warning('Campanha indicação: nenhuma configuração de mensagem para evento indicacao_pedido_pendente', [
+                            'pedido_id'    => $pedido->id,
+                            'indicador_id' => $indicador->id,
+                            'campanha_id'  => $campanha->id,
+                        ]);
+                    }
                 }
             }
 
-            // 2) CLIENTE: sempre que criar pedido envia resumo
+            // 2) CLIENTE: sempre que criar pedido envia resumo (mensagem "padrão")
             $cliente = $pedido->cliente;
 
             if ($cliente) {
@@ -90,7 +96,7 @@ class PedidoVendaObserver
 
         } catch (\Throwable $e) {
             Log::error('PedidoVendaObserver@created erro', [
-                'pedido_id' => $pedido->id,
+                'pedido_id' => $pedido->id ?? null,
                 'erro'      => $e->getMessage(),
             ]);
         }
@@ -128,46 +134,61 @@ class PedidoVendaObserver
                 return;
             }
 
-            /** @var MensageriaService $mensageria */
-            $mensageria = app(MensageriaService::class);
-
-            /** @var MensagensCampanhaService $msgCampanha */
-            $msgCampanha = app(MensagensCampanhaService::class);
+            /** @var DisparadorCampanhaMensagemService $disparador */
+            $disparador = app(DisparadorCampanhaMensagemService::class);
 
             // Campanha vinculada (se existir)
             $campanha = $pedido->campanha_id
                 ? Campanha::find($pedido->campanha_id)
                 : null;
 
+            if (!$campanha) {
+                Log::warning('Pedido entregue com indicação, mas sem campanha vinculada válida', [
+                    'pedido_id' => $pedido->id,
+                ]);
+                return;
+            }
+
             // TODO: calcule aqui o valor real do prêmio, se já tiver regra
             $valorPremio = null;
 
-            // Monta o texto da mensagem para o INDICADOR
-            $textoIndicador = $msgCampanha
-                ->montarMensagemPremioDisponivel($indicador, $cliente, $pedido, $valorPremio);
+            $contextoExtra = [
+                'nome_indicador' => $indicador->nome,
+                'nome_indicado'  => $cliente->nome,
+            ];
 
-            // Envia pelo WhatsApp e registra na tabela mensagens
-            $msgModel = $mensageria->enviarWhatsapp(
+            if (!is_null($valorPremio)) {
+                // Envia já no formato desejado para o placeholder {{VALOR_PREMIO}}
+                $contextoExtra['valor_premio'] = number_format((float) $valorPremio, 2, ',', '.');
+            }
+
+            // Dispara a mensagem para o INDICADOR
+            $msgModel = $disparador->dispararPorEvento(
+                evento: 'indicacao_premio_pix',
                 cliente: $indicador,
-                conteudo: $textoIndicador,
-                tipo: 'indicacao_premio_pix',
                 pedido: $pedido,
                 campanha: $campanha,
-                payloadExtra: [
-                    'evento' => 'indicacao_premio_disponivel',
-                ],
+                contextoExtra: $contextoExtra,
             );
 
-            Log::info('Campanha indicação: msg PRÊMIO registrada/enviada ao indicador', [
-                'pedido_id'    => $pedido->id,
-                'indicador_id' => $indicador->id,
-                'mensagem_id'  => $msgModel->id,
-                'msg_status'   => $msgModel->status,
-            ]);
+            if ($msgModel) {
+                Log::info('Campanha indicação: msg PRÊMIO registrada/enviada ao indicador', [
+                    'pedido_id'    => $pedido->id,
+                    'indicador_id' => $indicador->id,
+                    'mensagem_id'  => $msgModel->id,
+                    'msg_status'   => $msgModel->status,
+                ]);
+            } else {
+                Log::warning('Campanha indicação: nenhuma configuração de mensagem para evento indicacao_premio_pix', [
+                    'pedido_id'    => $pedido->id,
+                    'indicador_id' => $indicador->id,
+                    'campanha_id'  => $campanha->id,
+                ]);
+            }
 
         } catch (\Throwable $e) {
             Log::error('PedidoVendaObserver@updated erro', [
-                'pedido_id' => $pedido->id,
+                'pedido_id' => $pedido->id ?? null,
                 'erro'      => $e->getMessage(),
             ]);
         }
@@ -232,11 +253,11 @@ class PedidoVendaObserver
             '.'
         );
 
-        $formaPg   = $pedido->forma?->nome
+        $formaPg = $pedido->forma?->nome
             ?? $pedido->forma?->descricao
             ?? 'a forma de pagamento selecionada';
 
-        $planoPg   = $pedido->plano?->nome
+        $planoPg = $pedido->plano?->nome
             ?? $pedido->plano?->descricao
             ?? null;
 
@@ -253,14 +274,14 @@ class PedidoVendaObserver
             : '';
 
         return "Olá {$nome}! 👋\n\n"
-             . "Registramos o seu pedido *#{$pedido->id}* e já estamos providenciando os produtos que você solicitou. 🙌\n\n"
-             . "🧾 Data do pedido: *{$dataPedido}*\n"
-             . "💰 Valor do pedido: *R$ {$valor}*\n"
-             . "💳 Forma de pagamento: *{$formaPg}*"
-             . $linhaPlano
-             . $linhaPrevisao
-             . $linhaObs
-             . "\n\nAssim que o pedido for entregue, você receberá uma confirmação por aqui. "
-             . "Qualquer dúvida, é só responder esta mensagem. 🙂";
+            . "Registramos o seu pedido *#{$pedido->id}* e já estamos providenciando os produtos que você solicitou. 🙌\n\n"
+            . "🧾 Data do pedido: *{$dataPedido}*\n"
+            . "💰 Valor do pedido: *R$ {$valor}*\n"
+            . "💳 Forma de pagamento: *{$formaPg}*"
+            . $linhaPlano
+            . $linhaPrevisao
+            . $linhaObs
+            . "\n\nAssim que o pedido for entregue, você receberá uma confirmação por aqui. "
+            . "Qualquer dúvida, é só responder esta mensagem. 🙂";
     }
 }

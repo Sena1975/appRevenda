@@ -315,9 +315,6 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         dd(['enviado' => $ok]);
     });
 
-    Route::get('/mensagens', [MensagemController::class, 'index'])
-        ->name('mensagens.index');
-
     // lista (index) - você já deve ter algo assim:
     Route::get('/mensagens', [MensagemController::class, 'index'])
         ->name('mensagens.index');
@@ -355,14 +352,28 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         });
 
     /*
-    |--------------------------------------------------------------------------
-    | CAMPANHAS
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| CAMPANHAS
+|--------------------------------------------------------------------------
+*/
     Route::prefix('campanhas')->group(function () {
+        // Listagem
         Route::get('/',       [CampanhaController::class, 'index'])->name('campanhas.index');
+
+        // Criação
         Route::get('/create', [CampanhaController::class, 'create'])->name('campanhas.create');
         Route::post('/',      [CampanhaController::class, 'store'])->name('campanhas.store');
+
+        // 🔹 Edição
+        Route::get('{campanha}/edit', [CampanhaController::class, 'edit'])
+            ->name('campanhas.edit');
+        Route::get('{campanha}', [CampanhaController::class, 'show'])
+            ->whereNumber('campanha')
+            ->name('campanhas.show');
+            
+        // 🔹 Atualização
+        Route::put('{campanha}', [CampanhaController::class, 'update'])
+            ->name('campanhas.update');
 
         // Restrições
         Route::get('{campanha}/restricoes',         [CampanhaProdutoController::class, 'index'])->name('campanhas.restricoes');
@@ -370,5 +381,4 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         Route::delete('{campanha}/restricoes/{id}', [CampanhaProdutoController::class, 'destroy'])->name('campanhas.restricoes.destroy');
     });
 });
-
 require __DIR__ . '/auth.php';

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CampanhaTipo extends Model
 {
-    protected $table = 'appcampanha_tipo'; // nome EXATO da tabela
+    protected $table = 'appcampanha_tipo'; 
 
     public $timestamps = false;
 
