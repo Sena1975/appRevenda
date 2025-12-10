@@ -1,8 +1,17 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-700">
-            Modelos de Mensagens
-        </h2>
+        <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-700">
+                Modelos de Mensagens
+            </h2>
+
+            @if (Route::has('mensageria.modelos.create'))
+                <a href="{{ route('mensageria.modelos.create') }}"
+                   class="inline-flex items-center px-3 py-1 text-xs font-semibold rounded bg-indigo-600 text-white hover:bg-indigo-700">
+                    + Novo modelo
+                </a>
+            @endif
+        </div>
     </x-slot>
 
     <div class="bg-white shadow rounded-lg p-6 max-w-5xl mx-auto">

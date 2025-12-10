@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Mensagem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -283,123 +284,165 @@ class ClienteController extends Controller
         return view('clientes.edit', compact('cliente', 'indicadores'));
     }
 
+    public function show(Request $request, Cliente $cliente)
+    {
+        // Carrega indicador
+        $cliente->load('indicador');
 
-public function store(Request $request)
-{
-    $validated = $request->validate([
-        'nome'            => 'required|string|max:255',
-        'email'           => ['nullable', 'string', 'email:rfc,dns', 'max:255'],
-        'telefone'        => 'nullable|string|max:20',
-        'cep'             => 'nullable|string|max:9',
-        'endereco'        => 'nullable|string|max:255',
-        'uf_id'           => 'nullable|integer',
-        'cidade_id'       => 'nullable|integer',
-        'bairro_id'       => 'nullable',
-        'bairro_nome'     => 'nullable|string|max:100',
-        'bairro'          => 'nullable|string|max:100',
-        'cidade'          => 'nullable|string|max:100',
-        'uf'              => 'nullable|string|max:2',
-        'whatsapp'        => 'nullable|string|max:30',
-        'telegram'        => 'nullable|string|max:50',
-        'instagram'       => 'nullable|string|max:50',
-        'facebook'        => 'nullable|string|max:100',
-        'cpf'             => 'nullable|string|max:20',
-        'data_nascimento' => ['nullable', 'date', 'before:today'],
-        'sexo'            => 'nullable|string|max:20',
-        'filhos'          => 'nullable|integer|min:0',
-        'timecoracao'     => 'nullable|string|max:60',
-        'status'          => ['nullable', 'in:Ativo,Inativo'],
-        'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        'origem_cadastro' => 'nullable|string|max:50',
-    ]);
+        // Filtros vindos da query string
+        $filtroCanal = $request->query('canal');
+        $filtroTipo  = $request->query('tipo');
 
-    // Normaliza data para YYYY-MM-DD ou null
-    $dn = $request->input('data_nascimento');
-    if ($dn) {
-        $dn = trim($dn);
-        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
-            try {
-                $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
-            } catch (\Throwable $e) {
+        // Tipos disponíveis para este cliente (pra montar o select)
+        $tiposMensagens = Mensagem::where('cliente_id', $cliente->id)
+            ->whereNotNull('tipo')
+            ->select('tipo')
+            ->distinct()
+            ->orderBy('tipo')
+            ->pluck('tipo');
+
+        // Query base das mensagens do cliente
+        $queryMensagens = Mensagem::with('campanha')
+            ->where('cliente_id', $cliente->id)
+            ->when($filtroCanal, function ($q) use ($filtroCanal) {
+                $q->where('canal', $filtroCanal);
+            })
+            ->when($filtroTipo, function ($q) use ($filtroTipo) {
+                $q->where('tipo', $filtroTipo);
+            });
+
+        // Últimas 10 mensagens (já filtradas)
+        $mensagensRecentes = $queryMensagens
+            ->orderByDesc('sent_at')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return view('clientes.show', [
+            'cliente'           => $cliente,
+            'mensagensRecentes' => $mensagensRecentes,
+            'filtroCanal'       => $filtroCanal,
+            'filtroTipo'        => $filtroTipo,
+            'tiposMensagens'    => $tiposMensagens,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'nome'            => 'required|string|max:255',
+            'email'           => ['nullable', 'string', 'email:rfc,dns', 'max:255'],
+            'telefone'        => 'nullable|string|max:20',
+            'cep'             => 'nullable|string|max:9',
+            'endereco'        => 'nullable|string|max:255',
+            'uf_id'           => 'nullable|integer',
+            'cidade_id'       => 'nullable|integer',
+            'bairro_id'       => 'nullable',
+            'bairro_nome'     => 'nullable|string|max:100',
+            'bairro'          => 'nullable|string|max:100',
+            'cidade'          => 'nullable|string|max:100',
+            'uf'              => 'nullable|string|max:2',
+            'whatsapp'        => 'nullable|string|max:30',
+            'telegram'        => 'nullable|string|max:50',
+            'instagram'       => 'nullable|string|max:50',
+            'facebook'        => 'nullable|string|max:100',
+            'cpf'             => 'nullable|string|max:20',
+            'data_nascimento' => ['nullable', 'date', 'before:today'],
+            'sexo'            => 'nullable|string|max:20',
+            'filhos'          => 'nullable|integer|min:0',
+            'timecoracao'     => 'nullable|string|max:60',
+            'status'          => ['nullable', 'in:Ativo,Inativo'],
+            'foto'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'origem_cadastro' => 'nullable|string|max:50',
+        ]);
+
+        // Normaliza data para YYYY-MM-DD ou null
+        $dn = $request->input('data_nascimento');
+        if ($dn) {
+            $dn = trim($dn);
+            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dn)) {
+                try {
+                    $dn = \Carbon\Carbon::createFromFormat('d/m/Y', $dn)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $dn = null;
+                }
+            } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
                 $dn = null;
             }
-        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dn)) {
+        } else {
             $dn = null;
         }
-    } else {
-        $dn = null;
-    }
 
-    // Traduz UF/Cidade/Bairro por ID
-    $ufSigla = $request->filled('uf_id')
-        ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
-        : null;
+        // Traduz UF/Cidade/Bairro por ID
+        $ufSigla = $request->filled('uf_id')
+            ? DB::table('appuf')->where('id', $request->uf_id)->value('sigla')
+            : null;
 
-    $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
-        ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
-        : null;
+        $cidadeNome = ($request->filled('cidade_id') && $request->cidade_id !== '__keep__')
+            ? DB::table('appcidade')->where('id', $request->cidade_id)->value('nome')
+            : null;
 
-    $bairroNome = null;
-    $bairroId = $request->input('bairro_id');
-    if ($bairroId === 'custom') {
-        $bairroNome = $request->input('bairro_nome');
-    } elseif (is_numeric($bairroId)) {
-        $bairroNome = DB::table('appbairro')->where('id', (int) $bairroId)->value('nome');
-    }
+        $bairroNome = null;
+        $bairroId = $request->input('bairro_id');
+        if ($bairroId === 'custom') {
+            $bairroNome = $request->input('bairro_nome');
+        } elseif (is_numeric($bairroId)) {
+            $bairroNome = DB::table('appbairro')->where('id', (int) $bairroId)->value('nome');
+        }
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | EMPRESA + CÓDIGO SEQUENCIAL POR EMPRESA
     |--------------------------------------------------------------------------
     */
-    $usuario      = $request->user();
-    $empresaAtiva = app()->bound('empresa') ? app('empresa') : null;
+        $usuario      = $request->user();
+        $empresaAtiva = app()->bound('empresa') ? app('empresa') : null;
 
-    // prioridade: usuário logado > empresa ativa do middleware > fallback 1
-    $empresaId = (int) ($usuario?->empresa_id ?? $empresaAtiva?->id ?? 1);
+        // prioridade: usuário logado > empresa ativa do middleware > fallback 1
+        $empresaId = (int) ($usuario?->empresa_id ?? $empresaAtiva?->id ?? 1);
 
-    // pega o último codigo_empresa daquela empresa e soma 1
-    $ultimoCodigo = \App\Models\Cliente::where('empresa_id', $empresaId)
-        ->max('codigo_empresa');
+        // pega o último codigo_empresa daquela empresa e soma 1
+        $ultimoCodigo = \App\Models\Cliente::where('empresa_id', $empresaId)
+            ->max('codigo_empresa');
 
-    $proximoCodigo = $ultimoCodigo ? ($ultimoCodigo + 1) : 1;
+        $proximoCodigo = $ultimoCodigo ? ($ultimoCodigo + 1) : 1;
 
-    // Monta dados finais
-    $dados = [
-        'nome'            => $request->nome,
-        'email'           => $request->email,
-        'telefone'        => $request->telefone,
-        'cep'             => $request->cep,
-        'endereco'        => $request->endereco,
-        'uf'              => $ufSigla ?? $request->uf,
-        'cidade'          => $cidadeNome ?? $request->cidade,
-        'bairro'          => $bairroNome ?? $request->bairro,
-        'whatsapp'        => $request->whatsapp,
-        'telegram'        => $request->telegram,
-        'instagram'       => $request->instagram,
-        'facebook'        => $request->facebook,
-        'cpf'             => $request->cpf,
-        'data_nascimento' => $dn,
-        'sexo'            => $request->sexo,
-        'filhos'          => $request->filhos,
-        'timecoracao'     => $request->timecoracao,
-        'status'          => $request->status,
-        'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
-        'indicador_id'    => (int) $request->input('indicador_id', 1),
+        // Monta dados finais
+        $dados = [
+            'nome'            => $request->nome,
+            'email'           => $request->email,
+            'telefone'        => $request->telefone,
+            'cep'             => $request->cep,
+            'endereco'        => $request->endereco,
+            'uf'              => $ufSigla ?? $request->uf,
+            'cidade'          => $cidadeNome ?? $request->cidade,
+            'bairro'          => $bairroNome ?? $request->bairro,
+            'whatsapp'        => $request->whatsapp,
+            'telegram'        => $request->telegram,
+            'instagram'       => $request->instagram,
+            'facebook'        => $request->facebook,
+            'cpf'             => $request->cpf,
+            'data_nascimento' => $dn,
+            'sexo'            => $request->sexo,
+            'filhos'          => $request->filhos,
+            'timecoracao'     => $request->timecoracao,
+            'status'          => $request->status,
+            'origem_cadastro' => $request->input('origem_cadastro', 'Interno'),
+            'indicador_id'    => (int) $request->input('indicador_id', 1),
 
-        // 🔹 multiempresa
-        'empresa_id'      => $empresaId,
-        'codigo_empresa'  => $proximoCodigo,
-    ];
+            // 🔹 multiempresa
+            'empresa_id'      => $empresaId,
+            'codigo_empresa'  => $proximoCodigo,
+        ];
 
-    if ($request->hasFile('foto')) {
-        $dados['foto'] = $request->file('foto')->store('clientes', 'public');
+        if ($request->hasFile('foto')) {
+            $dados['foto'] = $request->file('foto')->store('clientes', 'public');
+        }
+
+        \App\Models\Cliente::create($dados);
+
+        return redirect()->route('clientes.index')->with('success', 'Cliente cadastrado com sucesso!');
     }
-
-    \App\Models\Cliente::create($dados);
-
-    return redirect()->route('clientes.index')->with('success', 'Cliente cadastrado com sucesso!');
-}
 
     public function update(Request $request, Cliente $cliente)
     {

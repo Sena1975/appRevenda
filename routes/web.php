@@ -337,10 +337,15 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
 
     /* envio manual*/
     Route::prefix('mensageria')
-        ->name('mensageria.')
-        ->group(function () {
+        ->name('mensageria.')->group(function () {
             Route::get('modelos', [MensagensManuaisController::class, 'index'])
                 ->name('modelos.index');
+
+            Route::get('modelos/criar', [MensagensManuaisController::class, 'create'])
+                ->name('modelos.create');
+
+            Route::post('modelos', [MensagensManuaisController::class, 'store'])
+                ->name('modelos.store');
 
             Route::get('modelos/{modelo}/enviar', [MensagensManuaisController::class, 'formEnviar'])
                 ->name('modelos.form_enviar');

@@ -15,4 +15,9 @@ class MensagemModelo extends Model
         'conteudo',
         'ativo',
     ];
+    
+    public function campanhas()
+    {
+        return $this->hasMany(CampanhaMensagem::class, 'mensagem_modelo_id');
+    }
 }

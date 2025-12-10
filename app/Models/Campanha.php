@@ -55,6 +55,11 @@ class Campanha extends Model
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
+    public function mensagensConfiguradas()
+    {
+        return $this->hasMany(CampanhaMensagem::class, 'campanha_id');
+    }
+
     public function tipo()
     {
         return $this->belongsTo(CampanhaTipo::class, 'tipo_id', 'id');

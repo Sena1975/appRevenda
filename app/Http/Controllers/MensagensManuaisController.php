@@ -6,21 +6,60 @@ use App\Models\MensagemModelo;
 use App\Models\Cliente;
 use App\Services\MensageriaService;
 use Illuminate\Http\Request;
-use App\Models\Mensagem;
-
 
 class MensagensManuaisController extends Controller
 {
+    /**
+     * Lista de modelos de mensagem.
+     */
     public function index()
     {
-        $modelos = MensagemModelo::where('ativo', true)->orderBy('nome')->get();
+        $modelos = MensagemModelo::orderBy('nome')->get();
 
         return view('mensageria.modelos_index', compact('modelos'));
     }
 
+    /**
+     * Formulário para criar um novo modelo de mensagem.
+     */
+    public function create()
+    {
+        return view('mensageria.modelos_create');
+    }
+
+    /**
+     * Grava um novo modelo de mensagem.
+     */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'nome'     => ['required', 'string', 'max:255'],
+            'codigo'   => ['required', 'string', 'max:255', 'unique:appmensagem_modelo,codigo'],
+            'canal'    => ['nullable', 'string', 'max:50'],
+            'conteudo' => ['required', 'string'],
+            'ativo'    => ['nullable', 'boolean'],
+        ]);
+
+        // Se canal não vier, padrão = whatsapp
+        if (empty($data['canal'])) {
+            $data['canal'] = 'whatsapp';
+        }
+
+        // Checkbox "ativo" vem como on/null
+        $data['ativo'] = $request->boolean('ativo');
+
+        MensagemModelo::create($data);
+
+        return redirect()
+            ->route('mensageria.modelos.index')
+            ->with('success', 'Modelo de mensagem criado com sucesso!');
+    }
+
+    /**
+     * Formulário para escolher clientes e enviar um modelo.
+     */
     public function formEnviar(MensagemModelo $modelo)
     {
-        // Você pode filtrar clientes, paginar, etc.
         $clientes = Cliente::orderBy('nome')->get();
 
         return view('mensageria.modelos_enviar', [
@@ -29,14 +68,9 @@ class MensagensManuaisController extends Controller
         ]);
     }
 
-    public function show(Mensagem $mensagem)
-    {
-        // Se quiser garantir que sempre venha com relações carregadas:
-        $mensagem->load(['cliente', 'pedido', 'campanha']);
-
-        return view('mensagens.show', compact('mensagem'));
-    }
-
+    /**
+     * Envia o modelo selecionado para os clientes escolhidos.
+     */
     public function enviar(Request $request, MensagemModelo $modelo)
     {
         $request->validate([
@@ -53,8 +87,6 @@ class MensagensManuaisController extends Controller
         $enviados = 0;
 
         foreach ($clientes as $cliente) {
-
-            // Aqui você poderia fazer replace de placeholders, se quiser
             $texto = $modelo->conteudo;
 
             $mensageria->enviarWhatsapp(

@@ -662,68 +662,68 @@
         </div>
 
         <!-- MENSAGERIA -->
-        <div x-data="{ open: {{ $isMensageria ? 'true' : 'false' }} }" class="mt-2">
-            <button @click="open = !open"
-                    class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50
-                           focus:outline-none rounded transition-all">
+<div x-data="{ open: {{ $isMensageria ? 'true' : 'false' }} }" class="mt-2">
+    <button @click="open = !open"
+            class="flex items-center w-full px-3 py-2 text-blue-600 hover:bg-blue-50
+                   focus:outline-none rounded transition-all">
+        <svg xmlns="http://www.w3.org/2000/svg"
+             class="h-5 w-5 text-blue-500"
+             fill="none"
+             viewBox="0 0 24 24"
+             stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 10h8m-8 4h5M5 5h14a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 4v-4H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+        </svg>
+        <span x-show="openSidebar" class="ml-3 flex-1 text-left">Mensageria</span>
+        <svg x-show="openSidebar"
+             :class="{ 'rotate-180': open }"
+             xmlns="http://www.w3.org/2000/svg"
+             class="h-4 w-4 ml-auto transform transition-transform"
+             fill="none"
+             viewBox="0 0 24 24"
+             stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 9l-7 7-7-7" />
+        </svg>
+    </button>
+
+    <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
+        {{-- Modelos de Mensagem --}}
+        @if (Route::has('mensageria.modelos.index'))
+            <a href="{{ route('mensageria.modelos.index') }}"
+               class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                      {{ request()->routeIs('mensageria.modelos.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
                 <svg xmlns="http://www.w3.org/2000/svg"
-                     class="h-5 w-5 text-blue-500"
+                     class="h-4 w-4 text-blue-500"
                      fill="none"
                      viewBox="0 0 24 24"
                      stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M8 10h8m-8 4h5M5 5h14a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 4v-4H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+                          d="M7 8h10M7 12h6M5 5h14a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 4v-4H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
                 </svg>
-                <span x-show="openSidebar" class="ml-3 flex-1 text-left">Mensageria</span>
-                <svg x-show="openSidebar"
-                     :class="{ 'rotate-180': open }"
-                     xmlns="http://www.w3.org/2000/svg"
-                     class="h-4 w-4 ml-auto transform transition-transform"
+                <span x-show="openSidebar" class="ml-2">Modelos de Mensagens</span>
+            </a>
+        @endif
+
+        {{-- Configurações WhatsApp --}}
+        @if (Route::has('whatsapp-config.index'))
+            <a href="{{ route('whatsapp-config.index') }}"
+               class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
+                      {{ request()->routeIs('whatsapp-config.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     class="h-4 w-4 text-blue-500"
                      fill="none"
                      viewBox="0 0 24 24"
                      stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M19 9l-7 7-7-7" />
+                          d="M3 5h6l2 3h10v9H3V5z" />
                 </svg>
-            </button>
+                <span x-show="openSidebar" class="ml-2">Configurações WhatsApp</span>
+            </a>
+        @endif
+    </div>
+</div>
 
-            <div x-show="open" x-collapse class="mt-1 space-y-1 pl-8">
-                {{-- Modelos de Mensagem --}}
-                @if (Route::has('mensagens.index'))
-                    <a href="{{ route('mensagens.index') }}"
-                       class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
-                              {{ request()->routeIs('mensagens.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class="h-4 w-4 text-blue-500"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M7 8h10M7 12h6M5 5h14a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 4v-4H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
-                        </svg>
-                        <span x-show="openSidebar" class="ml-2">Modelos de Mensagens</span>
-                    </a>
-                @endif
-
-                {{-- Configurações WhatsApp --}}
-                @if (Route::has('whatsapp-config.index'))
-                    <a href="{{ route('whatsapp-config.index') }}"
-                       class="flex items-center px-2 py-1 rounded hover:bg-blue-100 transition-all
-                              {{ request()->routeIs('whatsapp-config.*') ? 'text-blue-700 font-semibold' : 'text-gray-600' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class="h-4 w-4 text-blue-500"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M3 5h6l2 3h10v9H3V5z" />
-                        </svg>
-                        <span x-show="openSidebar" class="ml-2">Configurações WhatsApp</span>
-                    </a>
-                @endif
-            </div>
-        </div>
-    </nav>
 
     <!-- RODAPÉ: Sair -->
     <div class="mt-auto border-t px-4 py-3">
