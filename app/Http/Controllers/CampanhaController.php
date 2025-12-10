@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\CampanhaRequest;
 use App\Models\Campanha;
 use App\Models\CampanhaTipo;
+use App\Models\MensagemModelo;
+use App\Models\CampanhaMensagem;
 use App\Models\Produto;
+use App\Support\CampanhaEventos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -48,6 +51,33 @@ class CampanhaController extends Controller
         $produtos = Produto::orderBy('nome')->get(['id', 'nome', 'codfabnumero']); // para eventual brinde
 
         return view('campanhas.create', compact('tipos', 'produtos'));
+    }
+
+    public function edit(Campanha $campanha)
+    {
+        // Modelos de mensagem ativos (WhatsApp, por enquanto)
+        $modelosMensagem = MensagemModelo::where('ativo', true)
+            ->where('canal', 'whatsapp')
+            ->orderBy('nome')
+            ->get();
+
+        // Configurações já salvas para esta campanha
+        $mensagensConfiguradas = $campanha->mensagensConfiguradas
+            ->keyBy('evento'); // vira um map: [evento => CampanhaMensagem]
+
+        // Por enquanto vamos tratar eventos só para campanhas de indicação
+        $eventosIndicacao = [];
+        if ($campanha->metodo_php === 'isCampanhaIndicacao') {
+            $eventosIndicacao = CampanhaEventos::eventosIndicacao();
+        }
+
+        return view('campanhas.edit', [
+            'campanha'              => $campanha,
+            // ... demais dados que você já envia ...
+            'modelosMensagem'       => $modelosMensagem,
+            'mensagensConfiguradas' => $mensagensConfiguradas,
+            'eventosIndicacao'      => $eventosIndicacao,
+        ]);
     }
 
     public function store(CampanhaRequest $request)
