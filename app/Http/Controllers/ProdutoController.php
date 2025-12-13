@@ -6,9 +6,11 @@ use App\Models\Produto;
 use App\Models\Categoria;
 use App\Models\Subcategoria;
 use App\Models\Fornecedor;
+use App\Models\ProdutoKitItem;
 use App\Models\Tabelapreco;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+
 
 class ProdutoController extends Controller
 {
@@ -244,8 +246,8 @@ class ProdutoController extends Controller
         }
 
         $msg = "Importação concluída. Linhas lidas: {$totalLinhas}. "
-             . "Produtos atualizados: {$totalAtualizados}. "
-             . "Códigos não encontrados: {$totalNaoEncontrados}.";
+            . "Produtos atualizados: {$totalAtualizados}. "
+            . "Códigos não encontrados: {$totalNaoEncontrados}.";
 
         return redirect()
             ->route('produtos.importar_precos.form')
@@ -353,6 +355,7 @@ class ProdutoController extends Controller
                         'categoria_id'    => $categoriaId ?: null,
                         'subcategoria_id' => $subcategoriaId ?: null,
                         'empresa_id'      => $empresaId,
+                        'tipo'            => 'P',
                     ]);
 
                     // 2) Cria registro de tabela de preço vigente
@@ -465,8 +468,9 @@ class ProdutoController extends Controller
         $request->validate([
             'nome'           => 'required|string|max:150',
             'categoria_id'   => 'required',
-            'subcategoria_id'=> 'required',
+            'subcategoria_id' => 'required',
             'fornecedor_id'  => 'required',
+            'tipo'            => 'nullable|in:P,K',
             'imagem'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
@@ -532,7 +536,19 @@ class ProdutoController extends Controller
             ->orderBy('nomefantasia')
             ->get();
 
-        return view('produtos.edit', compact('produto', 'categorias', 'subcategorias', 'fornecedores'));
+        // Empresa do produto ou do usuário logado
+        $empresaId = $produto->empresa_id ?: ($request->user()->empresa_id ?? null);
+
+        // Produtos base (unitários) que podem compor o kit
+        $produtosBase = Produto::where('tipo', 'P')
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->orderBy('nome')
+            ->get();
+
+        return view(
+            'produtos.edit',
+            compact('produto', 'categorias', 'subcategorias', 'fornecedores', 'produtosBase')
+        );
     }
 
     public function update(Request $request, Produto $produto)
@@ -540,17 +556,28 @@ class ProdutoController extends Controller
         $this->autorizarEmpresa($request, $produto);
 
         $request->validate([
-            'nome'           => 'required|string|max:150',
-            'categoria_id'   => 'required',
-            'subcategoria_id'=> 'required',
-            'fornecedor_id'  => 'required',
-            'imagem'         => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'nome'            => 'required|string|max:150',
+            'categoria_id'    => 'required',
+            'subcategoria_id' => 'required',
+            'fornecedor_id'   => 'required',
+            'tipo'            => 'nullable|in:P,K',
+            'imagem'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $dados = $request->all();
-        unset($dados['empresa_id']); // não deixa mudar empresa do produto
 
+        // Não deixa mudar empresa do produto
+        unset($dados['empresa_id']);
+
+        // Se não vier tipo no POST, mantém o atual ou assume 'P'
+        if (empty($dados['tipo'])) {
+            $dados['tipo'] = $produto->tipo ?? 'P';
+        }
+
+        // Tratamento de imagem
         if ($request->hasFile('imagem')) {
+
+            // Apaga imagem antiga, se existir
             if ($produto->imagem && file_exists(public_path($produto->imagem))) {
                 @unlink(public_path($produto->imagem));
             }
@@ -560,7 +587,49 @@ class ProdutoController extends Controller
             $dados['imagem'] = 'imagens/produtos/' . $nomeArquivo;
         }
 
+        // Atualiza dados básicos do produto
         $produto->update($dados);
+
+        // --- TRATAMENTO DA COMPOSIÇÃO DO KIT ---
+
+        // Se mudou de K para P, apaga composição e finaliza
+        if ($dados['tipo'] !== 'K') {
+            $produto->itensDoKit()->delete();
+
+            return redirect()
+                ->route('produtos.index')
+                ->with('success', 'Produto atualizado com sucesso!');
+        }
+
+        // Aqui é KIT (tipo = 'K'): vamos salvar os itens
+        $idsItens = $request->input('kit_itens_produto_id', []);
+        $qtds     = $request->input('kit_itens_quantidade', []);
+
+        // Apaga composição anterior
+        $produto->itensDoKit()->delete();
+
+        if (is_array($idsItens)) {
+            foreach ($idsItens as $idx => $itemId) {
+                $itemId = (int) ($itemId ?? 0);
+
+                // quantidade (aceitando vírgula como decimal)
+                $qtdBruta = $qtds[$idx] ?? null;
+                if ($qtdBruta === null || $qtdBruta === '') {
+                    $quantidade = 0;
+                } else {
+                    $qtdNormalizada = str_replace(['.', ','], ['', '.'], $qtdBruta);
+                    $quantidade     = (float) $qtdNormalizada;
+                }
+
+                if ($itemId > 0 && $quantidade > 0) {
+                    ProdutoKitItem::create([
+                        'kit_produto_id' => $produto->id,
+                        'item_produto_id' => $itemId,
+                        'quantidade'     => $quantidade,
+                    ]);
+                }
+            }
+        }
 
         return redirect()
             ->route('produtos.index')

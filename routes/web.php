@@ -32,6 +32,7 @@ use App\Http\Controllers\CampanhaProdutoController;
 use App\Http\Controllers\AniversarianteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatorioFinanceiroController;
+use App\Http\Controllers\RelatoriosController;
 use App\Http\Controllers\TextoPedidoController;
 use App\Http\Controllers\IndicacaoController;
 use App\Http\Controllers\RelatorioMensagensController;
@@ -70,7 +71,10 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         Route::get('/clientes/{cliente}/extrato-pedidos', [RelatorioFinanceiroController::class, 'extratoPedidosCliente'])->name('clientes.extrato_pedidos');
         Route::get('/clientes/{cliente}/extrato-produtos', [RelatorioFinanceiroController::class, 'extratoProdutosCliente'])->name('clientes.extrato_produtos');
     });
-
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/relatorios/rentabilidade-vendas', [RelatoriosController::class, 'rentabilidadeVendas'])
+            ->name('relatorios.rentabilidade-vendas');
+    });
     Route::get('/clientes/qrcode', function () {
         return view('clientes.qrcode');
     })->name('clientes.qrcode');
@@ -161,7 +165,17 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         ->name('vendas.cancelar');
     Route::post('/vendas/{id}/confirmar-entrega', [PedidoVendaController::class, 'confirmarEntrega'])
         ->name('vendas.confirmarEntrega');
-
+    Route::get('/vendas/{id}', [\App\Http\Controllers\PedidoVendaController::class, 'show'])
+        ->middleware(['auth'])
+        ->name('vendas.show');
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/relatorios/vendas-detalhadas', [RelatoriosController::class, 'vendasDetalhadas'])
+            ->name('relatorios.vendas-detalhadas');
+    });
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/relatorios/entrada-mercadoria', [RelatoriosController::class, 'entradaMercadoria'])
+            ->name('relatorios.entrada-mercadoria');
+    });
     /*
     |--------------------------------------------------------------------------
     | CAMPANHA – INDICAÇÕES
@@ -370,7 +384,7 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         Route::get('{campanha}', [CampanhaController::class, 'show'])
             ->whereNumber('campanha')
             ->name('campanhas.show');
-            
+
         // 🔹 Atualização
         Route::put('{campanha}', [CampanhaController::class, 'update'])
             ->name('campanhas.update');

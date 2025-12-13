@@ -99,4 +99,9 @@ class PedidoVenda extends Model
     {
         return $this->belongsTo(PlanoPagamento::class, 'plano_pagamento_id', 'id');
     }
+
+    public function contasReceber()
+    {
+        return $this->hasMany(\App\Models\ContasReceber::class, 'pedido_id', 'id');
+    }
 }

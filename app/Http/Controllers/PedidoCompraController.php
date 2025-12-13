@@ -9,6 +9,7 @@ use App\Models\ItensCompra;
 use App\Models\ViewProduto;
 use App\Models\FormaPagamento;
 use App\Models\PlanoPagamento;
+use App\Models\MovEstoque;
 use App\Models\ContasPagar;
 use App\Models\BaixaPagar;
 
@@ -331,7 +332,7 @@ class PedidoCompraController extends Controller
                 'status'             => 'PENDENTE',
                 'created_at'         => now(),
                 'updated_at'         => now(),
-                'empresa_id' 
+                'empresa_id'
             ]);
 
             // ==== ITENS: tabela appcompraproduto ====
@@ -637,10 +638,9 @@ class PedidoCompraController extends Controller
 
             $pedido->save();
 
-            // Se confirmar recebimento, movimenta estoque e gera contas a pagar
+            // Se confirmar recebimento, movimenta estoque (considerando KITS) e gera contas a pagar
             if ($request->acao === 'confirmar' && ! $jaRecebidaAntes) {
-                $estoqueService = new EstoqueService();
-                $estoqueService->registrarEntradaCompra($pedido);
+                $this->registrarEntradaEstoqueDaCompra($pedido);
 
                 $financeiroService = new GerarContasPagarDaCompra();
                 $financeiroService->executar($pedido);
@@ -663,6 +663,96 @@ class PedidoCompraController extends Controller
             ]);
 
             return back()->with('error', 'Erro ao atualizar o pedido: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Registra a entrada de estoque de uma compra,
+     * explodindo KITS em itens unitários.
+     */
+    private function registrarEntradaEstoqueDaCompra(PedidoCompra $pedido): void
+    {
+        $estoqueService = new EstoqueService();
+        $empresaId      = $pedido->empresa_id;
+
+        // garante que produto e composição do kit estejam carregados
+        $pedido->load('itens.produto.itensDoKit.produtoItem');
+
+        foreach ($pedido->itens as $item) {
+            $produto = $item->produto;
+
+            if (! $produto) {
+                continue;
+            }
+
+            $qtdItem = (float) $item->quantidade;
+
+            // tenta achar um custo unitário pra registrar no estoque
+            $custoTotal    = (float) ($item->total_liquido ?? $item->valorcusto ?? 0);
+            $precoUnitario = $qtdItem > 0 ? $custoTotal / $qtdItem : (float) ($item->preco_unitario ?? 0);
+
+            // ----- CASO 1: PRODUTO KIT → explode em itens -----
+            if ($produto->tipo === 'K' && $produto->itensDoKit->isNotEmpty()) {
+
+                foreach ($produto->itensDoKit as $componente) {
+                    $produtoBase = $componente->produtoItem;
+
+                    if (! $produtoBase) {
+                        continue;
+                    }
+
+                    $qtdComponente = $qtdItem * (float) $componente->quantidade;
+
+                    // Atualiza saldo no appestoque via service (ENTRADA)
+                    $estoqueService->registrarMovimentoManual(
+                        $produtoBase->id,
+                        'ENTRADA',
+                        $qtdComponente,
+                        $precoUnitario,
+                        'Entrada compra KIT #' . $pedido->id . ' - ' . ($produto->nome ?? '')
+                    );
+
+                    // Registra movimento em appmovestoque
+                    MovEstoque::create([
+                        'empresa_id'     => $empresaId,
+                        'produto_id'     => $produtoBase->id,
+                        'codfabnumero'   => $produtoBase->codfabnumero,
+                        'tipo_mov'       => 'ENTRADA',
+                        'origem'         => 'COMPRA',
+                        'origem_id'      => $pedido->id,
+                        'data_mov'       => now(),
+                        'quantidade'     => $qtdComponente,
+                        'preco_unitario' => $precoUnitario,
+                        'observacao'     => 'Entrada de compra KIT ' . ($produto->codfabnumero ?? '') . ' - pedido #' . $pedido->id,
+                        'status'         => 'CONFIRMADO',
+                    ]);
+                }
+
+                // ----- CASO 2: PRODUTO NORMAL -----
+            } else {
+
+                $estoqueService->registrarMovimentoManual(
+                    $produto->id,
+                    'ENTRADA',
+                    $qtdItem,
+                    $precoUnitario,
+                    'Entrada compra #' . $pedido->id
+                );
+
+                MovEstoque::create([
+                    'empresa_id'     => $empresaId,
+                    'produto_id'     => $produto->id,
+                    'codfabnumero'   => $produto->codfabnumero,
+                    'tipo_mov'       => 'ENTRADA',
+                    'origem'         => 'COMPRA',
+                    'origem_id'      => $pedido->id,
+                    'data_mov'       => now(),
+                    'quantidade'     => $qtdItem,
+                    'preco_unitario' => $precoUnitario,
+                    'observacao'     => 'Entrada de compra - pedido #' . $pedido->id,
+                    'status'         => 'CONFIRMADO',
+                ]);
+            }
         }
     }
 
@@ -866,27 +956,65 @@ class PedidoCompraController extends Controller
             $itensComEstoqueNegativo = [];
 
             if ($pedido->status === 'RECEBIDA') {
+                // Garante também composição de kits carregada
+                $pedido->load('itens.produto.itensDoKit.produtoItem');
+
                 foreach ($pedido->itens as $item) {
                     $produto = $item->produto;
 
-                    $viewProd = null;
-                    if ($produto && $produto->codfabnumero) {
-                        $viewProd = ViewProduto::where('codigo_fabrica', $produto->codfabnumero)->first();
+                    if (! $produto) {
+                        continue;
                     }
 
-                    $estoqueAtual = $viewProd->qtd_estoque ?? 0;
-                    $qtdEstornar  = (float) $item->quantidade;
+                    $qtdItem = (float) $item->quantidade;
 
-                    $saldoPosEstorno = $estoqueAtual - $qtdEstornar;
+                    // ----- KITS: checa cada componente -----
+                    if ($produto->tipo === 'K' && $produto->itensDoKit->isNotEmpty()) {
 
-                    if ($saldoPosEstorno < 0) {
-                        $itensComEstoqueNegativo[] = [
-                            'produto'          => $produto->nome ?? ('ID ' . $produto->id),
-                            'codigo_fabrica'   => $produto->codfabnumero ?? null,
-                            'estoque_atual'    => $estoqueAtual,
-                            'qtd_estornar'     => $qtdEstornar,
-                            'saldo_pos_estorno' => $saldoPosEstorno,
-                        ];
+                        foreach ($produto->itensDoKit as $componente) {
+                            $produtoBase = $componente->produtoItem;
+
+                            if (! $produtoBase || ! $produtoBase->codfabnumero) {
+                                continue;
+                            }
+
+                            $viewProd = ViewProduto::where('codigo_fabrica', $produtoBase->codfabnumero)->first();
+
+                            $estoqueAtual   = $viewProd->qtd_estoque ?? 0;
+                            $qtdEstornarCmp = $qtdItem * (float) $componente->quantidade;
+                            $saldoPosEstorno = $estoqueAtual - $qtdEstornarCmp;
+
+                            if ($saldoPosEstorno < 0) {
+                                $itensComEstoqueNegativo[] = [
+                                    'produto'           => $produtoBase->nome . ' (compõe kit ' . ($produto->nome ?? '') . ')',
+                                    'codigo_fabrica'    => $produtoBase->codfabnumero ?? null,
+                                    'estoque_atual'     => $estoqueAtual,
+                                    'qtd_estornar'      => $qtdEstornarCmp,
+                                    'saldo_pos_estorno' => $saldoPosEstorno,
+                                ];
+                            }
+                        }
+
+                        // ----- PRODUTO NORMAL -----
+                    } else {
+                        $viewProd = null;
+                        if ($produto->codfabnumero) {
+                            $viewProd = ViewProduto::where('codigo_fabrica', $produto->codfabnumero)->first();
+                        }
+
+                        $estoqueAtual   = $viewProd->qtd_estoque ?? 0;
+                        $qtdEstornar    = $qtdItem;
+                        $saldoPosEstorno = $estoqueAtual - $qtdEstornar;
+
+                        if ($saldoPosEstorno < 0) {
+                            $itensComEstoqueNegativo[] = [
+                                'produto'           => $produto->nome ?? ('ID ' . $produto->id),
+                                'codigo_fabrica'    => $produto->codfabnumero ?? null,
+                                'estoque_atual'     => $estoqueAtual,
+                                'qtd_estornar'      => $qtdEstornar,
+                                'saldo_pos_estorno' => $saldoPosEstorno,
+                            ];
+                        }
                     }
                 }
             }
@@ -905,8 +1033,7 @@ class PedidoCompraController extends Controller
             // - Não exclui o pedido nem os itens — apenas marca como CANCELADA
 
             if ($pedido->status === 'RECEBIDA') {
-                $service = new EstoqueService();
-                $service->estornarEntradaCompra($pedido, $motivo);
+                $this->estornarEntradaEstoqueDaCompra($pedido, $motivo);
             }
 
             // Cancelar/estornar parcelas de Contas a Pagar
@@ -950,6 +1077,92 @@ class PedidoCompraController extends Controller
             return back()->with('error', 'Erro ao cancelar pedido: ' . $e->getMessage());
         }
     }
+/**
+ * Estorna a entrada de estoque de uma compra RECEBIDA,
+ * explodindo KITS em itens unitários.
+ */
+private function estornarEntradaEstoqueDaCompra(PedidoCompra $pedido, string $motivo): void
+{
+    $estoqueService = new EstoqueService();
+    $empresaId      = $pedido->empresa_id;
+
+    $pedido->load('itens.produto.itensDoKit.produtoItem');
+
+    foreach ($pedido->itens as $item) {
+        $produto = $item->produto;
+
+        if (! $produto) {
+            continue;
+        }
+
+        $qtdItem      = (float) $item->quantidade;
+        $custoTotal   = (float) ($item->total_liquido ?? $item->valorcusto ?? 0);
+        $precoUnitario = $qtdItem > 0 ? $custoTotal / $qtdItem : (float) ($item->preco_unitario ?? 0);
+
+        // ----- KITS: estorna componentes -----
+        if ($produto->tipo === 'K' && $produto->itensDoKit->isNotEmpty()) {
+
+            foreach ($produto->itensDoKit as $componente) {
+                $produtoBase = $componente->produtoItem;
+
+                if (! $produtoBase) {
+                    continue;
+                }
+
+                $qtdComponente = $qtdItem * (float) $componente->quantidade;
+
+                // SAÍDA no estoque
+                $estoqueService->registrarMovimentoManual(
+                    $produtoBase->id,
+                    'SAIDA',
+                    $qtdComponente,
+                    $precoUnitario,
+                    'Estorno compra KIT #' . $pedido->id . ' - ' . $motivo
+                );
+
+                MovEstoque::create([
+                    'empresa_id'     => $empresaId,
+                    'produto_id'     => $produtoBase->id,
+                    'codfabnumero'   => $produtoBase->codfabnumero,
+                    'tipo_mov'       => 'SAIDA',
+                    'origem'         => 'COMPRA',
+                    'origem_id'      => $pedido->id,
+                    'data_mov'       => now(),
+                    'quantidade'     => -abs($qtdComponente),
+                    'preco_unitario' => $precoUnitario,
+                    'observacao'     => 'Estorno compra KIT ' . ($produto->codfabnumero ?? '') . ' - pedido #'
+                                        . $pedido->id . '. Motivo: ' . $motivo,
+                    'status'         => 'CONFIRMADO',
+                ]);
+            }
+
+        // ----- PRODUTO NORMAL -----
+        } else {
+
+            $estoqueService->registrarMovimentoManual(
+                $produto->id,
+                'SAIDA',
+                $qtdItem,
+                $precoUnitario,
+                'Estorno compra #' . $pedido->id . ' - ' . $motivo
+            );
+
+            MovEstoque::create([
+                'empresa_id'     => $empresaId,
+                'produto_id'     => $produto->id,
+                'codfabnumero'   => $produto->codfabnumero,
+                'tipo_mov'       => 'SAIDA',
+                'origem'         => 'COMPRA',
+                'origem_id'      => $pedido->id,
+                'data_mov'       => now(),
+                'quantidade'     => -abs($qtdItem),
+                'preco_unitario' => $precoUnitario,
+                'observacao'     => 'Estorno compra - pedido #' . $pedido->id . '. Motivo: ' . $motivo,
+                'status'         => 'CONFIRMADO',
+            ]);
+        }
+    }
+}
 
     private function brToFloat($value): float
     {

@@ -95,9 +95,98 @@ class PedidoVendaController extends Controller
         return view('vendas.index', compact('pedidos'));
     }
 
-    public function show($id)
+    public function show(Request $request, int $id)
     {
-        return redirect()->route('vendas.edit', $id);
+        // empresa atual (mesma lógica do seu sidebar)
+        $empresaId = $request->user()->empresa_id ?? null;
+
+        if (!$empresaId && app()->bound('empresa')) {
+            $empresaId = app('empresa')->id ?? null;
+        }
+
+        $pedido = PedidoVenda::query()
+            ->when($empresaId, fn($q) => $q->where('empresa_id', $empresaId))
+            ->with([
+                'cliente',
+                'indicador',
+                'revendedora',
+                'forma',
+                'plano',
+                'itens.produto',
+                'contasReceber',
+            ])
+            ->findOrFail($id);
+
+        $itens = $pedido->itens ?? collect();
+
+        /**
+         * ÚLTIMA COMPRA por produto (qtd e data)
+         * Requer MySQL 8+ por causa do ROW_NUMBER().
+         */
+        $productIds = $itens->pluck('produto_id')->filter()->unique()->values();
+        $mapUltCompra = collect();
+
+        if ($empresaId && $productIds->isNotEmpty()) {
+            $placeholders = implode(',', array_fill(0, $productIds->count(), '?'));
+
+            $sql = "
+            SELECT produto_id, ultima_qtd, ultima_data
+            FROM (
+                SELECT
+                    cp.produto_id,
+                    cp.quantidade AS ultima_qtd,
+                    COALESCE(c.data_compra, c.data_emissao, c.created_at) AS ultima_data,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY cp.produto_id
+                        ORDER BY COALESCE(c.data_compra, c.data_emissao, c.created_at) DESC, c.id DESC, cp.id DESC
+                    ) AS rn
+                FROM appcompraproduto cp
+                JOIN appcompra c ON c.id = cp.compra_id
+                WHERE c.empresa_id = ?
+                  AND cp.produto_id IN ($placeholders)
+            ) t
+            WHERE rn = 1
+        ";
+
+            $rows = DB::select($sql, array_merge([$empresaId], $productIds->all()));
+            $mapUltCompra = collect($rows)->keyBy('produto_id');
+        }
+
+        foreach ($itens as $it) {
+            $row = $mapUltCompra->get($it->produto_id);
+            $it->ultima_compra_qtd  = $row->ultima_qtd  ?? null;
+            $it->ultima_compra_data = $row->ultima_data ?? null;
+        }
+
+        /**
+         * TOTAIS / RENTABILIDADE / PONTOS
+         */
+        $totais = [
+            'qtd_itens' => (int) $itens->sum('quantidade'),
+
+            'total_itens' => (float) $itens->sum('preco_total'),
+            'desc_itens'  => (float) $itens->sum('valor_desconto'),
+
+            'receita_liquida_itens' => (float) $itens->sum(function ($it) {
+                return (float)($it->preco_total ?? 0) - (float)($it->valor_desconto ?? 0);
+            }),
+
+            'custo_total' => (float) $itens->sum(function ($it) {
+                $qtd = (float)($it->quantidade ?? 0);
+                $custoUnit = (float)($it->produto->preco_compra ?? 0);
+                return $qtd * $custoUnit;
+            }),
+
+            'pontos'       => (int) $itens->sum('pontuacao'),
+            'pontos_total' => (int) $itens->sum('pontuacao_total'),
+        ];
+
+        $totais['lucro_total'] = $totais['receita_liquida_itens'] - $totais['custo_total'];
+        $totais['margem_total'] = $totais['receita_liquida_itens'] > 0
+            ? ($totais['lucro_total'] / $totais['receita_liquida_itens']) * 100
+            : 0;
+
+        return view('vendas.show', compact('pedido', 'totais'));
     }
 
     private function normalizeMovEnums(string $tipo, ?string $status): array
@@ -427,41 +516,12 @@ class PedidoVendaController extends Controller
                 ]);
             }
 
-            // ===== 5) Reserva de estoque + movimentação (status inicial = PENDENTE) =====
-            foreach ($itensCalc as $it) {
-                $estq = DB::table($TAB_ESTOQUE)
-                    ->lockForUpdate()
-                    ->where('codfabnumero', $it['codfabnumero'])
-                    ->first();
+            // ===== 5) Reserva de estoque via service (já trata KITS nos componentes) =====
+            /** @var \App\Models\PedidoVenda|null $pedidoReserva */
+            $pedidoReserva = PedidoVenda::with('itens.produto.itensDoKit.produtoItem')->find($vendaId);
 
-                if (!$estq) {
-                    DB::table($TAB_ESTOQUE)->insert([
-                        'produto_id'   => $it['produto_id'],
-                        'codfabnumero' => $it['codfabnumero'],
-                        $COL_RESERVA   => 0,
-                    ]);
-
-                    $estq = (object)[$COL_RESERVA => 0];
-                }
-
-                $novaReserva = ((int)($estq->{$COL_RESERVA} ?? 0)) + (int)$it['quantidade'];
-
-                DB::table($TAB_ESTOQUE)
-                    ->where('codfabnumero', $it['codfabnumero'])
-                    ->update([$COL_RESERVA => $novaReserva]);
-
-                $mov = [
-                    'produto_id'   => $it['produto_id'],
-                    'codfabnumero' => $it['codfabnumero'],
-                    'tipo_mov'     => 'RESERVA_SAIDA',
-                    'status'       => 'RESERVADO',
-                    'origem'       => 'VENDA',
-                    'quantidade'   => (int)$it['quantidade'],
-                    'data_mov'     => now(),
-                    'observacao'   => 'Reserva de estoque na criação do pedido',
-                ];
-
-                $this->safeInsertMov($TAB_MOV, $mov, $vendaId);
+            if ($pedidoReserva) {
+                $this->estoque->reservarVenda($pedidoReserva);
             }
 
             return redirect()
@@ -543,6 +603,7 @@ class PedidoVendaController extends Controller
 
     /**
      * Atualiza (e reavalia campanhas)
+     * Agora refaz as reservas de forma consistente (inclusive para KITs).
      */
     public function update(Request $request, $id)
     {
@@ -573,11 +634,20 @@ class PedidoVendaController extends Controller
 
         DB::beginTransaction();
         try {
-            $pedido = PedidoVenda::with('itens')->findOrFail($id);
+            // Carrega pedido com itens, produtos e composição de kits
+            $pedido = PedidoVenda::with('itens.produto.itensDoKit.produtoItem')->findOrFail($id);
 
-            // Recalcula totais
-            $total = 0.0;
-            $pontosTotal = 0;
+            $statusAnterior = strtoupper($pedido->status ?? '');
+            $eraPendente    = in_array($statusAnterior, ['PENDENTE', 'ABERTO', 'RESERVADO'], true);
+
+            // Se era pendente, libera as reservas antigas (inclusive de kits) ANTES de mexer nos itens
+            if ($eraPendente) {
+                $this->estoque->cancelarReservaVenda($pedido);
+            }
+
+            // Recalcula totais com base nos itens enviados
+            $total               = 0.0;
+            $pontosTotal         = 0;
             $pontosUnitSomatorio = 0;
 
             foreach ($request->itens as $it) {
@@ -639,24 +709,14 @@ class PedidoVendaController extends Controller
                 ]);
             }
 
-            // Reserva se ainda pendente
-            if (strtoupper($pedido->status) === 'PENDENTE') {
-                $old = $pedido->load('itens');
-                foreach ($old->itens as $itemOld) {
-                    DB::table('appestoque')
-                        ->where('produto_id', $itemOld->produto_id)
-                        ->update([
-                            'reservado'  => DB::raw("GREATEST(COALESCE(reservado,0) - {$itemOld->quantidade}, 0)"),
-                            'updated_at' => now(),
-                        ]);
-                }
-                DB::table('appmovestoque')
-                    ->where('origem', 'VENDA')
-                    ->where('origem_id', $pedido->id)
-                    ->where('status', 'PENDENTE')
-                    ->delete();
+            // Recarrega pedido com os NOVOS itens e composição dos kits
+            $pedido->load('itens.produto.itensDoKit.produtoItem');
 
-                $pedido->load('itens.produto');
+            // Se o pedido estiver pendente/aberto/reservado após a edição, recria as reservas de estoque
+            $statusAtual  = strtoupper($pedido->status ?? '');
+            $estaPendente = in_array($statusAtual, ['PENDENTE', 'ABERTO', 'RESERVADO'], true);
+
+            if ($estaPendente) {
                 $this->estoque->reservarVenda($pedido);
             }
 
@@ -787,77 +847,109 @@ class PedidoVendaController extends Controller
             return back()->with('error', 'Não é possível cancelar este pedido, pois o prêmio de indicação já foi pago.');
         }
 
-        DB::transaction(function () use ($id, $data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $TAB_CR, $COL_RESERVA, $COL_DISP) {
+        DB::transaction(function () use ($id, $data, $TAB_PEDIDO, $TAB_ESTOQUE, $TAB_MOV, $TAB_CR) {
 
-            // 1) Lock do pedido
-            $pedido = DB::table($TAB_PEDIDO)->lockForUpdate()->where('id', $id)->first();
-            if (!$pedido) abort(404, 'Pedido não encontrado.');
-            if (mb_strtoupper($pedido->status) === 'CANCELADO') {
+            // 1) Carrega pedido com lock, itens, produtos e composição (kits)
+            $pedido = PedidoVenda::with('itens.produto.itensDoKit.produtoItem')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$pedido) {
+                abort(404, 'Pedido não encontrado.');
+            }
+
+            $statusPedido = mb_strtoupper($pedido->status ?? '');
+
+            if ($statusPedido === 'CANCELADO') {
                 abort(422, 'Este pedido já está cancelado.');
             }
 
-            // 2) Itens do pedido
-            $itens = DB::table($TAB_ITENS)->where('pedido_id', $id)->get();
+            // 2) Ajustes de estoque de acordo com o status
+            if (in_array($statusPedido, ['PENDENTE', 'ABERTO', 'RESERVADO'], true)) {
 
-            // 3) Ajustes de estoque (seu código atual aqui...)
-            foreach ($itens as $it) {
-                $estq = DB::table($TAB_ESTOQUE)
-                    ->lockForUpdate()
-                    ->where('codfabnumero', $it->codfabnumero)
-                    ->first();
+                // Pedido pendente: apenas libera reservas (inclusive de kits)
+                $this->estoque->cancelarReservaVenda($pedido);
+            } elseif ($statusPedido === 'ENTREGUE') {
 
-                if (!$estq) continue;
+                // Pedido entregue: devolve estoque (kit => componentes)
+                $colBase = $this->firstWritableColumn($TAB_ESTOQUE, [
+                    'estoque_gerencial',
+                    'fisico',
+                    'qtd_fisica',
+                    'qtd_total',
+                    'quantidade',
+                    'qtd',
+                    'estoque'
+                ]);
 
-                $qtd = (int) $it->quantidade;
+                if ($colBase) {
+                    foreach ($pedido->itens as $item) {
+                        $qtdItem = (float)($item->quantidade ?? 0);
+                        if ($qtdItem <= 0) {
+                            continue;
+                        }
 
-                if (in_array(mb_strtoupper($pedido->status), ['PENDENTE', 'ABERTO', 'RESERVADO'])) {
+                        $produto = $item->produto;
+                        $isKit   = ($produto?->tipo ?? null) === 'K'
+                            && $produto->itensDoKit
+                            && $produto->itensDoKit->count() > 0;
 
-                    $valorReservaAtual = (int) ($estq->{$COL_RESERVA} ?? 0);
-                    $novaReserva = max(0, $valorReservaAtual - $qtd);
+                        if ($isKit) {
+                            // 🔹 Estorno de KIT: devolve componentes
+                            foreach ($produto->itensDoKit as $componente) {
+                                $produtoBase = $componente->produtoItem ?? null;
+                                if (!$produtoBase) {
+                                    continue;
+                                }
 
-                    DB::table($TAB_ESTOQUE)
-                        ->where('codfabnumero', $it->codfabnumero)
-                        ->update([$COL_RESERVA => $novaReserva]);
+                                $qtdComp = $qtdItem * (float)($componente->quantidade ?? 0);
+                                if ($qtdComp <= 0) {
+                                    continue;
+                                }
 
-                    $mov = [
-                        'produto_id'   => $it->produto_id,
-                        'codfabnumero' => $it->codfabnumero,
-                        'tipo_mov'     => 'RESERVA_ENTRADA',
-                        'status'       => 'CANCELADO',
-                        'origem'       => 'VENDA',
-                        'quantidade'   => (int)$qtd,
-                        'data_mov'     => now(),
-                        'observacao'   => $data['observacao'] . ' (cancelamento de reserva)',
-                    ];
-                    $this->safeInsertMov($TAB_MOV, $mov, $id);
-                } elseif (mb_strtoupper($pedido->status) === 'ENTREGUE') {
-                    $colBase = $this->firstWritableColumn($TAB_ESTOQUE, [
-                        'estoque_gerencial',
-                        'fisico',
-                        'qtd_fisica',
-                        'qtd_total',
-                        'quantidade',
-                        'qtd',
-                        'estoque'
-                    ]);
+                                $produtoBaseId = (int)$produtoBase->id;
+                                $codfabBase    = $produtoBase->codfabnumero ?? null;
 
-                    if ($colBase) {
-                        DB::table($TAB_ESTOQUE)
-                            ->where('codfabnumero', $it->codfabnumero)
-                            ->increment($colBase, $qtd);
+                                // Devolve estoque do componente
+                                DB::table($TAB_ESTOQUE)
+                                    ->where('produto_id', $produtoBaseId)
+                                    ->increment($colBase, $qtdComp);
+
+                                $mov = [
+                                    'produto_id'   => $produtoBaseId,
+                                    'codfabnumero' => $codfabBase,
+                                    'tipo_mov'     => 'ENTRADA',
+                                    'status'       => 'CANCELADO',
+                                    'origem'       => 'VENDA',
+                                    'quantidade'   => $qtdComp,
+                                    'data_mov'     => now(),
+                                    'observacao'   => $data['observacao'] . ' (estorno de venda entregue - componente do kit)',
+                                ];
+                                $this->safeInsertMov($TAB_MOV, $mov, $id);
+                            }
+                        } else {
+                            // 🔹 Produto normal: devolve o próprio item
+                            $produtoId = (int)$item->produto_id;
+                            $codfab    = $item->codfabnumero ?? ($produto->codfabnumero ?? null);
+
+                            DB::table($TAB_ESTOQUE)
+                                ->where('produto_id', $produtoId)
+                                ->increment($colBase, $qtdItem);
+
+                            $mov = [
+                                'produto_id'   => $produtoId,
+                                'codfabnumero' => $codfab,
+                                'tipo_mov'     => 'ENTRADA',
+                                'status'       => 'CANCELADO',
+                                'origem'       => 'VENDA',
+                                'quantidade'   => $qtdItem,
+                                'data_mov'     => now(),
+                                'observacao'   => $data['observacao'],
+                            ];
+                            $this->safeInsertMov($TAB_MOV, $mov, $id);
+                        }
                     }
-
-                    $mov = [
-                        'produto_id'   => $it->produto_id,
-                        'codfabnumero' => $it->codfabnumero,
-                        'tipo_mov'     => 'ENTRADA',
-                        'status'       => 'CANCELADO',
-                        'origem'       => 'VENDA',
-                        'quantidade'   => (int)$qtd,
-                        'data_mov'     => now(),
-                        'observacao'   => $data['observacao'],
-                    ];
-                    $this->safeInsertMov($TAB_MOV, $mov, $id);
                 }
             }
 
@@ -1575,4 +1667,6 @@ class PedidoVendaController extends Controller
         return redirect()->route('vendas.index')
             ->with('success', 'Entrega confirmada, CR gerado, campanhas/indicações processadas e recibo enviado pelo WhatsApp (quando permitido).');
     }
+
+    
 }

@@ -49,10 +49,8 @@
                                                 ? 'ID-1 (Vendedor padrão / sem indicação)'
                                                 : 'ID-' . $indicadorId . ' (cliente indicado)';
                                     @endphp
-                                    <option value="{{ $cliente->id }}"
-                                        data-indicador-id="{{ $indicadorId }}"
-                                        data-indicador-text="{{ $indicadorTexto }}"
-                                        @selected(old('cliente_id') == $cliente->id)>
+                                    <option value="{{ $cliente->id }}" data-indicador-id="{{ $indicadorId }}"
+                                        data-indicador-text="{{ $indicadorTexto }}" @selected(old('cliente_id') == $cliente->id)>
                                         {{ $cliente->nome ?? ($cliente->nomecompleto ?? $cliente->razaosocial) }}
                                     </option>
                                 @endforeach
@@ -83,8 +81,7 @@
                     <select name="revendedora_id" class="w-full border-gray-300 rounded-md shadow-sm">
                         <option value="">Selecione...</option>
                         @foreach ($revendedoras ?? [] as $rev)
-                            <option value="{{ $rev->id }}"
-                                @selected(old('revendedora_id', $revendedoraPadraoId) == $rev->id)>
+                            <option value="{{ $rev->id }}" @selected(old('revendedora_id', $revendedoraPadraoId) == $rev->id)>
                                 {{ $rev->nome }}
                             </option>
                         @endforeach
@@ -94,8 +91,7 @@
                 {{-- Data Venda --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Data da Venda</label>
-                    <input type="date" name="data_pedido"
-                        value="{{ old('data_pedido', now()->toDateString()) }}"
+                    <input type="date" name="data_pedido" value="{{ old('data_pedido', now()->toDateString()) }}"
                         class="w-full border-gray-300 rounded-md shadow-sm" required>
                 </div>
 
@@ -133,37 +129,45 @@
                 {{-- Observação --}}
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700">Observação</label>
-                    <textarea name="observacao" rows="2"
-                        class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
+                    <textarea name="observacao" rows="2" class="w-full border-gray-300 rounded-md shadow-sm">{{ old('observacao') }}</textarea>
                 </div>
             </div>
 
             {{-- Importar texto de pedido (WhatsApp) --}}
-            <div class="mb-6 border rounded-lg p-4 bg-gray-50">
-                <h3 class="text-sm font-semibold text-gray-700 mb-2">
-                    Importar texto do pedido (WhatsApp)
-                </h3>
-                <p class="text-xs text-gray-500 mb-2">
-                    Cole aqui a mensagem enviada pelo cliente (no padrão "1 Unidade(s) - Código: 6587 - Preço: R$ 25,90
-                    - ...").
-                    O sistema vai identificar os itens e preencher a tabela abaixo.
-                </p>
-
-                <textarea id="textoWhatsapp" rows="5"
-                    class="w-full border-gray-300 rounded-md shadow-sm text-sm mb-3"
-                    placeholder="Cole o texto do pedido aqui..."></textarea>
-
-                <div class="flex items-center justify-between">
-                    <button type="button" id="btnImportarTextoWhatsapp"
-                        class="px-3 py-1 bg-indigo-600 text-white text-xs rounded shadow hover:bg-indigo-700">
-                        Ler texto e importar itens
-                    </button>
-
-                    <span class="text-[11px] text-gray-500">
-                        Dica: use o texto completo que a Natura envia com os itens e o total.
+            <div class="mb-6 border rounded-lg bg-gray-50">
+                {{-- Cabeçalho "abre/fecha" --}}
+                <button type="button" id="toggleWhatsappImport"
+                    class="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-t-lg">
+                    <span>Importar texto do pedido (WhatsApp)</span>
+                    <span id="iconWhatsappImport" class="text-xs text-gray-500">
+                        Mostrar ▾
                     </span>
+                </button>
+
+                {{-- Corpo colapsável --}}
+                <div id="whatsappImportBody" class="px-4 pb-4 pt-2 border-t hidden">
+                    <p class="text-xs text-gray-500 mb-2">
+                        Cole aqui a mensagem enviada pelo cliente (no padrão
+                        "1 Unidade(s) - Código: 6587 - Preço: R$ 25,90 - ...").
+                        O sistema vai identificar os itens e preencher a tabela abaixo.
+                    </p>
+
+                    <textarea id="textoWhatsapp" rows="5" class="w-full border-gray-300 rounded-md shadow-sm text-sm mb-3"
+                        placeholder="Cole o texto do pedido aqui..."></textarea>
+
+                    <div class="flex items-center justify-between">
+                        <button type="button" id="btnImportarTextoWhatsapp"
+                            class="px-3 py-1 bg-indigo-600 text-white text-xs rounded shadow hover:bg-indigo-700">
+                            Ler texto e importar itens
+                        </button>
+
+                        <span class="text-[11px] text-gray-500">
+                            Dica: use o texto completo que a Natura envia com os itens e o total.
+                        </span>
+                    </div>
                 </div>
             </div>
+
 
             {{-- Itens --}}
             <h3 class="text-lg font-semibold mb-2">Itens da Venda</h3>
@@ -204,7 +208,8 @@
                         <tr class="linha-item" data-index="0">
                             {{-- Código / Descrição --}}
                             <td class="px-2 py-1 border max-w-md align-top">
-                                <select class="produto-select w-full max-w-md" data-index="0" style="width: 100%;"></select>
+                                <select class="produto-select w-full max-w-md" data-index="0"
+                                    style="width: 100%;"></select>
                                 <input type="hidden" name="itens[0][codfabnumero]" class="input-codfab">
                                 <input type="hidden" name="itens[0][produto_id]" class="input-produto-id">
                                 {{-- Preço compra fica só em hidden, para cálculo de lucro --}}
@@ -293,8 +298,8 @@
 
                     <div class="flex items-center gap-2">
                         <span>Desconto (R$):</span>
-                        <input type="number" step="0.01" min="0" name="valor_desconto" id="valor_desconto"
-                            value="{{ old('valor_desconto', 0) }}"
+                        <input type="number" step="0.01" min="0" name="valor_desconto"
+                            id="valor_desconto" value="{{ old('valor_desconto', 0) }}"
                             class="w-28 border-gray-300 rounded-md shadow-sm text-right text-sm">
                     </div>
 
@@ -320,12 +325,12 @@
             {{-- Opções de comunicação --}}
             <div class="mt-4">
                 <label class="inline-flex items-center text-sm text-gray-700">
-                    <input type="checkbox" name="enviar_mensagem" value="1"
-                           class="rounded border-gray-300 mr-2"
-                           {{ old('enviar_mensagem', '1') ? 'checked' : '' }}>
+                    <input type="checkbox" name="enviar_msg_cliente" value="1"
+                        class="rounded border-gray-300 mr-2" {{ old('enviar_msg_cliente', '1') ? 'checked' : '' }}>
                     <span>Enviar mensagem de confirmação para o cliente no WhatsApp</span>
                 </label>
             </div>
+
 
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="{{ route('vendas.index') }}"
@@ -358,6 +363,22 @@
                 placeholder: 'Selecione ou digite o nome do cliente...',
                 width: '100%'
             });
+
+            // ----------------- COLAPSAR IMPORTAÇÃO WHATSAPP -----------------
+            const btnToggleWhatsapp = document.getElementById('toggleWhatsappImport');
+            const bodyWhatsapp = document.getElementById('whatsappImportBody');
+            const iconWhatsapp = document.getElementById('iconWhatsappImport');
+
+            if (btnToggleWhatsapp && bodyWhatsapp) {
+                btnToggleWhatsapp.addEventListener('click', function() {
+                    const estaOculto = bodyWhatsapp.classList.toggle('hidden');
+
+                    if (iconWhatsapp) {
+                        iconWhatsapp.textContent = estaOculto ? 'Mostrar ▾' : 'Ocultar ▴';
+                    }
+                });
+            }
+
 
             // --------- Indicador do cliente (campanha de indicação) ---------
             const indicadorTextEl = document.getElementById('indicador-text');
@@ -451,67 +472,67 @@
                 row.querySelector('.input-lucro-linha').value = lucro.toFixed(2);
             }
 
-  function recalcularTotais() {
-    let totalVendaBruta = 0;
-    let totalPontos = 0;
-    let totalLucroBruto = 0;
+            function recalcularTotais() {
+                let totalVendaBruta = 0;
+                let totalPontos = 0;
+                let totalLucroBruto = 0;
 
-    document.querySelectorAll('#tbody-itens tr').forEach(function(linha) {
-        const qtd      = toNumber(linha.querySelector('.input-quantidade').value);
-        const pVenda   = toNumber(linha.querySelector('.input-preco-venda').value);
-        const pCompra  = toNumber(linha.querySelector('.input-preco-compra').value);
-        const descLinha = toNumber(linha.querySelector('.input-desconto').value);
-        const pontos   = toNumber(linha.querySelector('.input-pontos').value);
+                document.querySelectorAll('#tbody-itens tr').forEach(function(linha) {
+                    const qtd = toNumber(linha.querySelector('.input-quantidade').value);
+                    const pVenda = toNumber(linha.querySelector('.input-preco-venda').value);
+                    const pCompra = toNumber(linha.querySelector('.input-preco-compra').value);
+                    const descLinha = toNumber(linha.querySelector('.input-desconto').value);
+                    const pontos = toNumber(linha.querySelector('.input-pontos').value);
 
-        const totalBrutoLinha = qtd * pVenda;
-        const totalLinha      = Math.max(0, totalBrutoLinha - descLinha);
-        const custoTotal      = qtd * pCompra;
-        const lucroLinhaBruto = totalLinha - custoTotal;
+                    const totalBrutoLinha = qtd * pVenda;
+                    const totalLinha = Math.max(0, totalBrutoLinha - descLinha);
+                    const custoTotal = qtd * pCompra;
+                    const lucroLinhaBruto = totalLinha - custoTotal;
 
-        totalVendaBruta += totalLinha;
-        totalPontos     += (qtd * pontos);
-        totalLucroBruto += lucroLinhaBruto;
-    });
+                    totalVendaBruta += totalLinha;
+                    totalPontos += (qtd * pontos);
+                    totalLucroBruto += lucroLinhaBruto;
+                });
 
-    // Atualiza spans básicos
-    document.getElementById('totalVendaSpan').innerText  = totalVendaBruta.toFixed(2).replace('.', ',');
-    document.getElementById('totalPontosSpan').innerText = totalPontos.toFixed(0);
+                // Atualiza spans básicos
+                document.getElementById('totalVendaSpan').innerText = totalVendaBruta.toFixed(2).replace('.', ',');
+                document.getElementById('totalPontosSpan').innerText = totalPontos.toFixed(0);
 
-    // Desconto do pedido
-    const inputValorDesconto = document.getElementById('valor_desconto');
-    const descontoPedido = inputValorDesconto
-        ? toNumber(inputValorDesconto.value)
-        : 0;
+                // Desconto do pedido
+                const inputValorDesconto = document.getElementById('valor_desconto');
+                const descontoPedido = inputValorDesconto ?
+                    toNumber(inputValorDesconto.value) :
+                    0;
 
-    // Total líquido do pedido
-    const totalLiquido = Math.max(0, totalVendaBruta - descontoPedido);
+                // Total líquido do pedido
+                const totalLiquido = Math.max(0, totalVendaBruta - descontoPedido);
 
-    const spanTotalLiquido = document.getElementById('totalLiquidoSpan');
-    if (spanTotalLiquido) {
-        spanTotalLiquido.innerText = totalLiquido.toFixed(2).replace('.', ',');
-    }
+                const spanTotalLiquido = document.getElementById('totalLiquidoSpan');
+                if (spanTotalLiquido) {
+                    spanTotalLiquido.innerText = totalLiquido.toFixed(2).replace('.', ',');
+                }
 
-    // Lucro após considerar o desconto do pedido
-    const lucroAposDesconto = Math.max(0, totalLucroBruto - descontoPedido);
+                // Lucro após considerar o desconto do pedido
+                const lucroAposDesconto = Math.max(0, totalLucroBruto - descontoPedido);
 
-    document.getElementById('totalLucroSpan').innerText =
-        lucroAposDesconto.toFixed(2).replace('.', ',');
+                document.getElementById('totalLucroSpan').innerText =
+                    lucroAposDesconto.toFixed(2).replace('.', ',');
 
-    // Hidden para o backend
-    document.getElementById('total_venda').value  = totalVendaBruta.toFixed(2);
-    document.getElementById('total_pontos').value = totalPontos.toFixed(0);
-    document.getElementById('total_lucro').value  = lucroAposDesconto.toFixed(2);
+                // Hidden para o backend
+                document.getElementById('total_venda').value = totalVendaBruta.toFixed(2);
+                document.getElementById('total_pontos').value = totalPontos.toFixed(0);
+                document.getElementById('total_lucro').value = lucroAposDesconto.toFixed(2);
 
-    const inputValorTotal   = document.getElementById('valor_total');
-    const inputValorLiquido = document.getElementById('valor_liquido');
+                const inputValorTotal = document.getElementById('valor_total');
+                const inputValorLiquido = document.getElementById('valor_liquido');
 
-    if (inputValorTotal) {
-        inputValorTotal.value = totalVendaBruta.toFixed(2);
-    }
-    if (inputValorLiquido) {
-        inputValorLiquido.value = totalLiquido.toFixed(2);
-    }
-}
+                if (inputValorTotal) {
+                    inputValorTotal.value = totalVendaBruta.toFixed(2);
+                }
+                if (inputValorLiquido) {
+                    inputValorLiquido.value = totalLiquido.toFixed(2);
+                }
+            }
 
 
             function adicionarLinha() {
@@ -640,13 +661,17 @@
                                 },
                                 success: function(data) {
                                     if (!data || !data.length) {
-                                        console.warn('Produto não encontrado para código', codigo);
+                                        console.warn(
+                                            'Produto não encontrado para código',
+                                            codigo);
                                         return;
                                     }
 
-                                    let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
+                                    let prod = data.find(p => p.codigo_fabrica ==
+                                        codigo) || data[0];
 
-                                    const option = new Option(prod.text, prod.id, true, true);
+                                    const option = new Option(prod.text, prod.id,
+                                        true, true);
                                     $select.append(option).trigger('change');
 
                                     $select.trigger({
@@ -656,14 +681,17 @@
                                         }
                                     });
 
-                                    novaLinha.querySelector('.input-quantidade').value = qtd;
+                                    novaLinha.querySelector('.input-quantidade')
+                                        .value = qtd;
 
                                     if (!isNaN(pontos) && pontos > 0) {
-                                        novaLinha.querySelector('.input-pontos').value = pontos;
+                                        novaLinha.querySelector('.input-pontos')
+                                            .value = pontos;
                                     }
 
                                     if (!isNaN(precoVenda) && precoVenda > 0) {
-                                        novaLinha.querySelector('.input-preco-venda').value =
+                                        novaLinha.querySelector(
+                                                '.input-preco-venda').value =
                                             precoVenda.toFixed(2);
                                     }
 
@@ -828,7 +856,8 @@
                                                 linhaBase.querySelectorAll('input')
                                                     .forEach(inp => inp.value = '');
                                                 linhaBase.querySelector(
-                                                    '.input-quantidade').value = 1;
+                                                        '.input-quantidade').value =
+                                                    1;
                                                 linhaBase.querySelector(
                                                     '.input-desconto').value = 0;
                                             } else {
@@ -838,16 +867,22 @@
                                             missingItems.push({
                                                 codigo: codigo,
                                                 quantidade: qtd,
-                                                preco_unitario: isNaN(precoV) ? 0 : precoV,
-                                                descricao: item.descricao || ''
+                                                preco_unitario: isNaN(
+                                                        precoV) ? 0 :
+                                                    precoV,
+                                                descricao: item.descricao ||
+                                                    ''
                                             });
 
                                             return;
                                         }
 
-                                        let prod = data.find(p => p.codigo_fabrica == codigo) || data[0];
+                                        let prod = data.find(p => p
+                                            .codigo_fabrica == codigo) || data[
+                                            0];
 
-                                        const option = new Option(prod.text, prod.id, true, true);
+                                        const option = new Option(prod.text, prod
+                                            .id, true, true);
                                         $select.append(option).trigger('change');
 
                                         $select.trigger({
@@ -857,10 +892,12 @@
                                             }
                                         });
 
-                                        linhaAlvo.querySelector('.input-quantidade').value = qtd;
+                                        linhaAlvo.querySelector('.input-quantidade')
+                                            .value = qtd;
 
                                         if (!isNaN(precoV) && precoV > 0) {
-                                            linhaAlvo.querySelector('.input-preco-venda').value =
+                                            linhaAlvo.querySelector(
+                                                    '.input-preco-venda').value =
                                                 precoV.toFixed(2);
                                         }
 
@@ -871,7 +908,8 @@
                                         missingItems.push({
                                             codigo: codigo,
                                             quantidade: qtd,
-                                            preco_unitario: isNaN(precoV) ? 0 : precoV,
+                                            preco_unitario: isNaN(precoV) ?
+                                                0 : precoV,
                                             descricao: item.descricao || ''
                                         });
 
@@ -910,7 +948,7 @@
                     return;
                 }
 
-            try {
+                try {
                     const res = await fetch(`/planos-por-forma/${encodeURIComponent(formaId)}`, {
                         headers: {
                             'Accept': 'application/json'
@@ -924,9 +962,9 @@
                     planos.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p.id;
-                        opt.textContent = p.parcelas > 0
-                            ? `${p.descricao} (${p.parcelas}x)`
-                            : p.descricao;
+                        opt.textContent = p.parcelas > 0 ?
+                            `${p.descricao} (${p.parcelas}x)` :
+                            p.descricao;
                         opt.dataset.codigo = p.codigo ?? '';
                         opt.dataset.parcelas = p.parcelas ?? 0;
                         opt.dataset.prazo1 = p.prazo1 ?? 0;

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ProdutoKitItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Empresa;
@@ -28,6 +29,7 @@ class Produto extends Model
         'preco_compra',
         'codnotafiscal',
         'ean',
+        'tipo',
         'empresa_id',
     ];
     public function empresa()
@@ -73,5 +75,29 @@ class Produto extends Model
         return $this->hasOne(\App\Models\TabelaPreco::class, 'produto_id', 'id')
             ->vigente()
             ->latestOfMany('data_inicio');
+    }
+
+    public function itensDoKit()
+    {
+        // Este produto é um KIT (tipo = 'K') e tem vários itens
+        return $this->hasMany(ProdutoKitItem::class, 'kit_produto_id', 'id')
+            ->with('produtoItem');
+    }
+
+    public function kitsOndeSouItem()
+    {
+        // Este produto é unitário (tipo = 'P') e pode estar em vários kits
+        return $this->hasMany(ProdutoKitItem::class, 'item_produto_id', 'id')
+            ->with('produtoKit');
+    }
+
+    public function scopeProdutos($query)
+    {
+        return $query->where('tipo', 'P');
+    }
+
+    public function scopeKits($query)
+    {
+        return $query->where('tipo', 'K');
     }
 }

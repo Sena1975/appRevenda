@@ -281,11 +281,11 @@
             </div>
 
             {{-- Opções de comunicação --}}
-            <div class="mb-4">
+            <div class="mt-4">
                 <label class="inline-flex items-center text-sm text-gray-700">
-                    <input type="checkbox" name="enviar_mensagem" value="1" class="rounded border-gray-300 mr-2"
-                        {{ old('enviar_mensagem', '1') ? 'checked' : '' }}>
-                    <span>Enviar mensagem de atualização/confirmação para o cliente no WhatsApp</span>
+                    <input type="checkbox" name="enviar_msg_cliente" value="1" class="rounded border-gray-300 mr-2"
+                        {{ old('enviar_msg_cliente', '1') ? 'checked' : '' }}>
+                    <span>Enviar mensagem de confirmação para o cliente no WhatsApp</span>
                 </label>
             </div>
 
