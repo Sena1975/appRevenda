@@ -117,6 +117,8 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
         ->name('produtos.importar.store');
     // 2) RESOURCE SEM SHOW (você não tem método show no controller)
     Route::resource('produtos', ProdutoController::class)->except(['show']);
+    Route::get('/produtos/importar/relatorio/{arquivo}', [ProdutoController::class, 'baixarRelatorioImportacaoProdutos'])
+    ->name('produtos.importar.relatorio');
 
     // restante você deixa igual:
     Route::resource('fornecedores', AppFornecedorController::class);
