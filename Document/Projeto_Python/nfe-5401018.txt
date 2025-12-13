@@ -1,0 +1,2568 @@
+Dados Gerais
+Chave de Acesso
+2925 1171 6739 9000 5306 5500 1005 4010 1811 1240 3974
+Número
+5401018
+Versão XML
+4.00
+
+NFe
+Emitente
+Destinatário
+Produtos e Serviços
+Totais
+Transporte
+Cobrança
+Informações Adicionais
+Dados dos Produtos e Serviços
+Num.
+Descrição
+Qtd.
+Unidade Comercial
+Valor(R$)
+1
+LUMINA COND MASC ANTIQUE 50ML PS
+1,0000
+PC
+13,15
+Código do Produto
+000000000050471148
+Código NCM
+33059000
+Código CEST
+2801300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+01
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883143008
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883143008
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+13,1500000000
+Valor unitário de tributação
+13,1500000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000013
+Valor Aproximado dos Tributos
+Número da FCI
+0D2E94C2-7F43-41C6-9FBE-435A27F65445
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+13,15
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,70
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+13,15
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+2
+LUMINA SH ANTIQUEDA 300ML PS
+1,0000
+PC
+21,80
+Código do Produto
+000000000050460803
+Código NCM
+33051000
+Código CEST
+2805900
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883127787
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883127787
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+21,8000000000
+Valor unitário de tributação
+21,8000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000013
+Valor Aproximado dos Tributos
+Número da FCI
+9252215C-58F9-4273-8F35-E6FD069E2425
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+21,80
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+4,47
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+21,80
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+3
+LUMINA COND ANTIQUEDA 300ML PS
+1,0000
+PC
+23,03
+Código do Produto
+000000000050460837
+Código NCM
+33059000
+Código CEST
+2801300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+01
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883128128
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883128128
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+23,0300000000
+Valor unitário de tributação
+23,0300000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000013
+Valor Aproximado dos Tributos
+Número da FCI
+AAFCBD45-CE42-4B01-807E-D97DFD359580
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+23,03
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+4,72
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+23,03
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+4
+SEVE RF OLEO DES AMEND ORQU NEGR 200ML
+1,0000
+PC
+37,06
+Código do Produto
+000000000050569899
+Código NCM
+33072010
+Código CEST
+2801601
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883344276
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883344276
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+37,0600000000
+Valor unitário de tributação
+37,0600000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000011
+Valor Aproximado dos Tributos
+Número da FCI
+5767EF4B-03FE-4B1A-8C30-1A0306515584
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+37,06
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+7,60
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+37,06
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+5
+SEVE OLEO DES HID AMEN ORQ NEGR 200ML
+1,0000
+PC
+43,44
+Código do Produto
+000000000050452466
+Código NCM
+33072010
+Código CEST
+2801601
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883097844
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883097844
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+43,4400000000
+Valor unitário de tributação
+43,4400000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000011
+Valor Aproximado dos Tributos
+Número da FCI
+397A0141-9121-4B68-8490-A98330420059
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+43,44
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+8,91
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+43,44
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+6
+FACES ROSTO SERUM GEL BOOSTER 35G
+1,0000
+PC
+27,67
+Código do Produto
+000000000050391674
+Código NCM
+33049910
+Código CEST
+2800800
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908371603574
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908371603574
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+27,6700000000
+Valor unitário de tributação
+27,6700000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000023
+Valor Aproximado dos Tributos
+Número da FCI
+DDC5F53B-A4B8-4104-8619-B06ED2012095
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+27,67
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+5,67
+Valor da Base de Cálculo do FCP
+27,67
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,55
+Base de Cálculo do ICMS ST
+27,67
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+27,67
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$27,67, Aliq.: 2,00%, VLR R$0,55
+7
+FACES BATOM MULTIMIX CREM COBRE SUNSET
+1,0000
+PC
+10,90
+Código do Produto
+000000000050384292
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908132257244
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908132257244
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000022
+Valor Aproximado dos Tributos
+Número da FCI
+C05514D7-F822-4560-8EF3-84D564F60C04
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+8
+FACES BATOM MULTIMIX CREM HEY HONEY
+1,0000
+PC
+10,90
+Código do Produto
+000000000050505968
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883217853
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883217853
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000021
+Valor Aproximado dos Tributos
+Número da FCI
+162D4772-8AD9-49E3-A8CC-4256732FFE86
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+9
+FACES BATOM MULTIMIX CREM COBRE SUNSET
+1,0000
+PC
+10,90
+Código do Produto
+000000000050505972
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883217891
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883217891
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000020
+Valor Aproximado dos Tributos
+Número da FCI
+A2950C49-B4E8-4AD3-8D53-2787F11A6E92
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+10
+FACES BATOM MULTIMIX CREM ROSA CRUSH
+1,0000
+PC
+10,90
+Código do Produto
+000000000050384290
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908132256094
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908132256094
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000019
+Valor Aproximado dos Tributos
+Número da FCI
+F065A31C-C8A9-4670-B020-1063FFA4AB37
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+11
+FACES BATOM MULTIMIX CREM BEGE FRESH
+1,0000
+PC
+10,90
+Código do Produto
+000000000050384137
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908132255875
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908132255875
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000018
+Valor Aproximado dos Tributos
+Número da FCI
+995E718B-6140-4625-9084-7B6322245907
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+12
+FACES BATOM MULTM CREM BROKEN BROWN 3,5G
+1,0000
+PC
+10,90
+Código do Produto
+000000000050550384
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908132257497
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908132257497
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+10,9000000000
+Valor unitário de tributação
+10,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000017
+Valor Aproximado dos Tributos
+Número da FCI
+00A1DEFF-7FB0-40E8-B79E-09A9BB6C4360
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+10,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+2,23
+Valor da Base de Cálculo do FCP
+10,90
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,22
+Base de Cálculo do ICMS ST
+10,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+10,90
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$10,90, Aliq.: 2,00%, VLR R$0,22
+13
+UNA CORRETIVO CUSHION NUDE ME 24N
+1,0000
+PC
+56,70
+Código do Produto
+000000000050356499
+Código NCM
+33049990
+Código CEST
+2800900
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908371657171
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908371657171
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+56,7000000000
+Valor unitário de tributação
+56,7000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000016
+Valor Aproximado dos Tributos
+Número da FCI
+6043B3AB-C0BB-451D-9B44-2A324BFE1464
+ICMS Normal e ST
+Origem da Mercadoria
+3 - Nacional, mercadoria ou bem com Conteúdo de Importação superior a 40% e inferior ou igual a 70%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+56,70
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+11,62
+Valor da Base de Cálculo do FCP
+56,70
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+1,13
+Base de Cálculo do ICMS ST
+56,70
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+56,70
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$56,70, Aliq.: 2,00%, VLR R$1,13
+14
+FACES BATOM MATTE COOKIE NUDE
+2,0000
+PC
+29,54
+Código do Produto
+000000000050412621
+Código NCM
+33041000
+Código CEST
+2800300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883013288
+Unidade Comercial
+PC
+Quantidade Comercial
+2,0000
+Código EAN Tributável
+7909883013288
+Unidade Tributável
+PC
+Quantidade Tributável
+2,0000
+Valor unitário de comercialização
+14,7700000000
+Valor unitário de tributação
+14,7700000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000015
+Valor Aproximado dos Tributos
+Número da FCI
+8B6A7867-877A-4E43-B3B0-AA3B5E9CB611
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+29,54
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+6,06
+Valor da Base de Cálculo do FCP
+29,54
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,59
+Base de Cálculo do ICMS ST
+29,54
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+29,54
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$29,54, Aliq.: 2,00%, VLR R$0,59
+15
+FESTIVAL DE HUMOR DES COL 75ML
+1,0000
+PC
+99,90
+Código do Produto
+000000000050424995
+Código NCM
+33072010
+Código CEST
+2801600
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883043728
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883043728
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+99,9000000000
+Valor unitário de tributação
+99,9000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000014
+Valor Aproximado dos Tributos
+Número da FCI
+B1D53DD5-EA39-491C-80C2-B0AD9BA0D023
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+99,90
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+20,48
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+99,90
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+16
+LUMINA COND MASCARA MONTADO 3X200ML
+1,0000
+PC
+83,79
+Código do Produto
+000000000050564861
+Código NCM
+33059000
+Código CEST
+2801300
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+01
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883337520
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883337520
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+83,7900000000
+Valor unitário de tributação
+83,7900000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000012
+Valor Aproximado dos Tributos
+Número da FCI
+21A31EAD-D2ED-423B-BE09-FE7F08DD3328
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+83,79
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+17,18
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+83,79
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+17
+TODODIA DES CREME ALGODAO INVISIVEL 80G
+1,0000
+PC
+19,93
+Código do Produto
+000000000050305781
+Código NCM
+33072090
+Código CEST
+2801702
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908240832685
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908240832685
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+19,9300000000
+Valor unitário de tributação
+19,9300000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000010
+Valor Aproximado dos Tributos
+Número da FCI
+D0465895-64DD-466F-9922-9473DB23A805
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+19,93
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+4,09
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+19,93
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+18
+MMBB SAB BARRA 5X100G
+2,0000
+PC
+48,89
+Código do Produto
+000000000050316472
+Código NCM
+34011190
+Código CEST
+2802000
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+01
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908132209533
+Unidade Comercial
+PC
+Quantidade Comercial
+2,0000
+Código EAN Tributável
+7908132209533
+Unidade Tributável
+PC
+Quantidade Tributável
+2,0000
+Valor unitário de comercialização
+24,4450000000
+Valor unitário de tributação
+24,4450000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000009
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+0 - Nacional
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+48,89
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+10,02
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+48,89
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+19
+EKOS POLPA HID MAOS CAST 40G
+2,0000
+PC
+38,57
+Código do Produto
+000000000050545959
+Código NCM
+33049910
+Código CEST
+2800800
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908240820651
+Unidade Comercial
+PC
+Quantidade Comercial
+2,0000
+Código EAN Tributável
+7908240820651
+Unidade Tributável
+PC
+Quantidade Tributável
+2,0000
+Valor unitário de comercialização
+19,2850000000
+Valor unitário de tributação
+19,2850000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000008
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+0 - Nacional
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+38,57
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+7,91
+Valor da Base de Cálculo do FCP
+38,57
+Percentual do Fundo de Combate à Pobreza (FCP)
+2,00
+Valor do Fundo de Combate à Pobreza (FCP)
+0,77
+Base de Cálculo do ICMS ST
+38,57
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+38,57
+Percentual do FCP retido por Substituição Tributária
+2,0000
+Valor do FCP retido por Substituição Tributária
+0,00
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+Informações adicionais do produto
+Descrição
+FCP: BC R$38,57, Aliq.: 2,00%, VLR R$0,77
+20
+NATURE SH CAB LISO E ONDULADO 250ML
+1,0000
+PC
+19,29
+Código do Produto
+000000000050341927
+Código NCM
+33051000
+Código CEST
+2805900
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7908371629567
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7908371629567
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+19,2900000000
+Valor unitário de tributação
+19,2900000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000007
+Valor Aproximado dos Tributos
+Número da FCI
+B21934F9-14BE-4CD7-9581-747768241607
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+19,29
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+3,95
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+19,29
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+21
+TODODIA DES ROLLON NOIT DE VERAO 70ML
+1,0000
+PC
+19,29
+Código do Produto
+000000000050535545
+Código NCM
+33072090
+Código CEST
+2801702
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883271084
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883271084
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+19,2900000000
+Valor unitário de tributação
+19,2900000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000006
+Valor Aproximado dos Tributos
+Número da FCI
+69222855-D098-48B0-B88D-80CFE0353213
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+19,29
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+3,95
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+19,29
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+22
+SACOLA P PACK 3
+1,0000
+PC
+9,49
+Código do Produto
+000000000050495226
+Código NCM
+48194000
+Código CEST
+2805700
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5102
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883197421
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883197421
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+9,4900000000
+Valor unitário de tributação
+9,4900000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000028
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+00 - Tributada integralmente
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+9,49
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+1,95
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+23
+EKOS AMOS DES COL RYOS FLORE 3X1ML TERC
+1,0000
+PC
+2,10
+Código do Produto
+000000000050550351
+Código NCM
+33072010
+Código CEST
+2801600
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5102
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883285319
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883285319
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+2,1000000000
+Valor unitário de tributação
+2,1000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000027
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+0 - Nacional
+Tributação do ICMS
+00 - Tributada integralmente
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+2,10
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+0,43
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+24
+NATURA HOMEM CLAS DES COL AMO 3X1ML TERC
+1,0000
+PC
+2,10
+Código do Produto
+000000000050369192
+Código NCM
+33072010
+Código CEST
+2801600
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5102
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7899563284438
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7899563284438
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+2,1000000000
+Valor unitário de tributação
+2,1000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000026
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+0 - Nacional
+Tributação do ICMS
+00 - Tributada integralmente
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+2,10
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+0,43
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+25
+ESSENCIAL AMT DEOPAR ATRAI FE 3X1MLTERC
+1,0000
+PC
+2,10
+Código do Produto
+000000000050502181
+Código NCM
+33072010
+Código CEST
+2801600
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5102
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883210762
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883210762
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+2,1000000000
+Valor unitário de tributação
+2,1000000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000025
+Valor Aproximado dos Tributos
+Número da FCI
+ICMS Normal e ST
+Origem da Mercadoria
+7 - Estrangeira - Adquirida no mercado interno, sem similar nacional, constante em lista da CAMEX e gás natural
+Tributação do ICMS
+00 - Tributada integralmente
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+2,10
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+0,43
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
+26
+TODODIA DES ROLLON NOIT DE VERAO 70ML
+1,0000
+PC
+19,29
+Código do Produto
+000000000050535545
+Código NCM
+33072090
+Código CEST
+2801702
+Indicador de Escala Relevante
+CNPJ do Fabricante da Mercadoria
+Código de Benefício Fiscal na UF
+Código EX da TIPI
+CFOP
+5403
+Outras Despesas Acessórias
+Valor do Desconto
+Valor Total do Frete
+Valor do Seguro
+
+Indicador de Composição do Valor Total da NF-e
+1 - O valor do item (vProd) compõe o valor total da NF-e (vProd)
+Código EAN Comercial
+7909883271084
+Unidade Comercial
+PC
+Quantidade Comercial
+1,0000
+Código EAN Tributável
+7909883271084
+Unidade Tributável
+PC
+Quantidade Tributável
+1,0000
+Valor unitário de comercialização
+19,2900000000
+Valor unitário de tributação
+19,2900000000
+Número do pedido de compra
+826972180
+Item do pedido de compra
+000024
+Valor Aproximado dos Tributos
+Número da FCI
+69222855-D098-48B0-B88D-80CFE0353213
+ICMS Normal e ST
+Origem da Mercadoria
+5 - Nacional, com Conteúdo de Importação inferior ou igual a 40%
+Tributação do ICMS
+10 - Tributada e com cobrança do ICMS por substituição tributária
+Modalidade Definição da BC ICMS NORMAL
+3 - Valor da Operação
+Base de Cálculo do ICMS Normal
+19,29
+Alíquota do ICMS Normal
+20,5000
+Valor do ICMS Normal
+3,95
+Valor da Base de Cálculo do FCP
+Percentual do Fundo de Combate à Pobreza (FCP)
+Valor do Fundo de Combate à Pobreza (FCP)
+Base de Cálculo do ICMS ST
+19,29
+Alíquota do ICMS ST
+20,5000
+Valor do ICMS ST
+0,00
+Valor da Base de Cálculo do FCP retido por Substituição Tributária
+Percentual do FCP retido por Substituição Tributária
+Valor do FCP retido por Substituição Tributária
+Percentual Redução de BC do ICMS ST
+Percentual do MVA do ICMS ST
+Modalidade Definição da BC ICMS ST
+5 - Pauta (valor)
+Valor do ICMS- ST desonerado
+Motivo da desoneração do ICMS- ST
+Imposto Sobre Produtos Industrializados
+Classe de Enquadramento
+Código de Enquadramento
+999
+Código do Selo
+CNPJ do Produtor
+Qtd. Selo
+CST
+99 - Outras saídas
+Qtd Total Unidade Padrão
+Valor por Unidade
+Valor IPI
+0,00
+Base de Cálculo
+0,00
+Alíquota
+0,0000
+PIS
+COFINS
