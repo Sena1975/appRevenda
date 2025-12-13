@@ -4,16 +4,17 @@
     </x-slot>
 
     <div class="bg-white shadow rounded-lg p-6 max-w-3xl mx-auto">
+
         @if (session('success'))
             <div class="mb-4 p-3 rounded bg-green-50 text-green-700">
                 {{ session('success') }}
             </div>
         @endif
-        
+
         @if (session('arquivo_relatorio'))
             <div class="mb-4">
                 <a href="{{ route('produtos.importar.relatorio', session('arquivo_relatorio')) }}"
-                    class="text-blue-600 hover:underline">
+                   class="text-blue-600 hover:underline">
                     Baixar relatório da importação
                 </a>
             </div>
@@ -42,9 +43,10 @@
                 <input type="file" name="arquivo_produtos" class="block w-full" required>
             </div>
 
-            <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                 Importar
             </button>
         </form>
+
     </div>
 </x-app-layout>

@@ -10,6 +10,8 @@ use App\Models\ProdutoKitItem;
 use App\Models\Tabelapreco;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 
 class ProdutoController extends Controller
@@ -133,13 +135,11 @@ class ProdutoController extends Controller
         }
 
         // === DEFAULTS (para não quebrar NOT NULL no MySQL) ===
-        // Ajuste aqui conforme suas empresas (você citou 11 e 83 como "Padrão")
         $mapCategoriaPadrao = [
             1 => 11, // empresa_id 1 -> categoria 11
             // 2 => 83, // exemplo
         ];
 
-        // Categoria (preferência: mapa -> nome "Padrão" -> primeira categoria)
         $categoriaPadraoId = $mapCategoriaPadrao[$empresaId]
             ?? Categoria::where('nome', 'Padrão')->value('id')
             ?? Categoria::orderBy('id')->value('id');
@@ -148,16 +148,11 @@ class ProdutoController extends Controller
             return back()->withErrors(['arquivo_produtos' => 'Nenhuma categoria encontrada para definir como padrão.']);
         }
 
-        // Subcategoria (nome "Padrão" -> primeira subcategoria)
         $subcategoriaPadraoId = Subcategoria::where('nome', 'Padrão')->value('id')
             ?? Subcategoria::orderBy('id')->value('id');
 
-        // Fornecedor (primeiro fornecedor da empresa)
         $fornecedorPadraoId = Fornecedor::daEmpresa()->orderBy('id')->value('id');
 
-        // Se seu banco exige subcategoria/fornecedor NOT NULL, e não existir nenhum, vai travar:
-        // já retornamos erro amigável.
-        // (Se no seu banco esses campos aceitam NULL, pode remover esses checks.)
         if (!$subcategoriaPadraoId) {
             return back()->withErrors(['arquivo_produtos' => 'Nenhuma subcategoria encontrada para definir como padrão.']);
         }
@@ -169,17 +164,30 @@ class ProdutoController extends Controller
         $conteudo = file_get_contents($arquivo->getRealPath()) ?: '';
         $linhas   = preg_split('/\r\n|\r|\n/', $conteudo);
 
-        $totalLinhas     = 0;
-        $criados         = 0;
-        $atualizados     = 0;
-        $ignorados       = 0;
-        $linhasInvalidas = [];
+        $totalLinhas = 0;
+        $criados     = 0;
+        $atualizados = 0;
+        $ignorados   = 0;
+
+        // === RELATÓRIO (status por item) ===
+        $relatorio = [];
+        $relatorio[] = [
+            'linha',
+            'codfabnumero',
+            'codnotafiscal',
+            'ean',
+            'descricao',
+            'preco_compra',
+            'status',
+            'motivo'
+        ];
 
         DB::beginTransaction();
 
         try {
-            foreach ($linhas as $idx => $linha) {
-                $linha = trim($linha);
+            foreach ($linhas as $idx => $linhaRaw) {
+                $linhaRaw = (string) $linhaRaw;
+                $linha    = trim($linhaRaw);
 
                 if ($linha === '') {
                     continue;
@@ -198,7 +206,16 @@ class ProdutoController extends Controller
 
                 if (count($cols) < 5) {
                     $ignorados++;
-                    $linhasInvalidas[] = "Linha " . ($idx + 1) . " inválida (colunas < 5): {$linha}";
+                    $relatorio[] = [
+                        $idx + 1,
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        'INVALIDO',
+                        'Colunas < 5'
+                    ];
                     continue;
                 }
 
@@ -212,49 +229,75 @@ class ProdutoController extends Controller
 
                 if ($codfabnumero === '' || $descricao === '') {
                     $ignorados++;
-                    $linhasInvalidas[] = "Linha " . ($idx + 1) . " ignorada (codfabnumero/descricao vazios): {$linha}";
+                    $relatorio[] = [
+                        $idx + 1,
+                        $codfabnumero,
+                        $codnotafiscal,
+                        $ean,
+                        $descricao,
+                        $precoCompraBr,
+                        'IGNORADO',
+                        'codfabnumero ou descricao vazio'
+                    ];
                     continue;
                 }
 
                 $precoCompra = $this->brToFloat($precoCompraBr);
 
-                // Procura por codfabnumero dentro da empresa
                 $produto = Produto::query()
                     ->where('empresa_id', $empresaId)
                     ->where('codfabnumero', $codfabnumero)
                     ->first();
 
                 if ($produto) {
-                    // Atualiza SOMENTE o básico
                     $produto->update([
                         'codnotafiscal' => $codnotafiscal ?: $produto->codnotafiscal,
                         'ean'           => $ean ?: $produto->ean,
-                        'nome'          => $descricao, // descricao -> nome
+                        'nome'          => $descricao,
                         'preco_compra'  => $precoCompra,
                     ]);
 
                     $atualizados++;
+
+                    $relatorio[] = [
+                        $idx + 1,
+                        $codfabnumero,
+                        $codnotafiscal,
+                        $ean,
+                        $descricao,
+                        $precoCompraBr,
+                        'ATUALIZADO',
+                        ''
+                    ];
                     continue;
                 }
 
-                // Cria novo produto (cadastro básico + defaults obrigatórios)
                 Produto::create([
-                    'empresa_id'     => $empresaId,
-                    'tipo'           => 'P',
+                    'empresa_id'      => $empresaId,
+                    'tipo'            => 'P',
+                    'codfabnumero'    => $codfabnumero,
+                    'codnotafiscal'   => $codnotafiscal ?: null,
+                    'ean'             => $ean ?: null,
+                    'nome'            => $descricao,
+                    'preco_compra'    => $precoCompra,
 
-                    'codfabnumero'   => $codfabnumero,
-                    'codnotafiscal'  => $codnotafiscal ?: null,
-                    'ean'            => $ean ?: null,
-                    'nome'           => $descricao,
-                    'preco_compra'   => $precoCompra,
-
-                    // defaults para não quebrar NOT NULL
                     'categoria_id'    => $categoriaPadraoId,
                     'subcategoria_id' => $subcategoriaPadraoId,
                     'fornecedor_id'   => $fornecedorPadraoId,
                 ]);
 
                 $criados++;
+
+                $relatorio[] = [
+                    $idx + 1,
+                    $codfabnumero,
+                    $codnotafiscal,
+                    $ean,
+                    $descricao,
+                    $precoCompraBr,
+                    'CRIADO',
+                    ''
+                ];
             }
 
             DB::commit();
@@ -266,12 +309,32 @@ class ProdutoController extends Controller
                 ->withInput();
         }
 
-        // salva relatório de linhas inválidas (opcional)
-        if (!empty($linhasInvalidas)) {
-            $nomeArquivo = 'import_produtos_invalidas_' . date('Ymd_His') . '.txt';
-            $caminho     = storage_path('app/' . $nomeArquivo);
-            file_put_contents($caminho, implode(PHP_EOL, $linhasInvalidas));
-            session()->flash('arquivo_invalidas', $nomeArquivo);
+        // === GERAR CSV DO RELATÓRIO (sempre) ===
+        $dir = 'importacoes';
+        Storage::disk('local')->makeDirectory($dir);
+
+        $nomeRelatorio = 'relatorio_import_produtos_' . date('Ymd_His') . '.csv';
+        $pathRelatorio = $dir . '/' . $nomeRelatorio;
+
+        $csv = "\xEF\xBB\xBF"; // BOM p/ Excel
+        foreach ($relatorio as $row) {
+            $row = array_map(fn($v) => is_scalar($v) || $v === null ? (string)$v : json_encode($v), $row);
+
+            $csv .= implode(';', array_map(function ($v) {
+                $v = str_replace('"', '""', $v);
+                return (str_contains($v, ';') || str_contains($v, "\n") || str_contains($v, '"')) ? "\"{$v}\"" : $v;
+            }, $row)) . "\n";
+        }
+
+        $ok = Storage::disk('local')->put($pathRelatorio, $csv);
+
+        if (!$ok) {
+            Log::error('Falha ao gravar relatório de importação de produtos', [
+                'empresa_id' => $empresaId,
+                'path'       => $pathRelatorio,
+            ]);
+        } else {
+            session()->flash('arquivo_relatorio', $nomeRelatorio);
         }
 
         $msg = "Importação concluída. Linhas lidas: {$totalLinhas}. Criados: {$criados}. Atualizados: {$atualizados}. Ignorados: {$ignorados}.";
@@ -280,19 +343,20 @@ class ProdutoController extends Controller
             ->route('produtos.importar.form')
             ->with('success', $msg);
     }
+
+
     public function baixarRelatorioImportacaoProdutos(string $arquivo)
-{
-    // Segurança: só permite nome de arquivo simples
-    $arquivo = basename($arquivo);
+    {
+        $arquivo = basename($arquivo);
+        $path = 'importacoes/' . $arquivo;
 
-    $caminho = storage_path('app/' . $arquivo);
+        if (!Storage::disk('local')->exists($path)) {
+            abort(404, 'Relatório não encontrado.');
+        }
 
-    if (!file_exists($caminho)) {
-        abort(404, 'Relatório não encontrado.');
+        return Storage::disk('local')->download($path);
     }
 
-    return response()->download($caminho);
-}
 
     /**
      * Processa o arquivo e atualiza appproduto + apptabelapreco.
