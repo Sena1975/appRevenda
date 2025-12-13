@@ -132,6 +132,11 @@
                         ['Subcategorias', 'subcategorias.index', '<path d="M4 6h16M4 12h8m-8 6h16" />'],
                         ['Produtos', 'produtos.index', '<path d="M3 3h18v18H3V3zM7 3v18M17 3v18" />'],
                         [
+                            'Importar Produtos (CSV)',
+                            'produtos.importar.form',
+                            '<path d="M4 4h16v12H4z" /><path d="M12 2v10m0 0l-3-3m3 3l3-3" /><path d="M6 20h12" />',
+                        ],
+                        [
                             'Importar Produtos (ZAP)',
                             'produtos.importar_missing.form',
                             '<path d="M4 4h16v10H4z" /><path d="M12 3v8m0 0l-3-3m3 3l3-3" />',
