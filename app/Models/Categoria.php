@@ -3,17 +3,34 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Categoria extends Model
 {
     protected $table = 'appcategoria';
 
-    protected $fillable = ['nome','categoria','status'];
+    protected $fillable = [
+        // seus campos...
+        'nome', // ou 'descricao' (ajuste)
+        'status',
+        'empresa_id',
+    ];
 
-    protected $casts = ['status'=>'boolean'];
+    protected $casts = [
+        'status' => 'boolean',
+    ];
 
-    public function subcategorias()
+    public function empresa()
     {
-        return $this->hasMany(\App\Models\Subcategoria::class, 'categoria_id', 'id');
+        return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
+    public function scopeDaEmpresa($query)
+    {
+        $user = Auth::user();
+        if ($user?->empresa_id) {
+            return $query->where('empresa_id', $user->empresa_id);
+        }
+        return $query;
     }
 }

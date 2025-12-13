@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Supervisor;
 use App\Http\Requests\SupervisorRequest;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Http\FormRequest;
 
 class SupervisorController extends Controller
 {
-    protected function autorizarEmpresa(Request $request, Supervisor $supervisor): void
+    protected function autorizarEmpresa(Request|FormRequest $request, Supervisor $supervisor): void
     {
         $user = $request->user();
 
@@ -26,20 +27,20 @@ class SupervisorController extends Controller
             $busca = trim($request->busca);
             $q->where(function ($w) use ($busca) {
                 $w->where('nome', 'like', "%{$busca}%")
-                  ->orWhere('cpf', 'like', "%{$busca}%")
-                  ->orWhere('email', 'like', "%{$busca}%");
+                    ->orWhere('cpf', 'like', "%{$busca}%")
+                    ->orWhere('email', 'like', "%{$busca}%");
             });
         }
 
-        if ($request->filled('status') && in_array($request->status, ['0','1'], true)) {
+        if ($request->filled('status') && in_array($request->status, ['0', '1'], true)) {
             $q->where('status', (int) $request->status);
         }
 
-        $pp = in_array((int) $request->por_pagina, [10,25,50,100]) ? (int) $request->por_pagina : 10;
+        $pp = in_array((int) $request->por_pagina, [10, 25, 50, 100]) ? (int) $request->por_pagina : 10;
 
         $supervisores = $q->orderBy('nome')
-                          ->paginate($pp)
-                          ->withQueryString();
+            ->paginate($pp)
+            ->withQueryString();
 
         return view('supervisores.index', compact('supervisores'));
     }
