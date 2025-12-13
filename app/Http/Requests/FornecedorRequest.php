@@ -14,7 +14,7 @@ class FornecedorRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $soDigitos = fn ($v) => $v ? preg_replace('/\D+/', '', $v) : $v;
+        $soDigitos = fn($v) => $v ? preg_replace('/\D+/', '', $v) : $v;
 
         $this->merge([
             'cnpj'     => $soDigitos($this->input('cnpj')),
@@ -25,27 +25,33 @@ class FornecedorRequest extends FormRequest
 
     public function rules(): array
     {
-        // Nas suas rotas o parâmetro costuma vir como {fornecedore}
-        $id = $this->route('fornecedore')->id ?? null;
+        // pega o model vindo da rota (seja {fornecedore} ou {fornecedor})
+        $fornecedor = $this->route('fornecedore') ?? $this->route('fornecedor');
+        $id = $fornecedor?->id;
+
+        // empresa atual (pelo usuário logado)
+        $empresaId = $this->user()?->empresa_id;
 
         return [
-            'razaosocial'   => ['required','string','max:150'],
-            'nomefantasia'  => ['nullable','string','max:150'],
+            'razaosocial'   => ['required', 'string', 'max:150'],
+            'nomefantasia'  => ['nullable', 'string', 'max:150'],
             'cnpj'          => [
                 'required',
                 'string',
                 'size:14', // CNPJ com apenas dígitos
-                Rule::unique('appfornecedor', 'cnpj')->ignore($id),
+                Rule::unique('appfornecedor', 'cnpj')
+                    ->where(fn($q) => $q->where('empresa_id', $empresaId))
+                    ->ignore($id),
             ],
-            'pessoacontato' => ['nullable','string','max:100'],
-            'telefone'      => ['nullable','string','max:20'],
-            'whatsapp'      => ['nullable','string','max:20'],
-            'telegram'      => ['nullable','string','max:50'],
-            'instagram'     => ['nullable','string','max:100'],
-            'facebook'      => ['nullable','string','max:100'],
-            'email'         => ['nullable','string','email','max:120'],
-            'endereco'      => ['nullable','string','max:200'],
-            'status'        => ['required','boolean'],
+            'pessoacontato' => ['nullable', 'string', 'max:100'],
+            'telefone'      => ['nullable', 'string', 'max:20'],
+            'whatsapp'      => ['nullable', 'string', 'max:20'],
+            'telegram'      => ['nullable', 'string', 'max:50'],
+            'instagram'     => ['nullable', 'string', 'max:100'],
+            'facebook'      => ['nullable', 'string', 'max:100'],
+            'email'         => ['nullable', 'string', 'email', 'max:120'],
+            'endereco'      => ['nullable', 'string', 'max:200'],
+            'status'        => ['required', 'boolean'],
         ];
     }
 
