@@ -109,9 +109,12 @@ Route::middleware(['auth', 'empresa.ativa'])->group(function () {
 
     // Importar produtos a partir do TXT de itens não importados
     Route::get('/produtos/importar-missing', [ProdutoController::class, 'importarMissingForm'])->name('produtos.importar_missing.form');
-
     Route::post('/produtos/importar-missing', [ProdutoController::class, 'importarMissingStore'])->name('produtos.importar_missing.store');
+    Route::get('/produtos/importar', [ProdutoController::class, 'importarProdutosForm'])
+        ->name('produtos.importar.form');
 
+    Route::post('/produtos/importar', [ProdutoController::class, 'importarProdutosStore'])
+        ->name('produtos.importar.store');
     // 2) RESOURCE SEM SHOW (você não tem método show no controller)
     Route::resource('produtos', ProdutoController::class)->except(['show']);
 

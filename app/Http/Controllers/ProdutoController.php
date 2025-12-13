@@ -112,6 +112,189 @@ class ProdutoController extends Controller
     }
 
     /**
+     * Formulário para importar produtos (cadastro básico).
+     */
+    public function importarProdutosForm()
+    {
+        return view('produtos.importar_produtos');
+    }
+
+    public function importarProdutosStore(Request $request)
+    {
+        $request->validate([
+            'arquivo_produtos' => 'required|file|mimes:csv,txt,text',
+        ]);
+
+        $usuario   = $request->user();
+        $empresaId = $usuario?->empresa_id;
+
+        if (!$empresaId) {
+            return back()->withErrors(['arquivo_produtos' => 'Empresa do usuário não encontrada.']);
+        }
+
+        // === DEFAULTS (para não quebrar NOT NULL no MySQL) ===
+        // Ajuste aqui conforme suas empresas (você citou 11 e 83 como "Padrão")
+        $mapCategoriaPadrao = [
+            1 => 11, // empresa_id 1 -> categoria 11
+            // 2 => 83, // exemplo
+        ];
+
+        // Categoria (preferência: mapa -> nome "Padrão" -> primeira categoria)
+        $categoriaPadraoId = $mapCategoriaPadrao[$empresaId]
+            ?? Categoria::where('nome', 'Padrão')->value('id')
+            ?? Categoria::orderBy('id')->value('id');
+
+        if (!$categoriaPadraoId) {
+            return back()->withErrors(['arquivo_produtos' => 'Nenhuma categoria encontrada para definir como padrão.']);
+        }
+
+        // Subcategoria (nome "Padrão" -> primeira subcategoria)
+        $subcategoriaPadraoId = Subcategoria::where('nome', 'Padrão')->value('id')
+            ?? Subcategoria::orderBy('id')->value('id');
+
+        // Fornecedor (primeiro fornecedor da empresa)
+        $fornecedorPadraoId = Fornecedor::daEmpresa()->orderBy('id')->value('id');
+
+        // Se seu banco exige subcategoria/fornecedor NOT NULL, e não existir nenhum, vai travar:
+        // já retornamos erro amigável.
+        // (Se no seu banco esses campos aceitam NULL, pode remover esses checks.)
+        if (!$subcategoriaPadraoId) {
+            return back()->withErrors(['arquivo_produtos' => 'Nenhuma subcategoria encontrada para definir como padrão.']);
+        }
+        if (!$fornecedorPadraoId) {
+            return back()->withErrors(['arquivo_produtos' => 'Nenhum fornecedor encontrado para a empresa. Crie 1 fornecedor padrão antes de importar.']);
+        }
+
+        $arquivo  = $request->file('arquivo_produtos');
+        $conteudo = file_get_contents($arquivo->getRealPath()) ?: '';
+        $linhas   = preg_split('/\r\n|\r|\n/', $conteudo);
+
+        $totalLinhas     = 0;
+        $criados         = 0;
+        $atualizados     = 0;
+        $ignorados       = 0;
+        $linhasInvalidas = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($linhas as $idx => $linha) {
+                $linha = trim($linha);
+
+                if ($linha === '') {
+                    continue;
+                }
+
+                // pula header se existir
+                $lower = mb_strtolower($linha);
+                if (str_starts_with($lower, 'codfabnumero')) {
+                    continue;
+                }
+
+                // tenta separar por ; depois , depois TAB
+                $cols = str_getcsv($linha, ';');
+                if (count($cols) === 1) $cols = str_getcsv($linha, ',');
+                if (count($cols) === 1) $cols = str_getcsv($linha, "\t");
+
+                if (count($cols) < 5) {
+                    $ignorados++;
+                    $linhasInvalidas[] = "Linha " . ($idx + 1) . " inválida (colunas < 5): {$linha}";
+                    continue;
+                }
+
+                $totalLinhas++;
+
+                $codfabnumero  = trim($cols[0] ?? '');
+                $codnotafiscal = trim($cols[1] ?? '');
+                $ean           = trim($cols[2] ?? '');
+                $descricao     = trim($cols[3] ?? '');
+                $precoCompraBr = trim($cols[4] ?? '0');
+
+                if ($codfabnumero === '' || $descricao === '') {
+                    $ignorados++;
+                    $linhasInvalidas[] = "Linha " . ($idx + 1) . " ignorada (codfabnumero/descricao vazios): {$linha}";
+                    continue;
+                }
+
+                $precoCompra = $this->brToFloat($precoCompraBr);
+
+                // Procura por codfabnumero dentro da empresa
+                $produto = Produto::query()
+                    ->where('empresa_id', $empresaId)
+                    ->where('codfabnumero', $codfabnumero)
+                    ->first();
+
+                if ($produto) {
+                    // Atualiza SOMENTE o básico
+                    $produto->update([
+                        'codnotafiscal' => $codnotafiscal ?: $produto->codnotafiscal,
+                        'ean'           => $ean ?: $produto->ean,
+                        'nome'          => $descricao, // descricao -> nome
+                        'preco_compra'  => $precoCompra,
+                    ]);
+
+                    $atualizados++;
+                    continue;
+                }
+
+                // Cria novo produto (cadastro básico + defaults obrigatórios)
+                Produto::create([
+                    'empresa_id'     => $empresaId,
+                    'tipo'           => 'P',
+
+                    'codfabnumero'   => $codfabnumero,
+                    'codnotafiscal'  => $codnotafiscal ?: null,
+                    'ean'            => $ean ?: null,
+                    'nome'           => $descricao,
+                    'preco_compra'   => $precoCompra,
+
+                    // defaults para não quebrar NOT NULL
+                    'categoria_id'    => $categoriaPadraoId,
+                    'subcategoria_id' => $subcategoriaPadraoId,
+                    'fornecedor_id'   => $fornecedorPadraoId,
+                ]);
+
+                $criados++;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()
+                ->withErrors(['arquivo_produtos' => 'Erro ao importar produtos: ' . $e->getMessage()])
+                ->withInput();
+        }
+
+        // salva relatório de linhas inválidas (opcional)
+        if (!empty($linhasInvalidas)) {
+            $nomeArquivo = 'import_produtos_invalidas_' . date('Ymd_His') . '.txt';
+            $caminho     = storage_path('app/' . $nomeArquivo);
+            file_put_contents($caminho, implode(PHP_EOL, $linhasInvalidas));
+            session()->flash('arquivo_invalidas', $nomeArquivo);
+        }
+
+        $msg = "Importação concluída. Linhas lidas: {$totalLinhas}. Criados: {$criados}. Atualizados: {$atualizados}. Ignorados: {$ignorados}.";
+
+        return redirect()
+            ->route('produtos.importar.form')
+            ->with('success', $msg);
+    }
+    public function baixarRelatorioImportacaoProdutos(string $arquivo)
+{
+    // Segurança: só permite nome de arquivo simples
+    $arquivo = basename($arquivo);
+
+    $caminho = storage_path('app/' . $arquivo);
+
+    if (!file_exists($caminho)) {
+        abort(404, 'Relatório não encontrado.');
+    }
+
+    return response()->download($caminho);
+}
+
+    /**
      * Processa o arquivo e atualiza appproduto + apptabelapreco.
      */
     public function importarPrecosStore(Request $request)
