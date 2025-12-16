@@ -140,7 +140,7 @@ class PedidoCompraController extends Controller
             'itens.*.pontos'           => 'nullable|numeric|min:0',
         ]);
 
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $empresaId) {
 
             $totalBrutoCusto   = 0.0; // soma dos custos brutos (preço tabela)
             $totalDesconto     = 0.0; // soma dos descontos dos itens (manual + automático)
@@ -309,31 +309,43 @@ class PedidoCompraController extends Controller
 
             $valorComEncargos = $valorCustoTotal + $encargosCompra;
 
-            // ==== CABEÇALHO: tabela appcompra ====
-            $compraId = DB::table('appcompra')->insertGetId([
-                'fornecedor_id'      => $data['fornecedor_id'],
-                'data_compra'        => $data['data_pedido'],
-                'data_emissao'       => $data['data_entrega'] ?? null,
-                'numpedcompra'       => null,
-                'numero_nota'        => null,
-                'valor_total'        => $totalBrutoCusto,
-                'valor_desconto'     => $totalDesconto,
-                'valorcusto'         => $valorCustoTotal,   // custo sem encargos
-                'encargos'           => $encargosCompra,    // encargos financeiros
-                'valor_liquido'      => $valorComEncargos,  // custo + encargos
-                'preco_venda_total'  => $totalRevenda,
-                'pontostotal'        => $totalPontosGeral,
-                'qtditens'           => $qtditens,
-                'forma_pagamento_id' => $data['forma_pagamento_id'] ?? null,
-                'plano_pagamento_id' => $data['plano_pagamento_id'] ?? null,
-                'qt_parcelas'        => $data['qt_parcelas'] ?? null,
-                'formapgto'          => null,
-                'observacao'         => $data['observacao'] ?? null,
-                'status'             => 'PENDENTE',
-                'created_at'         => now(),
-                'updated_at'         => now(),
-                'empresa_id'
-            ]);
+    // ==== CABEÇALHO: tabela appcompra ====
+// custo total com encargos
+$valorComEncargos = $valorCustoTotal + $encargosCompra;
+
+$dadosCompra = [
+    'fornecedor_id'      => $data['fornecedor_id'],
+    'data_compra'        => $data['data_pedido'],
+    'data_emissao'       => $data['data_entrega'] ?? null,
+    'numpedcompra'       => null,
+    'numero_nota'        => null,
+
+    'valor_total'        => $totalBrutoCusto,
+    'valor_desconto'     => $totalDesconto,
+    'valorcusto'         => $valorCustoTotal,   // custo sem encargos
+    'encargos'           => $encargosCompra,    // encargos financeiros
+    'valor_liquido'      => $valorComEncargos,  // custo + encargos
+
+    'preco_venda_total'  => $totalRevenda,
+    'pontostotal'        => $totalPontosGeral,
+    'qtditens'           => $qtditens,
+
+    'forma_pagamento_id' => $data['forma_pagamento_id'] ?? null,
+    'plano_pagamento_id' => $data['plano_pagamento_id'] ?? null,
+    'qt_parcelas'        => $data['qt_parcelas'] ?? null,
+    'formapgto'          => null,
+    'observacao'         => $data['observacao'] ?? null,
+    'status'             => 'PENDENTE',
+
+    'created_at'         => now(),
+    'updated_at'         => now(),
+];
+
+// se a coluna empresa_id existe e aceita null, pode jogar direto:
+$dadosCompra['empresa_id'] = $empresaId; // mesmo que seja null, não tem problema
+
+$compraId = DB::table('appcompra')->insertGetId($dadosCompra);
+
 
             // ==== ITENS: tabela appcompraproduto ====
             foreach ($itensCalc as $it) {
@@ -1077,92 +1089,92 @@ class PedidoCompraController extends Controller
             return back()->with('error', 'Erro ao cancelar pedido: ' . $e->getMessage());
         }
     }
-/**
- * Estorna a entrada de estoque de uma compra RECEBIDA,
- * explodindo KITS em itens unitários.
- */
-private function estornarEntradaEstoqueDaCompra(PedidoCompra $pedido, string $motivo): void
-{
-    $estoqueService = new EstoqueService();
-    $empresaId      = $pedido->empresa_id;
+    /**
+     * Estorna a entrada de estoque de uma compra RECEBIDA,
+     * explodindo KITS em itens unitários.
+     */
+    private function estornarEntradaEstoqueDaCompra(PedidoCompra $pedido, string $motivo): void
+    {
+        $estoqueService = new EstoqueService();
+        $empresaId      = $pedido->empresa_id;
 
-    $pedido->load('itens.produto.itensDoKit.produtoItem');
+        $pedido->load('itens.produto.itensDoKit.produtoItem');
 
-    foreach ($pedido->itens as $item) {
-        $produto = $item->produto;
+        foreach ($pedido->itens as $item) {
+            $produto = $item->produto;
 
-        if (! $produto) {
-            continue;
-        }
+            if (! $produto) {
+                continue;
+            }
 
-        $qtdItem      = (float) $item->quantidade;
-        $custoTotal   = (float) ($item->total_liquido ?? $item->valorcusto ?? 0);
-        $precoUnitario = $qtdItem > 0 ? $custoTotal / $qtdItem : (float) ($item->preco_unitario ?? 0);
+            $qtdItem      = (float) $item->quantidade;
+            $custoTotal   = (float) ($item->total_liquido ?? $item->valorcusto ?? 0);
+            $precoUnitario = $qtdItem > 0 ? $custoTotal / $qtdItem : (float) ($item->preco_unitario ?? 0);
 
-        // ----- KITS: estorna componentes -----
-        if ($produto->tipo === 'K' && $produto->itensDoKit->isNotEmpty()) {
+            // ----- KITS: estorna componentes -----
+            if ($produto->tipo === 'K' && $produto->itensDoKit->isNotEmpty()) {
 
-            foreach ($produto->itensDoKit as $componente) {
-                $produtoBase = $componente->produtoItem;
+                foreach ($produto->itensDoKit as $componente) {
+                    $produtoBase = $componente->produtoItem;
 
-                if (! $produtoBase) {
-                    continue;
+                    if (! $produtoBase) {
+                        continue;
+                    }
+
+                    $qtdComponente = $qtdItem * (float) $componente->quantidade;
+
+                    // SAÍDA no estoque
+                    $estoqueService->registrarMovimentoManual(
+                        $produtoBase->id,
+                        'SAIDA',
+                        $qtdComponente,
+                        $precoUnitario,
+                        'Estorno compra KIT #' . $pedido->id . ' - ' . $motivo
+                    );
+
+                    MovEstoque::create([
+                        'empresa_id'     => $empresaId,
+                        'produto_id'     => $produtoBase->id,
+                        'codfabnumero'   => $produtoBase->codfabnumero,
+                        'tipo_mov'       => 'SAIDA',
+                        'origem'         => 'COMPRA',
+                        'origem_id'      => $pedido->id,
+                        'data_mov'       => now(),
+                        'quantidade'     => -abs($qtdComponente),
+                        'preco_unitario' => $precoUnitario,
+                        'observacao'     => 'Estorno compra KIT ' . ($produto->codfabnumero ?? '') . ' - pedido #'
+                            . $pedido->id . '. Motivo: ' . $motivo,
+                        'status'         => 'CONFIRMADO',
+                    ]);
                 }
 
-                $qtdComponente = $qtdItem * (float) $componente->quantidade;
+                // ----- PRODUTO NORMAL -----
+            } else {
 
-                // SAÍDA no estoque
                 $estoqueService->registrarMovimentoManual(
-                    $produtoBase->id,
+                    $produto->id,
                     'SAIDA',
-                    $qtdComponente,
+                    $qtdItem,
                     $precoUnitario,
-                    'Estorno compra KIT #' . $pedido->id . ' - ' . $motivo
+                    'Estorno compra #' . $pedido->id . ' - ' . $motivo
                 );
 
                 MovEstoque::create([
                     'empresa_id'     => $empresaId,
-                    'produto_id'     => $produtoBase->id,
-                    'codfabnumero'   => $produtoBase->codfabnumero,
+                    'produto_id'     => $produto->id,
+                    'codfabnumero'   => $produto->codfabnumero,
                     'tipo_mov'       => 'SAIDA',
                     'origem'         => 'COMPRA',
                     'origem_id'      => $pedido->id,
                     'data_mov'       => now(),
-                    'quantidade'     => -abs($qtdComponente),
+                    'quantidade'     => -abs($qtdItem),
                     'preco_unitario' => $precoUnitario,
-                    'observacao'     => 'Estorno compra KIT ' . ($produto->codfabnumero ?? '') . ' - pedido #'
-                                        . $pedido->id . '. Motivo: ' . $motivo,
+                    'observacao'     => 'Estorno compra - pedido #' . $pedido->id . '. Motivo: ' . $motivo,
                     'status'         => 'CONFIRMADO',
                 ]);
             }
-
-        // ----- PRODUTO NORMAL -----
-        } else {
-
-            $estoqueService->registrarMovimentoManual(
-                $produto->id,
-                'SAIDA',
-                $qtdItem,
-                $precoUnitario,
-                'Estorno compra #' . $pedido->id . ' - ' . $motivo
-            );
-
-            MovEstoque::create([
-                'empresa_id'     => $empresaId,
-                'produto_id'     => $produto->id,
-                'codfabnumero'   => $produto->codfabnumero,
-                'tipo_mov'       => 'SAIDA',
-                'origem'         => 'COMPRA',
-                'origem_id'      => $pedido->id,
-                'data_mov'       => now(),
-                'quantidade'     => -abs($qtdItem),
-                'preco_unitario' => $precoUnitario,
-                'observacao'     => 'Estorno compra - pedido #' . $pedido->id . '. Motivo: ' . $motivo,
-                'status'         => 'CONFIRMADO',
-            ]);
         }
     }
-}
 
     private function brToFloat($value): float
     {

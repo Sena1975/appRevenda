@@ -37,7 +37,7 @@ class PedidoVenda extends Model
         'valor_liquido',
         'pontuacao',
         'pontuacao_total',
-        'enviar_msg_cliente' => 'boolean',
+        'enviar_msg_cliente',
         'observacao',
         'empresa_id',
     ];
@@ -51,6 +51,7 @@ class PedidoVenda extends Model
         'valor_liquido'       => 'decimal:2',
         'pontuacao'           => 'integer',
         'pontuacao_total'     => 'integer',
+        'enviar_msg_cliente' => 'boolean',
         'criado_em'           => 'datetime',
         'atualizado_em'       => 'datetime',
     ];

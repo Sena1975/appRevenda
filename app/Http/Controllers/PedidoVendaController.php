@@ -6,11 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-
 use Carbon\Carbon;
-
 use App\Models\PedidoVenda;
 use App\Models\ItemVenda;
 use App\Models\Cliente;
@@ -45,6 +43,24 @@ class PedidoVendaController extends Controller
         $this->estoque = $estoque;
         $this->cr      = $cr;
     }
+
+    private function empresaIdOrFail(): int
+    {
+        // 1) usuário logado
+        $empresaId = (int)(Auth::user()?->empresa_id ?? 0);
+
+        // 2) fallback: empresa ativa no container (middleware EmpresaAtiva)
+        if ($empresaId <= 0 && app()->bound('empresa')) {
+            $empresaId = (int)(app('empresa')->id ?? 0);
+        }
+
+        if ($empresaId <= 0) {
+            abort(403, 'Empresa ativa não definida.');
+        }
+
+        return $empresaId;
+    }
+
 
     /**
      * Lista pedidos (com filtros: cliente, período e status)
@@ -267,20 +283,11 @@ class PedidoVendaController extends Controller
      */
     public function store(Request $request)
     {
-        $TAB_PEDIDO  = 'apppedidovenda'; // cabeçalho do pedido
-        $TAB_ITENS   = 'appitemvenda';   // itens do pedido
-        $TAB_ESTOQUE = 'appestoque';     // estoque atual
-        $TAB_MOV     = 'appmovestoque';  // movimentações de estoque
+        $TAB_PEDIDO  = 'apppedidovenda';
+        $TAB_ITENS   = 'appitemvenda';
 
-        // colunas de estoque
-        $COL_DISP    = 'disponivel';
-        $COL_RESERVA = 'reservado';
+        $empresaId = $this->empresaIdOrFail();
 
-        // ===== 0) Empresa do usuário logado =====
-        $usuario   = $request->user();
-        $empresaId = $usuario?->empresa_id;
-
-        // ===== 1) Validação =====
         $data = $request->validate([
             'cliente_id'          => 'required|integer',
             'revendedora_id'      => 'nullable|integer',
@@ -290,28 +297,26 @@ class PedidoVendaController extends Controller
             'previsao_entrega'    => 'nullable|date',
             'observacao'          => 'nullable|string|max:1000',
             'desconto'            => 'nullable|numeric|min:0',
-            'enviar_msg_cliente'  => 'nullable|boolean',   // ✅ checkbox
-            'itens'                        => 'required|array|min:1',
-            'itens.*.produto_id'           => 'required|integer',
-            'itens.*.codfabnumero'         => 'nullable|string',
-            'itens.*.quantidade'           => 'required|integer|min:1',
-            'itens.*.preco_unitario'       => 'required|numeric|min:0',
-            'itens.*.pontuacao'            => 'nullable|integer|min:0',
+            'enviar_msg_cliente'  => 'nullable|boolean',
+            'itens'               => 'required|array|min:1',
+            'itens.*.produto_id'  => 'required|integer',
+            'itens.*.codfabnumero' => 'nullable|string',
+            'itens.*.quantidade'  => 'required|integer|min:1',
+            'itens.*.preco_unitario' => 'required|numeric|min:0',
+            'itens.*.pontuacao'   => 'nullable|integer|min:0',
         ]);
 
-        // Flag de envio da mensagem para o cliente. Se o campo não vier (form antigo, ou algo do tipo), default = true
         $enviarMsgCliente = array_key_exists('enviar_msg_cliente', $data)
             ? (bool)$data['enviar_msg_cliente']
             : true;
 
-        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $TAB_ESTOQUE, $TAB_MOV, $COL_DISP, $COL_RESERVA, $enviarMsgCliente, $empresaId) {
+        return DB::transaction(function () use ($data, $TAB_PEDIDO, $TAB_ITENS, $enviarMsgCliente, $empresaId) {
 
             $totalBruto       = 0.0;
             $totalPontosUnit  = 0;
             $totalPontosGeral = 0;
             $itensCalc        = [];
 
-            // ===== 2) Recalcular itens pela ViewProduto =====
             foreach ($data['itens'] as $idx => $item) {
                 $codfab = $item['codfabnumero'] ?? null;
 
@@ -327,12 +332,8 @@ class PedidoVendaController extends Controller
                 $precoReq  = isset($item['preco_unitario']) ? (float) $item['preco_unitario'] : null;
                 $pontosReq = isset($item['pontuacao']) ? (int) $item['pontuacao'] : null;
 
-                // Usa o que veio da tela; se vier nulo, cai no valor padrão da view
                 $precoUnit  = $precoReq  !== null ? $precoReq  : (float) $vp->preco_revenda;
                 $pontosUnit = $pontosReq !== null ? $pontosReq : (int) $vp->pontos;
-
-                // Apenas informação (estoque validado na confirmação da entrega)
-                $estoqueAtual = (int) ($vp->qtd_estoque ?? 0);
 
                 $totalLinha  = $qtd * $precoUnit;
                 $pontosLinha = $qtd * $pontosUnit;
@@ -352,15 +353,13 @@ class PedidoVendaController extends Controller
                 ];
             }
 
-            // desconto informado na tela (sem campanha de indicação ainda)
             $descontoManual = (float) ($data['desconto'] ?? 0);
             $totalLiquido   = max(0, $totalBruto - $descontoManual);
 
-            // pega indicador do cliente (padrão = 1)
             $cliente     = Cliente::find($data['cliente_id']);
             $indicadorId = (int) ($cliente->indicador_id ?? 1);
 
-            // ===== 3) Grava cabeçalho do pedido (status inicial PENDENTE) =====
+            // ✅ grava SEMPRE empresa_id
             $vendaId = DB::table($TAB_PEDIDO)->insertGetId([
                 'cliente_id'         => $data['cliente_id'],
                 'revendedora_id'     => $data['revendedora_id'] ?? null,
@@ -376,13 +375,10 @@ class PedidoVendaController extends Controller
                 'pontuacao_total'    => $totalPontosGeral,
                 'status'             => 'PENDENTE',
                 'indicador_id'       => $indicadorId,
-                'enviar_msg_cliente' => $enviarMsgCliente ? 1 : 0, // ✅ grava flag
+                'enviar_msg_cliente' => $enviarMsgCliente ? 1 : 0,
                 'empresa_id'         => $empresaId,
             ]);
 
-            // ============================================================
-            // 3.1) CAMPANHA DE INDICAÇÃO NA CRIAÇÃO DO PEDIDO
-            // ============================================================
             $pedido = PedidoVenda::find($vendaId);
 
             if ($pedido) {
@@ -393,40 +389,22 @@ class PedidoVendaController extends Controller
                     $campanhaId = $this->getCampanhaIndicacaoId();
                 }
 
-                Log::debug('DEBUG campanha na criação do pedido', [
-                    'pedido_id'              => $pedido->id,
-                    'cliente_id'             => $pedido->cliente_id,
-                    'indicador_id'           => $pedido->indicador_id,
-                    'primeiraCompraIndicada' => $primeiraCompraIndicada,
-                    'campanhaId'             => $campanhaId,
-                ]);
-
                 if ($primeiraCompraIndicada && $campanhaId) {
-
-                    // >>> INÍCIO CAMPANHA INDICAÇÃO: APLICA DESCONTO DA CAMPANHA E CRIA INDICAÇÃO <<<
-
                     $valorTotal    = (float) ($pedido->valor_total ?? 0);
                     $descontoAtual = (float) ($pedido->valor_desconto ?? 0);
 
-                    // Percentual da campanha (campo perc_desc da appcampanha)
-                    $percentualDesconto = $this->getPercentualDescontoCampanha($campanhaId); // ex.: 0.05
+                    $percentualDesconto = $this->getPercentualDescontoCampanha($campanhaId);
 
-                    // Desconto da indicação sobre o valor total
                     $descontoIndicacao = round($valorTotal * $percentualDesconto, 2);
 
-                    // soma desconto da tela + desconto da indicação
                     $novoDesconto     = $descontoAtual + $descontoIndicacao;
                     $novoValorLiquido = max(0, $valorTotal - $novoDesconto);
 
-                    // atualiza pedido com desconto de indicação + campanha
                     $pedido->valor_desconto = $novoDesconto;
                     $pedido->valor_liquido  = $novoValorLiquido;
                     $pedido->campanha_id    = $campanhaId;
 
-                    // (opcional) registra na observação, com o percentual dinâmico
                     $obsOriginal = trim($pedido->observacao ?? '');
-
-                    // converte 0.05 → "5,00"
                     $percentualLabel = number_format($percentualDesconto * 100, 2, ',', '');
                     $obsCampanha = "Desconto de {$percentualLabel}% aplicado (primeira compra indicada).";
 
@@ -436,12 +414,9 @@ class PedidoVendaController extends Controller
 
                     $pedido->save();
 
-                    // valor do pedido para a indicação = já com desconto da campanha
                     $valorPedidoIndicacao = $novoValorLiquido;
 
                     if ($valorPedidoIndicacao > 0) {
-
-                        // Tenta localizar indicação existente pra este pedido (evita duplicar)
                         $indicacao = Indicacao::where('indicado_id', $pedido->cliente_id)
                             ->where('pedido_id', $pedido->id)
                             ->first();
@@ -451,18 +426,15 @@ class PedidoVendaController extends Controller
                             $indicacao->indicado_id  = $pedido->cliente_id;
                             $indicacao->indicador_id = (int) ($pedido->indicador_id ?? 1);
                             $indicacao->pedido_id    = $pedido->id;
-                            $indicacao->status       = 'pendente'; // bate com enum da tabela
+                            $indicacao->status       = 'pendente';
                         }
 
-                        // Se já estiver paga, não recalcula nem manda mensagem de novo
                         if ($indicacao->status !== 'pago') {
                             $indicacao->valor_pedido = $valorPedidoIndicacao;
                             $indicacao->valor_premio = $this->calcularPremioIndicacao($valorPedidoIndicacao);
                             $indicacao->campanha_id  = $campanhaId;
-
                             $indicacao->save();
 
-                            // 3) Envia WhatsApp para o INDICADOR avisando da primeira compra
                             try {
                                 $this->enviarAvisoIndicadorWhatsApp($indicacao);
                             } catch (\Throwable $e) {
@@ -473,15 +445,9 @@ class PedidoVendaController extends Controller
                                 ]);
                             }
                         }
-                    } else {
-                        Log::info('Pedido com valor zero na criação: não criou indicação', [
-                            'pedido_id' => $pedido->id,
-                        ]);
                     }
-                    // >>> FIM CAMPANHA INDICAÇÃO <<<
                 }
 
-                // Após tratar campanha / indicação, envia mensagem para o CLIENTE
                 if ($pedido && ($pedido->enviar_msg_cliente ?? true)) {
                     try {
                         $this->enviarAvisoClientePedidoCriado($pedido);
@@ -491,17 +457,10 @@ class PedidoVendaController extends Controller
                             'erro'      => $e->getMessage(),
                         ]);
                     }
-                } else {
-                    Log::info('Aviso cliente NÃO enviado (enviar_msg_cliente = false)', [
-                        'pedido_id'          => $pedido->id ?? null,
-                        'enviar_msg_cliente' => $pedido->enviar_msg_cliente ?? null,
-                    ]);
                 }
             }
 
-            // ===== 4) Grava itens =====
             foreach ($itensCalc as $it) {
-                // Corrige o bug: usa 'preco_total' em vez de 'total'
                 $precoTotal = $it['preco_total'] ?? ($it['preco_unitario'] * $it['quantidade']);
 
                 DB::table($TAB_ITENS)->insert([
@@ -516,11 +475,15 @@ class PedidoVendaController extends Controller
                 ]);
             }
 
-            // ===== 5) Reserva de estoque via service (já trata KITS nos componentes) =====
-            /** @var \App\Models\PedidoVenda|null $pedidoReserva */
+            // Carrega pedido com composição de kits e reserva pelo service (agora por empresa)
             $pedidoReserva = PedidoVenda::with('itens.produto.itensDoKit.produtoItem')->find($vendaId);
-
             if ($pedidoReserva) {
+                // ✅ garantia extra: se por algum motivo veio null, força empresa
+                if (empty($pedidoReserva->empresa_id)) {
+                    $pedidoReserva->empresa_id = $empresaId;
+                    $pedidoReserva->save();
+                }
+
                 $this->estoque->reservarVenda($pedidoReserva);
             }
 
@@ -617,9 +580,7 @@ class PedidoVendaController extends Controller
             'previsao_entrega'    => 'nullable|date',
             'observacao'          => 'nullable|string',
             'valor_desconto'      => 'nullable|numeric|min:0',
-
-            'enviar_msg_cliente'  => 'nullable|boolean', // ✅ checkbox no edit
-
+            'enviar_msg_cliente'  => 'nullable|boolean',
             'itens'                      => 'required|array|min:1',
             'itens.*.produto_id'         => 'required|integer|exists:appproduto,id',
             'itens.*.codfabnumero'       => 'nullable|string|max:30',
@@ -627,25 +588,21 @@ class PedidoVendaController extends Controller
             'itens.*.preco_unitario'     => 'required|numeric|min:0',
             'itens.*.pontuacao'          => 'nullable|integer|min:0',
             'itens.*.pontuacao_total'    => 'nullable|integer|min:0',
-
             'pontuacao'        => 'nullable|integer|min:0',
             'pontuacao_total'  => 'nullable|integer|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            // Carrega pedido com itens, produtos e composição de kits
             $pedido = PedidoVenda::with('itens.produto.itensDoKit.produtoItem')->findOrFail($id);
 
             $statusAnterior = strtoupper($pedido->status ?? '');
             $eraPendente    = in_array($statusAnterior, ['PENDENTE', 'ABERTO', 'RESERVADO'], true);
 
-            // Se era pendente, libera as reservas antigas (inclusive de kits) ANTES de mexer nos itens
             if ($eraPendente) {
                 $this->estoque->cancelarReservaVenda($pedido);
             }
 
-            // Recalcula totais com base nos itens enviados
             $total               = 0.0;
             $pontosTotal         = 0;
             $pontosUnitSomatorio = 0;
@@ -679,15 +636,12 @@ class PedidoVendaController extends Controller
                 'pontuacao'          => $pontosUnitSomatorio,
                 'pontuacao_total'    => $pontosTotal,
                 'observacao'         => $request->observacao,
-
-                // Atualiza flag conforme o checkbox na tela (mantém valor anterior como default)
                 'enviar_msg_cliente' => $request->boolean(
                     'enviar_msg_cliente',
                     $pedido->enviar_msg_cliente ?? true
                 ),
             ]);
 
-            // Recria itens
             ItemVenda::where('pedido_id', $pedido->id)->delete();
             foreach ($request->itens as $it) {
                 $q   = (int)$it['quantidade'];
@@ -709,10 +663,8 @@ class PedidoVendaController extends Controller
                 ]);
             }
 
-            // Recarrega pedido com os NOVOS itens e composição dos kits
             $pedido->load('itens.produto.itensDoKit.produtoItem');
 
-            // Se o pedido estiver pendente/aberto/reservado após a edição, recria as reservas de estoque
             $statusAtual  = strtoupper($pedido->status ?? '');
             $estaPendente = in_array($statusAtual, ['PENDENTE', 'ABERTO', 'RESERVADO'], true);
 
@@ -720,13 +672,11 @@ class PedidoVendaController extends Controller
                 $this->estoque->reservarVenda($pedido);
             }
 
-            // Reavalia campanhas
             $pedido->load('itens');
             $service   = app(CampaignEvaluatorService::class);
             $campanhas = $service->reavaliarPedido($pedido);
             session()->flash('campanhas', $campanhas);
 
-            // Atualiza indicação se existir (Etapa C)
             $pedido->refresh();
             $this->atualizarIndicacaoParaPedido($pedido, false);
 
@@ -737,7 +687,6 @@ class PedidoVendaController extends Controller
             return back()->with('error', 'Erro ao atualizar: ' . $e->getMessage())->withInput();
         }
     }
-
     /**
      * Confirma pedido
      */
@@ -866,9 +815,25 @@ class PedidoVendaController extends Controller
             }
 
             // 2) Ajustes de estoque de acordo com o status
+            $empresaId = (int) ($pedido->empresa_id ?? 0);
+
+            // fallback: middleware EmpresaAtiva
+            if ($empresaId <= 0 && app()->bound('empresa')) {
+                $empresaId = (int) (app('empresa')->id ?? 0);
+            }
+
+            // fallback: usuário logado
+            if ($empresaId <= 0) {
+                $empresaId = (int) (auth::user()?->empresa_id ?? 0);
+            }
+
+            if ($empresaId <= 0) {
+                abort(422, 'Empresa ativa não definida para cancelar o pedido.');
+            }
+
             if (in_array($statusPedido, ['PENDENTE', 'ABERTO', 'RESERVADO'], true)) {
 
-                // Pedido pendente: apenas libera reservas (inclusive de kits)
+                // Pedido pendente: apenas libera reservas (inclusive de kits) -> já grava empresa_id no service
                 $this->estoque->cancelarReservaVenda($pedido);
             } elseif ($statusPedido === 'ENTREGUE') {
 
@@ -885,13 +850,14 @@ class PedidoVendaController extends Controller
 
                 if ($colBase) {
                     foreach ($pedido->itens as $item) {
-                        $qtdItem = (float)($item->quantidade ?? 0);
+                        $qtdItem = (float) ($item->quantidade ?? 0);
                         if ($qtdItem <= 0) {
                             continue;
                         }
 
                         $produto = $item->produto;
-                        $isKit   = ($produto?->tipo ?? null) === 'K'
+
+                        $isKit = ($produto?->tipo ?? null) === 'K'
                             && $produto->itensDoKit
                             && $produto->itensDoKit->count() > 0;
 
@@ -903,20 +869,36 @@ class PedidoVendaController extends Controller
                                     continue;
                                 }
 
-                                $qtdComp = $qtdItem * (float)($componente->quantidade ?? 0);
+                                $qtdComp = $qtdItem * (float) ($componente->quantidade ?? 0);
                                 if ($qtdComp <= 0) {
                                     continue;
                                 }
 
-                                $produtoBaseId = (int)$produtoBase->id;
+                                $produtoBaseId = (int) $produtoBase->id;
                                 $codfabBase    = $produtoBase->codfabnumero ?? null;
 
-                                // Devolve estoque do componente
+                                // ✅ garante linha de estoque (empresa + produto)
+                                DB::table($TAB_ESTOQUE)->updateOrInsert(
+                                    ['empresa_id' => $empresaId, 'produto_id' => $produtoBaseId],
+                                    [
+                                        'codfabnumero'      => $codfabBase,
+                                        $colBase            => DB::raw("COALESCE({$colBase},0)"),
+                                        'estoque_gerencial' => DB::raw("COALESCE(estoque_gerencial,0)"),
+                                        'reservado'         => DB::raw("COALESCE(reservado,0)"),
+                                        'avaria'            => DB::raw("COALESCE(avaria,0)"),
+                                        'updated_at'        => now(),
+                                        'created_at'        => now(),
+                                    ]
+                                );
+
+                                // ✅ devolve estoque do componente (por empresa)
                                 DB::table($TAB_ESTOQUE)
+                                    ->where('empresa_id', $empresaId)
                                     ->where('produto_id', $produtoBaseId)
                                     ->increment($colBase, $qtdComp);
 
                                 $mov = [
+                                    'empresa_id'   => $empresaId,
                                     'produto_id'   => $produtoBaseId,
                                     'codfabnumero' => $codfabBase,
                                     'tipo_mov'     => 'ENTRADA',
@@ -926,18 +908,36 @@ class PedidoVendaController extends Controller
                                     'data_mov'     => now(),
                                     'observacao'   => $data['observacao'] . ' (estorno de venda entregue - componente do kit)',
                                 ];
+
                                 $this->safeInsertMov($TAB_MOV, $mov, $id);
                             }
                         } else {
                             // 🔹 Produto normal: devolve o próprio item
-                            $produtoId = (int)$item->produto_id;
+                            $produtoId = (int) $item->produto_id;
                             $codfab    = $item->codfabnumero ?? ($produto->codfabnumero ?? null);
 
+                            // ✅ garante linha de estoque (empresa + produto)
+                            DB::table($TAB_ESTOQUE)->updateOrInsert(
+                                ['empresa_id' => $empresaId, 'produto_id' => $produtoId],
+                                [
+                                    'codfabnumero'      => $codfab,
+                                    $colBase            => DB::raw("COALESCE({$colBase},0)"),
+                                    'estoque_gerencial' => DB::raw("COALESCE(estoque_gerencial,0)"),
+                                    'reservado'         => DB::raw("COALESCE(reservado,0)"),
+                                    'avaria'            => DB::raw("COALESCE(avaria,0)"),
+                                    'updated_at'        => now(),
+                                    'created_at'        => now(),
+                                ]
+                            );
+
+                            // ✅ devolve estoque do item (por empresa)
                             DB::table($TAB_ESTOQUE)
+                                ->where('empresa_id', $empresaId)
                                 ->where('produto_id', $produtoId)
                                 ->increment($colBase, $qtdItem);
 
                             $mov = [
+                                'empresa_id'   => $empresaId,
                                 'produto_id'   => $produtoId,
                                 'codfabnumero' => $codfab,
                                 'tipo_mov'     => 'ENTRADA',
@@ -947,6 +947,7 @@ class PedidoVendaController extends Controller
                                 'data_mov'     => now(),
                                 'observacao'   => $data['observacao'],
                             ];
+
                             $this->safeInsertMov($TAB_MOV, $mov, $id);
                         }
                     }
@@ -1049,28 +1050,83 @@ class PedidoVendaController extends Controller
 
     private function safeInsertMov(string $table, array $mov, ?int $pedidoId = null): void
     {
-        // normaliza/enforce enums
+        // =========================
+        // 0) empresa_id (se existir)
+        // =========================
+        if (Schema::hasColumn($table, 'empresa_id') && empty($mov['empresa_id'])) {
+            $empresaId = 0;
+
+            // 1) pedido (quando existir no payload, ou quando o caller passar junto)
+            if (isset($mov['pedido']) && is_object($mov['pedido']) && isset($mov['pedido']->empresa_id)) {
+                $empresaId = (int) ($mov['pedido']->empresa_id ?? 0);
+                unset($mov['pedido']); // não grava objeto no insert
+            }
+
+            // 2) app('empresa') (middleware EmpresaAtiva)
+            if ($empresaId <= 0 && app()->bound('empresa')) {
+                $empresaId = (int) (app('empresa')->id ?? 0);
+            }
+
+            // 3) usuário logado
+            if ($empresaId <= 0) {
+                $u = Auth::user();
+                $empresaId = (int) ($u?->empresa_id ?? 0);
+            }
+
+            if ($empresaId > 0) {
+                $mov['empresa_id'] = $empresaId;
+            }
+        }
+
+        // =========================
+        // 1) normaliza/enforce enums
+        // =========================
         if (isset($mov['tipo_mov'])) {
             $allowedTipo = $this->enumValues($table, 'tipo_mov');
-            $mov['tipo_mov'] = strtoupper($mov['tipo_mov']);
-            if (!in_array($mov['tipo_mov'], $allowedTipo, true)) unset($mov['tipo_mov']);
+            $mov['tipo_mov'] = strtoupper(trim((string)$mov['tipo_mov']));
+            if (!empty($allowedTipo) && !in_array($mov['tipo_mov'], $allowedTipo, true)) {
+                unset($mov['tipo_mov']);
+            }
         }
+
         if (isset($mov['status'])) {
             $allowedStatus = $this->enumValues($table, 'status');
-            $mov['status'] = strtoupper($mov['status']);
-            if (!in_array($mov['status'], $allowedStatus, true)) unset($mov['status']);
+            $mov['status'] = strtoupper(trim((string)$mov['status']));
+            if (!empty($allowedStatus) && !in_array($mov['status'], $allowedStatus, true)) {
+                unset($mov['status']);
+            }
         }
 
-        // origem_id = pedido_id (quando existir)
+        if (isset($mov['origem'])) {
+            $allowedOrigem = $this->enumValues($table, 'origem');
+            $mov['origem'] = strtoupper(trim((string)$mov['origem']));
+            if (!empty($allowedOrigem) && !in_array($mov['origem'], $allowedOrigem, true)) {
+                unset($mov['origem']);
+            }
+        }
+
+        // =========================
+        // 2) origem_id / pedido_id
+        // =========================
         if ($pedidoId !== null) {
-            if (Schema::hasColumn($table, 'origem_id'))  $mov['origem_id'] = $pedidoId;
-            if (Schema::hasColumn($table, 'pedido_id'))  $mov['pedido_id'] = $pedidoId;
+            if (Schema::hasColumn($table, 'origem_id') && empty($mov['origem_id'])) {
+                $mov['origem_id'] = $pedidoId;
+            }
+            if (Schema::hasColumn($table, 'pedido_id') && empty($mov['pedido_id'])) {
+                $mov['pedido_id'] = $pedidoId;
+            }
         }
 
-        // timestamps, se existirem
+        // =========================
+        // 3) timestamps (se existirem)
+        // =========================
         $now = now();
-        if (Schema::hasColumn($table, 'created_at') && empty($mov['created_at']))  $mov['created_at'] = $now;
-        if (Schema::hasColumn($table, 'updated_at') && empty($mov['updated_at']))  $mov['updated_at'] = $now;
+        if (Schema::hasColumn($table, 'created_at') && empty($mov['created_at'])) {
+            $mov['created_at'] = $now;
+        }
+        if (Schema::hasColumn($table, 'updated_at') && empty($mov['updated_at'])) {
+            $mov['updated_at'] = $now;
+        }
 
         DB::table($table)->insert($mov);
     }
@@ -1667,6 +1723,4 @@ class PedidoVendaController extends Controller
         return redirect()->route('vendas.index')
             ->with('success', 'Entrega confirmada, CR gerado, campanhas/indicações processadas e recibo enviado pelo WhatsApp (quando permitido).');
     }
-
-    
 }
