@@ -636,10 +636,7 @@ class PedidoVendaController extends Controller
                 'pontuacao'          => $pontosUnitSomatorio,
                 'pontuacao_total'    => $pontosTotal,
                 'observacao'         => $request->observacao,
-                'enviar_msg_cliente' => $request->boolean(
-                    'enviar_msg_cliente',
-                    $pedido->enviar_msg_cliente ?? true
-                ),
+                'enviar_msg_cliente' => $request->boolean('enviar_msg_cliente'),
             ]);
 
             ItemVenda::where('pedido_id', $pedido->id)->delete();
@@ -1370,6 +1367,15 @@ class PedidoVendaController extends Controller
     {
         // Garante cliente carregado
         $pedido->loadMissing('cliente');
+
+        // ✅ Respeita a opção do usuário (checkbox)
+        if (!(bool) ($pedido->enviar_msg_cliente ?? false)) {
+            Log::info('Recibo WhatsApp NÃO enviado (enviar_msg_cliente=0)', [
+                'pedido_id'  => $pedido->id,
+                'cliente_id' => $pedido->cliente_id ?? null,
+            ]);
+            return;
+        }
 
         $cliente = $pedido->cliente;
         if (!$cliente) {

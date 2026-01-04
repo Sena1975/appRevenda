@@ -68,32 +68,6 @@ class PedidoVendaObserver
                     }
                 }
             }
-
-            // 2) CLIENTE: sempre que criar pedido envia resumo (mensagem "padrão")
-            $cliente = $pedido->cliente;
-
-            if ($cliente) {
-                $textoCliente = $this->mensagemClientePedidoPendente($pedido);
-
-                $msgModel = $mensageria->enviarWhatsapp(
-                    cliente: $cliente,
-                    conteudo: $textoCliente,
-                    tipo: 'pedido_pendente_cliente',
-                    pedido: $pedido,
-                    campanha: $campanha,
-                    payloadExtra: [
-                        'evento' => 'pedido_pendente_cliente',
-                    ],
-                );
-
-                Log::info('Pedido pendente: mensagem registrada/enviada ao cliente', [
-                    'pedido_id'   => $pedido->id,
-                    'cliente_id'  => $cliente->id,
-                    'mensagem_id' => $msgModel->id,
-                    'msg_status'  => $msgModel->status,
-                ]);
-            }
-
         } catch (\Throwable $e) {
             Log::error('PedidoVendaObserver@created erro', [
                 'pedido_id' => $pedido->id ?? null,

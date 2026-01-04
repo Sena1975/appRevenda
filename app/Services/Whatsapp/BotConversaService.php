@@ -16,7 +16,7 @@ class BotConversaService
     private ?Client $client = null;
 
     /**
-     * API-KEY usada nos headers.
+     * API Key atual (cacheada) para os headers.
      */
     private ?string $apiKey = null;
 
@@ -32,8 +32,7 @@ class BotConversaService
 
     public function __construct()
     {
-        // Agora o client é construído sob demanda (lazy),
-        // baseado na WhatsappConfig da empresa.
+        // Client é construído sob demanda (lazy), baseado na WhatsappConfig da empresa.
     }
 
     /**
@@ -78,7 +77,7 @@ class BotConversaService
             ->first();
 
         if (!$config) {
-            Log::warning('BotConversa: nenhuma WhatsappConfig BotConversa ativa encontrada para a empresa.', [
+            Log::warning('BotConversa: nenhuma configuração ativa encontrada.', [
                 'empresa_id' => $empresaId,
             ]);
             return null;
@@ -86,7 +85,7 @@ class BotConversaService
 
         $this->config        = $config;
         $this->empresaIdAtual = $empresaId;
-        $this->apiKey        = $config->api_key; // campo da tabela whatsapp_configs (ajuste se o nome for outro)
+        $this->apiKey        = $this->sanitizeApiKey($config->api_key); // remove aspas/espacos acidentais
 
         // Zera o client pra forçar recriação com base_uri correta
         $this->client = null;
@@ -116,10 +115,20 @@ class BotConversaService
             return $this->client;
         }
 
-        $this->apiKey = $config->api_key;
+        $this->apiKey = $this->sanitizeApiKey($config->api_key);
+
+        $baseUrl = $this->sanitizeBaseUrl($config->api_url);
+
+        if ($baseUrl === '' || $this->apiKey === '') {
+            Log::warning('BotConversa: baseUrl/apiKey inválidos após sanitização.', [
+                'empresa_id' => $config->empresa_id,
+                'baseUrl'    => $baseUrl,
+            ]);
+            return null;
+        }
 
         $this->client = new Client([
-            'base_uri'    => rtrim($config->api_url, '/') . '/',
+            'base_uri'    => $baseUrl . '/',
             'timeout'     => 15,
             'http_errors' => false,
         ]);
@@ -128,15 +137,53 @@ class BotConversaService
     }
 
     /**
+     * Remove espaços e aspas acidentais em valores vindos do banco.
+     */
+    private function sanitizeScalar(?string $value): string
+    {
+        $v = trim((string) $value);
+        // remove aspas no começo/fim (ex: '"abc"' ou "'abc'")
+        $v = trim($v, "\"'");
+        return $v;
+    }
+
+    /**
+     * Normaliza a base URL do BotConversa.
+     * - remove aspas/espacos
+     * - remove barra final
+     * - garante sufixo /webhook (necessário para os endpoints usados aqui)
+     */
+    private function sanitizeBaseUrl(?string $url): string
+    {
+        $base = $this->sanitizeScalar($url);
+        $base = rtrim($base, '/');
+
+        if ($base !== '' && !str_ends_with($base, '/webhook')) {
+            $base .= '/webhook';
+        }
+
+        return $base;
+    }
+
+    /**
+     * Normaliza a API key (remove aspas/espacos).
+     */
+    private function sanitizeApiKey(?string $key): string
+    {
+        return $this->sanitizeScalar($key);
+    }
+
+    /**
      * Normaliza telefone: mantém só dígitos e, se tiver 11 dígitos, prefixa 55.
      */
-    private function normalizePhone(?string $telefoneBruto): ?string
+    protected function normalizePhone(?string $telefone): ?string
     {
-        if (!$telefoneBruto) {
+        if (!$telefone) {
             return null;
         }
 
-        $telefone = preg_replace('/\D+/', '', $telefoneBruto);
+        // mantém só dígitos
+        $telefone = preg_replace('/\D+/', '', $telefone);
 
         if (!$telefone) {
             return null;
@@ -155,28 +202,27 @@ class BotConversaService
      */
     public function getSubscriberIdFromPayload(array $data): ?string
     {
+        // Alguns endpoints podem retornar:
+        //  - ['id' => 123]
+        //  - ['subscriber' => ['id' => 123]]
+        //  - ['results' => [['id' => 123]]]
         if (isset($data['id'])) {
             return (string) $data['id'];
         }
 
-        if (isset($data['subscriber_id'])) {
-            return (string) $data['subscriber_id'];
+        if (isset($data['subscriber']['id'])) {
+            return (string) $data['subscriber']['id'];
         }
 
-        if (isset($data['data']['id'])) {
-            return (string) $data['data']['id'];
-        }
-
-        if (isset($data['data']['subscriber_id'])) {
-            return (string) $data['data']['subscriber_id'];
+        if (isset($data['results'][0]['id'])) {
+            return (string) $data['results'][0]['id'];
         }
 
         return null;
     }
 
     /**
-     * GET subscriber/get_by_phone/{phone}
-     * Retorna array com dados do assinante ou null se não achar.
+     * Busca assinante pelo telefone (GET /subscriber/get_by_phone/{phone}/)
      */
     public function findSubscriberByPhone(string $telefoneBruto, ?int $empresaId = null): ?array
     {
@@ -201,6 +247,7 @@ class BotConversaService
                 ],
             ]);
 
+            // Alguns cenários o BotConversa retorna 400 quando não encontra (mantive seu comportamento)
             if ($resp->getStatusCode() === 400) {
                 Log::info('BotConversa: get_by_phone 404 (assinante não encontrado)', [
                     'telefone' => $phone,
@@ -250,28 +297,22 @@ class BotConversaService
 
         $phone = $this->normalizePhone($telefoneBruto);
         if (!$phone) {
-            Log::warning('BotConversa: telefone inválido na criação', ['telefone' => $telefoneBruto]);
+            Log::warning('BotConversa: telefone inválido para criar subscriber', [
+                'telefone' => $telefoneBruto,
+            ]);
             return null;
         }
 
-        // Monta first_name e last_name a partir de $nome
-        $firstName = 'Cliente';
-        $lastName  = $phone;
-
-        if ($nome) {
-            $nome = trim($nome);
-            $partes = preg_split('/\s+/', $nome, 2);
-
-            $firstName = $partes[0] ?? 'Cliente';
-            $lastName  = $partes[1] ?? $partes[0] ?? $phone;
-        }
+        $nome = trim((string) $nome);
+        $firstName = $nome ? explode(' ', $nome)[0] : 'Cliente';
+        $lastName  = $nome ? trim(substr($nome, strlen($firstName))) : '';
 
         try {
             $payload = [
                 'phone'      => $phone,
                 'first_name' => $firstName,
                 'last_name'  => $lastName,
-                'name'       => $nome ?? ($firstName . ' ' . $lastName),
+                'name'       => $nome ?: ($firstName . ' ' . $lastName),
             ];
 
             $resp = $client->post('subscriber/', [
@@ -283,7 +324,7 @@ class BotConversaService
             ]);
 
             if (!in_array($resp->getStatusCode(), [200, 201])) {
-                Log::warning('BotConversa: subscriber_create status inesperado', [
+                Log::warning('BotConversa: create subscriber status inesperado', [
                     'status' => $resp->getStatusCode(),
                     'body'   => (string) $resp->getBody(),
                 ]);
@@ -291,24 +332,9 @@ class BotConversaService
             }
 
             $data = json_decode((string) $resp->getBody(), true) ?? [];
-
-            // 🔹 Tag de origem a partir da configuração da empresa (se existir),
-            // com fallback para o config antigo.
-            $config = $this->config ?? $this->getConfig($empresaId);
-
-            $originTagIdConfig = $config->origin_tag_id ?? null;
-            $originTagIdEnv    = config('services.botconversa.origin_tag_id');
-            $originTagId       = $originTagIdConfig ?: $originTagIdEnv;
-
-            $subscriberId = $this->getSubscriberIdFromPayload($data);
-
-            if ($originTagId && $subscriberId) {
-                $this->addTagToSubscriber($subscriberId, $originTagId, $empresaId);
-            }
-
             return $data;
         } catch (\Throwable $e) {
-            Log::error('BotConversa: erro em subscriber_create', [
+            Log::error('BotConversa: erro em create subscriber', [
                 'erro'     => $e->getMessage(),
                 'telefone' => $phone,
             ]);
@@ -317,7 +343,7 @@ class BotConversaService
     }
 
     /**
-     * Achar ou criar subscriber para um telefone.
+     * Busca ou cria o subscriber pelo telefone.
      */
     public function getOrCreateSubscriber(
         string $telefoneBruto,
@@ -326,27 +352,26 @@ class BotConversaService
     ): ?array {
         $subscriber = $this->findSubscriberByPhone($telefoneBruto, $empresaId);
 
-        if (!$subscriber) {
-            Log::info('BotConversa: assinante não encontrado, criando...', [
-                'telefone'   => $telefoneBruto,
-                'empresa_id' => $this->resolveEmpresaId($empresaId),
-            ]);
-
-            $subscriber = $this->createSubscriber($telefoneBruto, $nome, $empresaId);
+        if ($subscriber) {
+            return $subscriber;
         }
 
-        return $subscriber;
+        Log::info('BotConversa: assinante não encontrado, criando...', [
+            'telefone'   => $telefoneBruto,
+            'empresa_id' => $this->resolveEmpresaId($empresaId),
+        ]);
+
+        return $this->createSubscriber($telefoneBruto, $nome, $empresaId);
     }
 
-    public function addTagToSubscriber(
-        string $subscriberId,
-        string|int $tagId,
-        ?int $empresaId = null
-    ): bool {
+    /**
+     * Adiciona uma tag no subscriber (POST /subscriber/{id}/tags/{tagId}/)
+     */
+    public function addTagToSubscriber(string $subscriberId, string $tagId, ?int $empresaId = null): bool
+    {
         $client = $this->getClient($empresaId);
 
         if (!$client || !$this->apiKey) {
-            Log::warning('BotConversa: API_KEY ou client não configurados ao adicionar tag.');
             return false;
         }
 
@@ -362,25 +387,19 @@ class BotConversaService
                 ],
             ]);
 
-            if ($resp->getStatusCode() >= 200 && $resp->getStatusCode() < 300) {
-                Log::info('BotConversa: tag adicionada ao subscriber', [
+            if ($resp->getStatusCode() !== 200) {
+                Log::warning('BotConversa: addTag status inesperado', [
                     'subscriber_id' => $subscriberId,
                     'tag_id'        => $tagId,
                     'status'        => $resp->getStatusCode(),
+                    'body'          => (string) $resp->getBody(),
                 ]);
-                return true;
+                return false;
             }
 
-            Log::warning('BotConversa: falha ao adicionar tag ao subscriber', [
-                'subscriber_id' => $subscriberId,
-                'tag_id'        => $tagId,
-                'status'        => $resp->getStatusCode(),
-                'body'          => (string) $resp->getBody(),
-            ]);
-
-            return false;
+            return true;
         } catch (\Throwable $e) {
-            Log::error('BotConversa: erro em addTagToSubscriber', [
+            Log::error('BotConversa: erro em addTag', [
                 'erro'          => $e->getMessage(),
                 'subscriber_id' => $subscriberId,
                 'tag_id'        => $tagId,
@@ -390,21 +409,17 @@ class BotConversaService
     }
 
     /**
-     * POST /subscriber/{subscriber_id}/send_message/
+     * Envia uma mensagem (POST /subscriber/{id}/send_message/)
      */
-    public function sendMessageToSubscriber(
-        string $subscriberId,
-        string $mensagem,
-        ?int $empresaId = null
-    ): bool {
+    public function sendMessageToSubscriber(string $subscriberId, string $mensagem, ?int $empresaId = null): bool
+    {
         $client = $this->getClient($empresaId);
 
         if (!$client || !$this->apiKey) {
-            Log::warning('BotConversa: API_KEY ou client não configurados em sendMessageToSubscriber.');
             return false;
         }
 
-        if (!$subscriberId) {
+        if (!$subscriberId || !$mensagem) {
             return false;
         }
 
@@ -427,22 +442,16 @@ class BotConversaService
                 'json' => $payload,
             ]);
 
-            if ($resp->getStatusCode() >= 200 && $resp->getStatusCode() < 300) {
-                Log::info('BotConversa: send_message OK', [
+            if (!in_array($resp->getStatusCode(), [200, 201])) {
+                Log::warning('BotConversa: send_message status inesperado', [
                     'subscriber_id' => $subscriberId,
                     'status'        => $resp->getStatusCode(),
                     'body'          => (string) $resp->getBody(),
                 ]);
-                return true;
+                return false;
             }
 
-            Log::warning('BotConversa: send_message status inesperado', [
-                'subscriber_id' => $subscriberId,
-                'status'        => $resp->getStatusCode(),
-                'body'          => (string) $resp->getBody(),
-            ]);
-
-            return false;
+            return true;
         } catch (\Throwable $e) {
             Log::error('BotConversa: erro em send_message', [
                 'erro'          => $e->getMessage(),
@@ -454,30 +463,22 @@ class BotConversaService
     }
 
     /**
-     * Enviar mensagem usando apenas telefone/nome.
-     * Agora multi-empresa (usa empresa do usuário logado, salvo se você passar empresaId).
+     * Envia mensagem diretamente para telefone (resolve/gera subscriber).
      */
-    public function enviarParaTelefone(
-        string $telefoneBruto,
-        string $mensagem,
-        ?string $nome = null,
-        ?int $empresaId = null
-    ): bool {
-        $subscriber = $this->getOrCreateSubscriber($telefoneBruto, $nome, $empresaId);
+    public function enviarParaTelefone(string $telefone, string $mensagem, ?int $empresaId = null, ?string $nome = null): bool
+    {
+        $subscriber = $this->getOrCreateSubscriber($telefone, $nome, $empresaId);
 
         if (!$subscriber) {
-            Log::warning('BotConversa: não foi possível obter subscriber_id para envio', [
-                'telefone'   => $telefoneBruto,
-                'empresa_id' => $this->resolveEmpresaId($empresaId),
-            ]);
             return false;
         }
 
         $subscriberId = $this->getSubscriberIdFromPayload($subscriber);
+
         if (!$subscriberId) {
-            Log::warning('BotConversa: payload sem subscriber_id', [
-                'payload'    => $subscriber,
-                'empresa_id' => $this->resolveEmpresaId($empresaId),
+            Log::warning('BotConversa: payload sem subscriber_id ao enviarParaTelefone', [
+                'telefone' => $telefone,
+                'payload'  => $subscriber,
             ]);
             return false;
         }
@@ -486,13 +487,13 @@ class BotConversaService
     }
 
     /**
-     * Enviar mensagem diretamente para um Cliente (usando botconversa_subscriber_id se existir).
+     * Envia mensagem para um Cliente:
+     * - Usa botconversa_subscriber_id se existir
+     * - Senão tenta achar/criar pelo telefone
+     * - Salva subscriber_id no cliente (quietly)
      */
-    public function enviarParaCliente(
-        Cliente $cliente,
-        string $mensagem,
-        ?int $empresaId = null
-    ): bool {
+    public function enviarParaCliente(Cliente $cliente, string $mensagem, ?int $empresaId = null): bool
+    {
         // Se empresaId não foi informado, tenta usar do próprio cliente
         $empresaId = $empresaId ?? ($cliente->empresa_id ?? null);
 
@@ -509,24 +510,20 @@ class BotConversaService
         $telefone = $cliente->telefone ?? $cliente->phone ?? $cliente->whatsapp ?? null;
 
         if (!$telefone) {
-            Log::warning('BotConversa: Cliente sem telefone ao enviar mensagem', [
+            Log::warning('BotConversa: cliente sem telefone para envio', [
                 'cliente_id' => $cliente->id,
             ]);
             return false;
         }
 
-        $subscriber = $this->getOrCreateSubscriber($telefone, $cliente->nome, $empresaId);
+        $subscriber = $this->getOrCreateSubscriber($telefone, $cliente->nome ?? null, $empresaId);
 
         if (!$subscriber) {
-            Log::warning('BotConversa: não foi possível obter subscriber ao enviar para cliente', [
-                'cliente_id' => $cliente->id,
-                'telefone'   => $telefone,
-                'empresa_id' => $this->resolveEmpresaId($empresaId),
-            ]);
             return false;
         }
 
         $subscriberId = $this->getSubscriberIdFromPayload($subscriber);
+
         if (!$subscriberId) {
             Log::warning('BotConversa: payload sem subscriber_id ao enviar para cliente', [
                 'cliente_id' => $cliente->id,
