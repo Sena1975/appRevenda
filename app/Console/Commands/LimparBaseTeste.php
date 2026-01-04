@@ -108,7 +108,7 @@ class LimparBaseTeste extends Command
     }
     
 }
-//voltar campnha de indicação
+//voltar campanha de indicação
 //php artisan db:seed --class=CampanhaIndicacaoSeeder
 //COMANDO PRA EXECUTAR ESSE SCRIPT
 //php artisan app:limpar-base-teste --force

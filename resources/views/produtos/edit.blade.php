@@ -132,233 +132,459 @@
                         @endforeach
                     </select>
                 </div>
+
                 {{-- SOMENTE PARA KITS --}}
                 @if ($produto->tipo === 'K')
-                    <hr class="my-6">
+                    <div class="col-span-2 mt-4">
+                        <hr class="my-6">
 
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">
-                        Composição do Kit
-                    </h3>
-                    <p class="text-xs text-gray-500 mb-3">
-                        Comece a digitar o nome ou código do produto, selecione na lista e informe a quantidade.
-                    </p>
+                        <div class="flex items-start justify-between gap-4 mb-3">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800">
+                                    Composição do Kit
+                                </h3>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Comece a digitar o nome ou código do produto, selecione na lista e informe a
+                                    quantidade.
+                                    Depois clique em ✅ para confirmar o item.
+                                </p>
+                            </div>
 
-                    <div class="relative">
-                        <table class="min-w-full text-sm border border-gray-200 rounded-md" id="tabela-kit-itens">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-3 py-2 text-left border-b text-xs font-medium text-gray-600 w-2/3">
-                                        Produto
-                                    </th>
+                            <button type="button" id="btn-add-kit-item"
+                                class="inline-flex items-center justify-center w-10 h-10 rounded-md
+                       border border-indigo-500 text-indigo-600 bg-white hover:bg-indigo-50
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Adicionar item" disabled>
+                                ➕
+                            </button>
+                        </div>
 
-                                    <th class="px-3 py-2 text-left border-b text-xs font-medium text-gray-600 w-24">
-                                        Qtde
-                                    </th>
-                                    <th class="px-3 py-2 text-left border-b text-xs font-medium text-gray-600 w-16">
-                                        Ação
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody id="kit-itens-tbody">
-                                {{-- Linhas já cadastradas --}}
-                                @foreach ($produto->itensDoKit as $itemKit)
-                                    @php
-                                        $produtoItem = $itemKit->produtoItem ?? null;
-                                        $textoProduto = $produtoItem
-                                            ? $produtoItem->codfabnumero . ' - ' . $produtoItem->nome
-                                            : '';
-                                    @endphp
-                                    <tr class="border-b kit-item-row">
-                                        <td class="px-3 py-2">
-                                            <div class="relative">
-                                                <input type="text"
-                                                    class="kit-produto-busca w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                                    placeholder="Digite para buscar..." autocomplete="off"
-                                                    value="{{ $textoProduto }}">
-                                                <input type="hidden" name="kit_itens_produto_id[]"
-                                                    class="kit-produto-id" value="{{ $produtoItem->id ?? '' }}">
-                                                <div
-                                                    class="kit-suggestions absolute left-0 right-0 top-full mt-1
-                                                        bg-white border border-gray-200 rounded-md shadow-lg z-50
-                                                        text-sm max-h-80 overflow-y-auto py-1 hidden">
-                                                </div>
-
-
-                                            </div>
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            <input type="text" name="kit_itens_quantidade[]"
-                                                value="{{ number_format($itemKit->quantidade, 3, ',', '') }}"
-                                                class="w-24 border-gray-300 rounded-md shadow-sm text-xs text-right">
-                                        </td>
-                                        <td class="px-3 py-2 text-center">
-                                            <button type="button" class="text-xs text-red-600 hover:text-red-800"
-                                                onclick="removerLinhaKit(this)">
-                                                Remover
-                                            </button>
-                                        </td>
+                        <div class="relative">
+                            <table class="w-full text-sm border border-gray-200 rounded-md" id="tabela-kit-itens">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-3 py-2 text-left border-b text-xs font-medium text-gray-600 w-2/3">
+                                            Produto
+                                        </th>
+                                        <th class="px-3 py-2 text-left border-b text-xs font-medium text-gray-600 w-24">
+                                            Qtde
+                                        </th>
+                                        <th
+                                            class="px-3 py-2 text-center border-b text-xs font-medium text-gray-600 w-24">
+                                            Ações
+                                        </th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
 
-                    <div class="mt-3">
-                        <button type="button" id="btn-add-kit-item"
-                            class="inline-flex items-center px-3 py-1.5 border border-indigo-500 text-xs font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50">
-                            + Adicionar item
-                        </button>
-                    </div>
+                                <tbody id="kit-itens-tbody">
+                                    {{-- Linhas já cadastradas (iniciam CONFIRMADAS) --}}
+                                    @foreach ($produto->itensDoKit as $itemKit)
+                                        @php
+                                            $produtoItem = $itemKit->produtoItem ?? null;
+                                            $textoProduto = $produtoItem
+                                                ? $produtoItem->codfabnumero . ' - ' . $produtoItem->nome
+                                                : '';
+                                        @endphp
 
-                    {{-- Template oculto para novas linhas --}}
-                    <template id="kit-item-row-template">
-                        <tr class="border-b kit-item-row">
-                            <td class="px-3 py-2">
-                                <div class="relative">
-                                    <input type="text"
-                                        class="kit-produto-busca w-full border-gray-300 rounded-md shadow-sm text-xs"
-                                        placeholder="Digite para buscar..." autocomplete="off">
-                                    <input type="hidden" name="kit_itens_produto_id[]" class="kit-produto-id"
-                                        value="">
-                                    <div
-                                        class="kit-suggestions absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow z-20 text-xs hidden">
+                                        <tr class="border-b kit-item-row" data-confirmed="1">
+                                            <td class="px-3 py-2">
+                                                <div class="relative">
+                                                    <input type="text"
+                                                        class="kit-produto-busca w-full border-gray-300 rounded-md shadow-sm text-xs bg-gray-50"
+                                                        placeholder="Digite para buscar..." autocomplete="off"
+                                                        value="{{ $textoProduto }}" disabled>
+
+                                                    <input type="hidden" name="kit_itens_produto_id[]"
+                                                        class="kit-produto-id" value="{{ $produtoItem->id ?? '' }}">
+
+                                                    <div
+                                                        class="kit-suggestions absolute left-0 right-0 top-full mt-1
+                                               bg-white border border-gray-200 rounded-md shadow-lg z-50
+                                               text-sm max-h-80 overflow-y-auto py-1 hidden">
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td class="px-3 py-2">
+                                                <input type="text" name="kit_itens_quantidade[]"
+                                                    value="{{ number_format($itemKit->quantidade, 3, ',', '') }}"
+                                                    class="w-24 border-gray-300 rounded-md shadow-sm text-xs text-right bg-gray-50"
+                                                    disabled>
+                                            </td>
+
+                                            <td class="px-3 py-2">
+                                                <div class="flex items-center justify-center gap-2">
+                                                    <button type="button"
+                                                        class="kit-btn-edit inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-gray-50"
+                                                        title="Editar">
+                                                        ✏️
+                                                    </button>
+
+                                                    <button type="button"
+                                                        class="kit-btn-remove inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-red-50"
+                                                        title="Remover">
+                                                        ❌
+                                                    </button>
+
+                                                    <button type="button"
+                                                        class="kit-btn-confirm hidden inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-green-50"
+                                                        title="Confirmar">
+                                                        ✅
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Template oculto para novas linhas (iniciam PENDENTES) --}}
+                        <template id="kit-item-row-template">
+                            <tr class="border-b kit-item-row" data-confirmed="0">
+                                <td class="px-3 py-2">
+                                    <div class="relative">
+                                        <input type="text"
+                                            class="kit-produto-busca w-full border-gray-300 rounded-md shadow-sm text-xs"
+                                            placeholder="Digite para buscar..." autocomplete="off">
+
+                                        <input type="hidden" name="kit_itens_produto_id[]" class="kit-produto-id"
+                                            value="">
+
+                                        <div
+                                            class="kit-suggestions absolute left-0 right-0 top-full mt-1
+                                   bg-white border border-gray-200 rounded-md shadow-lg z-50
+                                   text-sm max-h-80 overflow-y-auto py-1 hidden">
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="px-3 py-2">
-                                <input type="text" name="kit_itens_quantidade[]" value=""
-                                    class="w-24 border-gray-300 rounded-md shadow-sm text-xs text-right"
-                                    placeholder="1,000">
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                <button type="button" class="text-xs text-red-600 hover:text-red-800"
-                                    onclick="removerLinhaKit(this)">
-                                    Remover
-                                </button>
-                            </td>
-                        </tr>
-                    </template>
+                                </td>
 
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const btnAdd = document.getElementById('btn-add-kit-item');
-                            const tbody = document.getElementById('kit-itens-tbody');
-                            const tpl = document.getElementById('kit-item-row-template');
-                            const lookupUrl = '{{ route('produtos.lookup') }}';
+                                <td class="px-3 py-2">
+                                    <input type="text" name="kit_itens_quantidade[]" value="1,000"
+                                        class="w-24 border-gray-300 rounded-md shadow-sm text-xs text-right"
+                                        placeholder="1,000">
+                                </td>
 
-                            function initKitRow(row) {
-                                const inputBusca = row.querySelector('.kit-produto-busca');
-                                const inputId = row.querySelector('.kit-produto-id');
-                                const box = row.querySelector('.kit-suggestions');
-                                let timer = null;
+                                <td class="px-3 py-2">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <button type="button"
+                                            class="kit-btn-edit hidden inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-gray-50"
+                                            title="Editar">
+                                            ✏️
+                                        </button>
 
-                                if (!inputBusca || !inputId || !box) {
-                                    return;
-                                }
+                                        <button type="button"
+                                            class="kit-btn-remove inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-red-50"
+                                            title="Remover">
+                                            ❌
+                                        </button>
 
-                                inputBusca.addEventListener('input', function() {
-                                    const termo = inputBusca.value.trim();
-                                    // sempre que digitar, limpa o id até escolher de novo
-                                    inputId.value = '';
+                                        <button type="button"
+                                            class="kit-btn-confirm inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-200 hover:bg-green-50"
+                                            title="Confirmar">
+                                            ✅
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
 
-                                    if (timer) {
-                                        clearTimeout(timer);
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const btnAdd = document.getElementById('btn-add-kit-item');
+                                const tbody = document.getElementById('kit-itens-tbody');
+                                const tpl = document.getElementById('kit-item-row-template');
+                                const lookupUrl = '{{ route('produtos.lookup') }}';
+                                const form = tbody ? tbody.closest('form') : null;
+
+                                function parseQuantidadeBr(v) {
+                                    // "1,000" -> 1.000
+                                    if (v === null || v === undefined) return 0;
+                                    v = String(v).trim();
+                                    if (!v) return 0;
+
+                                    // remove espaços
+                                    v = v.replace(/\s+/g, '');
+
+                                    // se vier "1.234,567" vira "1234.567"
+                                    // se vier "1,000" vira "1.000"
+                                    // se vier "1.000" (usuário digitou ponto) mantém
+                                    const hasComma = v.includes(',');
+                                    const hasDot = v.includes('.');
+
+                                    if (hasComma && hasDot) {
+                                        // padrão BR completo
+                                        v = v.replace(/\./g, '').replace(',', '.');
+                                    } else if (hasComma && !hasDot) {
+                                        v = v.replace(',', '.');
                                     }
 
-                                    if (termo.length < 2) {
-                                        box.innerHTML = '';
-                                        box.classList.add('hidden');
+                                    const n = parseFloat(v);
+                                    return isNaN(n) ? 0 : n;
+                                }
+
+                                function formatQuantidadeBr(n) {
+                                    // mantém 3 casas
+                                    const x = (Math.round(n * 1000) / 1000).toFixed(3);
+                                    return x.replace('.', ',');
+                                }
+
+                                function rowSetConfirmed(row, confirmed) {
+                                    row.dataset.confirmed = confirmed ? '1' : '0';
+
+                                    const inputBusca = row.querySelector('.kit-produto-busca');
+                                    const inputQtd = row.querySelector('input[name="kit_itens_quantidade[]"]');
+
+                                    const btnConfirm = row.querySelector('.kit-btn-confirm');
+                                    const btnEdit = row.querySelector('.kit-btn-edit');
+
+                                    if (confirmed) {
+                                        if (inputBusca) {
+                                            inputBusca.disabled = true;
+                                            inputBusca.classList.add('bg-gray-50');
+                                        }
+                                        if (inputQtd) {
+                                            inputQtd.disabled = true;
+                                            inputQtd.classList.add('bg-gray-50');
+                                            // normaliza visual para 3 casas
+                                            const q = parseQuantidadeBr(inputQtd.value);
+                                            if (q > 0) inputQtd.value = formatQuantidadeBr(q);
+                                        }
+
+                                        if (btnConfirm) btnConfirm.classList.add('hidden');
+                                        if (btnEdit) btnEdit.classList.remove('hidden');
+                                    } else {
+                                        if (inputBusca) {
+                                            inputBusca.disabled = false;
+                                            inputBusca.classList.remove('bg-gray-50');
+                                        }
+                                        if (inputQtd) {
+                                            inputQtd.disabled = false;
+                                            inputQtd.classList.remove('bg-gray-50');
+                                        }
+
+                                        if (btnConfirm) btnConfirm.classList.remove('hidden');
+                                        if (btnEdit) btnEdit.classList.add('hidden');
+                                    }
+
+                                    refreshAddButtonState();
+                                }
+
+                                function allRowsConfirmed() {
+                                    const rows = tbody.querySelectorAll('.kit-item-row');
+                                    if (!rows.length) return false;
+                                    for (const r of rows) {
+                                        if (r.dataset.confirmed !== '1') return false;
+                                    }
+                                    return true;
+                                }
+
+                                function refreshAddButtonState() {
+                                    if (!btnAdd) return;
+
+                                    const rows = tbody.querySelectorAll('.kit-item-row');
+                                    if (!rows.length) {
+                                        btnAdd.disabled = false;
                                         return;
                                     }
 
-                                    timer = setTimeout(function() {
-                                        fetch(lookupUrl + '?q=' + encodeURIComponent(termo) + '&limit=15')
-                                            .then(resp => resp.json())
-                                            .then(data => {
-                                                box.innerHTML = '';
+                                    btnAdd.disabled = !allRowsConfirmed();
+                                }
 
-                                                // SEU CONTROLLER DEVOLVE UM ARRAY DIRETO
-                                                const resultados = Array.isArray(data) ?
-                                                    data :
-                                                    (data.results || []);
+                                function validateRow(row) {
+                                    const inputId = row.querySelector('.kit-produto-id');
+                                    const inputBusca = row.querySelector('.kit-produto-busca');
+                                    const inputQtd = row.querySelector('input[name="kit_itens_quantidade[]"]');
 
-                                                resultados.forEach(item => {
-                                                    // usamos produto_id se existir, senão cai no id
-                                                    const produtoId = item.produto_id || item.id;
+                                    const produtoId = (inputId?.value || '').trim();
+                                    const qtd = parseQuantidadeBr(inputQtd?.value || '');
 
-                                                    const div = document.createElement('div');
-                                                    div.className =
-                                                        'px-2 py-1 hover:bg-indigo-50 cursor-pointer';
-                                                    div.textContent = item.text;
-                                                    div.dataset.id = produtoId;
+                                    if (!produtoId) {
+                                        alert('Selecione um produto na lista antes de confirmar.');
+                                        inputBusca?.focus();
+                                        return false;
+                                    }
 
-                                                    div.addEventListener('click', function() {
-                                                        inputBusca.value = item.text;
-                                                        inputId.value = produtoId;
-                                                        box.innerHTML = '';
-                                                        box.classList.add('hidden');
+                                    if (!(qtd > 0)) {
+                                        alert('Informe uma quantidade válida (> 0) antes de confirmar.');
+                                        inputQtd?.focus();
+                                        return false;
+                                    }
+
+                                    return true;
+                                }
+
+                                function initKitRow(row) {
+                                    const inputBusca = row.querySelector('.kit-produto-busca');
+                                    const inputId = row.querySelector('.kit-produto-id');
+                                    const box = row.querySelector('.kit-suggestions');
+
+                                    const btnConfirm = row.querySelector('.kit-btn-confirm');
+                                    const btnEdit = row.querySelector('.kit-btn-edit');
+                                    const btnRemove = row.querySelector('.kit-btn-remove');
+
+                                    let timer = null;
+
+                                    if (!inputBusca || !inputId || !box) return;
+
+                                    // lookup
+                                    inputBusca.addEventListener('input', function() {
+                                        if (row.dataset.confirmed === '1') return;
+
+                                        const termo = inputBusca.value.trim();
+                                        inputId.value = '';
+
+                                        if (timer) clearTimeout(timer);
+
+                                        if (termo.length < 2) {
+                                            box.innerHTML = '';
+                                            box.classList.add('hidden');
+                                            return;
+                                        }
+
+                                        timer = setTimeout(function() {
+                                            fetch(lookupUrl + '?q=' + encodeURIComponent(termo) + '&limit=15')
+                                                .then(resp => resp.json())
+                                                .then(data => {
+                                                    box.innerHTML = '';
+                                                    const resultados = Array.isArray(data) ? data : (data.results ||
+                                                        []);
+
+                                                    resultados.forEach(item => {
+                                                        const produtoId = item.produto_id || item.id;
+
+                                                        const div = document.createElement('div');
+                                                        div.className =
+                                                            'px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm';
+                                                        div.textContent = item.text;
+                                                        div.dataset.id = produtoId;
+
+                                                        div.addEventListener('click', function() {
+                                                            inputBusca.value = item.text;
+                                                            inputId.value = produtoId;
+                                                            box.innerHTML = '';
+                                                            box.classList.add('hidden');
+                                                        });
+
+                                                        box.appendChild(div);
                                                     });
 
-                                                    box.appendChild(div);
-                                                });
-
-                                                if (resultados.length > 0) {
-                                                    box.classList.remove('hidden');
-                                                } else {
+                                                    if (resultados.length > 0) box.classList.remove('hidden');
+                                                    else box.classList.add('hidden');
+                                                })
+                                                .catch((e) => {
+                                                    console.error('Erro no lookup de produto do kit:', e);
+                                                    box.innerHTML = '';
                                                     box.classList.add('hidden');
-                                                }
-                                            })
-                                            .catch((e) => {
-                                                console.error('Erro no lookup de produto do kit:', e);
-                                                box.innerHTML = '';
-                                                box.classList.add('hidden');
-                                            });
-                                    }, 300);
-                                });
+                                                });
+                                        }, 300);
+                                    });
 
-                                // Esconde a lista um pouquinho depois de perder o foco
-                                inputBusca.addEventListener('blur', function() {
-                                    setTimeout(function() {
-                                        box.classList.add('hidden');
-                                    }, 200);
-                                });
-                            }
+                                    inputBusca.addEventListener('blur', function() {
+                                        setTimeout(function() {
+                                            box.classList.add('hidden');
+                                        }, 200);
+                                    });
 
-                            if (btnAdd && tbody && tpl) {
-                                // Inicializa linhas já existentes (itensDoKit)
-                                tbody.querySelectorAll('.kit-item-row').forEach(row => {
-                                    initKitRow(row);
-                                });
+                                    // confirmar
+                                    if (btnConfirm) {
+                                        btnConfirm.addEventListener('click', function() {
+                                            if (!validateRow(row)) return;
+                                            rowSetConfirmed(row, true);
+                                        });
+                                    }
 
-                                // Se não houver nenhum item cadastrado, cria uma linha vazia
+                                    // editar
+                                    if (btnEdit) {
+                                        btnEdit.addEventListener('click', function() {
+                                            rowSetConfirmed(row, false);
+                                            // quando entra em edição, trava o botão adicionar
+                                            refreshAddButtonState();
+                                            inputBusca.focus();
+                                        });
+                                    }
+
+                                    // remover
+                                    if (btnRemove) {
+                                        btnRemove.addEventListener('click', function() {
+                                            row.remove();
+                                            refreshAddButtonState();
+
+                                            // se ficou sem linhas, cria 1 linha pendente
+                                            if (!tbody.querySelector('.kit-item-row')) {
+                                                const clone = tpl.content.cloneNode(true);
+                                                tbody.appendChild(clone);
+                                                const primeira = tbody.querySelector('.kit-item-row');
+                                                initKitRow(primeira);
+                                                rowSetConfirmed(primeira, false);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                // inicializa linhas existentes
+                                tbody.querySelectorAll('.kit-item-row').forEach(row => initKitRow(row));
+
+                                // se não houver nenhum item, cria uma linha pendente
                                 if (!tbody.querySelector('.kit-item-row')) {
                                     const clone = tpl.content.cloneNode(true);
                                     tbody.appendChild(clone);
-                                    const primeiraLinha = tbody.querySelector('.kit-item-row');
-                                    initKitRow(primeiraLinha);
+                                    const primeira = tbody.querySelector('.kit-item-row');
+                                    initKitRow(primeira);
+                                    rowSetConfirmed(primeira, false);
+                                } else {
+                                    refreshAddButtonState();
                                 }
 
-                                // Botão para adicionar novas linhas
-                                btnAdd.addEventListener('click', function() {
-                                    const clone = tpl.content.cloneNode(true);
-                                    tbody.appendChild(clone);
-                                    const linhas = tbody.querySelectorAll('.kit-item-row');
-                                    const novaLinha = linhas[linhas.length - 1];
-                                    initKitRow(novaLinha);
-                                });
-                            }
-                        });
+                                // adicionar linha (só quando tudo confirmado)
+                                if (btnAdd && tbody && tpl) {
+                                    btnAdd.addEventListener('click', function() {
+                                        if (btnAdd.disabled) return;
 
-                        function removerLinhaKit(botao) {
-                            const tr = botao.closest('tr');
-                            const tbody = document.getElementById('kit-itens-tbody');
-                            if (tr && tbody) {
-                                tbody.removeChild(tr);
-                            }
-                        }
-                    </script>
+                                        const clone = tpl.content.cloneNode(true);
+                                        tbody.appendChild(clone);
 
+                                        const rows = tbody.querySelectorAll('.kit-item-row');
+                                        const nova = rows[rows.length - 1];
+
+                                        initKitRow(nova);
+                                        rowSetConfirmed(nova, false);
+
+                                        // ao adicionar, desabilita até confirmar
+                                        refreshAddButtonState();
+
+                                        const inputBusca = nova.querySelector('.kit-produto-busca');
+                                        inputBusca?.focus();
+                                    });
+                                }
+
+                                // bloqueia submit se houver linha pendente
+                                if (form) {
+                                    form.addEventListener('submit', function(e) {
+                                        const rows = tbody.querySelectorAll('.kit-item-row');
+                                        for (const row of rows) {
+                                            if (row.dataset.confirmed !== '1') {
+                                                e.preventDefault();
+                                                alert(
+                                                    'Existe item do KIT não confirmado. Clique em ✅ para confirmar antes de salvar.');
+                                                const b = row.querySelector('.kit-produto-busca');
+                                                b?.focus();
+                                                return;
+                                            }
+                                            // revalida por segurança
+                                            if (!validateRow(row)) {
+                                                e.preventDefault();
+                                                return;
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                        </script>
+                    </div>
                 @endif
+
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Status</label>
